@@ -179,11 +179,14 @@
     const t = MATERIAL_TYPES[m.type];
     if (!t) return '';
     const name = m.name || t.label;
-    const tabAttr = t.newTab ? ' target="_blank" rel="noopener"' : '';
-    const meta = m.meta || (t.newTab ? '새 탭에서 열기' : '');
+    // 파일형인데 storage_path가 없으면 외부(구글 드라이브 등) 링크 → 새 탭으로 열기, ?download 미부여
+    const isExternal = t.file && !m.storage_path && m.url && m.url !== '#';
+    const newTab = t.newTab || isExternal;
+    const tabAttr = newTab ? ' target="_blank" rel="noopener"' : '';
+    const meta = m.meta || (newTab ? '새 탭에서 열기' : '');
     let href = m.url || '#';
-    // 업로드 파일: 다운로드 시 원본(한글) 파일명으로 받게 ?download 부여 (영상은 재생용이라 제외)
-    if (t.file && m.original_filename && m.type !== 'video' && href !== '#') {
+    // 업로드 파일(Supabase): 다운로드 시 원본(한글) 파일명으로 받게 ?download 부여 (영상·외부링크 제외)
+    if (t.file && !isExternal && m.original_filename && m.type !== 'video' && href !== '#') {
       href += (href.indexOf('?') >= 0 ? '&' : '?') + 'download=' + encodeURIComponent(m.original_filename);
     }
     const teacherBadge = m.teacher_only ? '<span class="text-caption text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '';

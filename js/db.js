@@ -407,6 +407,17 @@
   async function driveExchange(code, redirectUri) { return callGoogleOAuth('op=exchange', { code, redirect_uri: redirectUri }); }
   async function driveDisconnect() { return callGoogleOAuth('op=disconnect'); }
   async function driveSaveSettings(school, year, semester) { return callGoogleOAuth('op=savesettings', { school, year, semester }); }
+  // Picker용: 연결된 refresh_token으로 액세스 토큰 발급(+API키/appId 동봉). 관리자 전용.
+  async function driveAccessToken() { return callGoogleOAuth('op=accesstoken'); }
+  // Picker로 고른 파일을 "링크가 있는 모든 사용자 보기"로 공유(학생이 로그인 없이 보게)
+  async function driveShareAnyone(fileId, accessToken) {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?supportsAllDrives=true`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error('드라이브 공유 설정 실패: ' + ((e.error && e.error.message) || res.status)); }
+    return true;
+  }
 
   async function getSubmissionSignedUrl(submissionId) {
     const { data: { session } } = await supabase.auth.getSession();
@@ -431,6 +442,6 @@
     fetchAnnouncements, saveAnnouncement, deleteAnnouncement,
     fetchSubmissionAssignments, saveSubmissionAssignment, deleteSubmissionAssignment,
     fetchSubmissionsByAssignments, fetchSubmissionsForAssignment, submitWork, getSubmissionSignedUrl,
-    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings,
+    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveAccessToken, driveShareAnyone,
   };
 })();

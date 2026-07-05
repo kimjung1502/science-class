@@ -424,8 +424,18 @@
         <select name="type" id="mtype" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">${typeOpts}</select></div>
       <div><label class="text-label-md text-on-surface-variant">이름 <span class="text-outline">(비우면 유형 기본 이름)</span></label>
         <input name="name" type="text" value="${esc(item?.name || '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학 교과서"></div>
-      <div id="file-field" class="hidden"><label class="text-label-md text-on-surface-variant">파일 업로드</label>
-        <input name="file" type="file" class="w-full mt-1 text-caption"><p class="text-caption text-on-surface-variant mt-1" id="cur-file"></p></div>
+      <div id="file-field" class="hidden"><label class="text-label-md text-on-surface-variant">파일 업로드 <span class="text-outline">(Supabase 저장)</span></label>
+        <input name="file" type="file" class="w-full mt-1 text-caption"><p class="text-caption text-on-surface-variant mt-1" id="cur-file"></p>
+        <div class="mt-2 flex items-center gap-2">
+          <span class="text-caption text-on-surface-variant">또는</span>
+          <button type="button" id="drive-pick-btn" class="inline-flex items-center gap-1 text-caption px-2.5 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">
+            <span class="material-symbols-outlined text-[16px] text-primary">add_to_drive</span>구글 드라이브에서 선택 <span class="text-outline">(용량 0)</span>
+          </button>
+        </div>
+        <p id="drive-picked" class="text-caption text-primary mt-1 hidden"></p>
+        <input type="hidden" name="drive_url" id="drive-url">
+        <input type="hidden" name="drive_name" id="drive-name">
+      </div>
       <div id="url-field" class="hidden"><label class="text-label-md text-on-surface-variant">링크 주소 (URL)</label>
         <input name="url" type="url" value="${esc(item?.url && item.url !== '#' ? item.url : '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="https://..."></div>
       <div><label class="text-label-md text-on-surface-variant">부가 설명 <span class="text-outline">(용량·쪽수·출판사 등, 선택)</span></label>
@@ -459,9 +469,67 @@
       const t = MATERIAL_TYPES[sel.value];
       $('file-field').classList.toggle('hidden', !t.file);
       $('url-field').classList.toggle('hidden', t.file);
-      if (t.file && item?.storage_path) $('cur-file').textContent = '현재 파일: ' + item.storage_path.split('/').pop();
+      if (t.file) {
+        if (item?.storage_path) $('cur-file').textContent = '현재 파일: ' + item.storage_path.split('/').pop();
+        else if (item?.url && item.url !== '#') $('cur-file').textContent = '현재: 드라이브 링크';
+      }
     };
     sel.addEventListener('change', sync); sync();
+    const driveBtn = $('drive-pick-btn');
+    if (driveBtn) driveBtn.addEventListener('click', openDrivePicker);
+  }
+
+  // ---------------- 구글 드라이브 파일 선택기(Picker) ----------------
+  function loadPickerApi() {
+    return new Promise((resolve, reject) => {
+      if (window.google && window.google.picker) return resolve();
+      const finish = () => window.gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('Picker 모듈 로드 실패')) });
+      if (window.gapi) return finish();
+      const s = document.createElement('script');
+      s.src = 'https://apis.google.com/js/api.js';
+      s.onload = finish;
+      s.onerror = () => reject(new Error('구글 API를 불러오지 못했습니다 (네트워크/차단 확인). 대신 파일 업로드를 쓰세요.'));
+      document.head.appendChild(s);
+    });
+  }
+  async function openDrivePicker() {
+    const btn = $('drive-pick-btn'); const old = btn.innerHTML; btn.disabled = true; btn.textContent = '여는 중…';
+    try {
+      const { access_token, api_key, app_id } = await window.DB.driveAccessToken();
+      await loadPickerApi();
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+        .setIncludeFolders(false).setSelectFolderEnabled(false).setMode(google.picker.DocsViewMode.LIST);
+      const picker = new google.picker.PickerBuilder()
+        .setAppId(app_id)
+        .setOAuthToken(access_token)
+        .setDeveloperKey(api_key)
+        .setTitle('수업 자료로 넣을 파일 선택')
+        .addView(view)
+        .setCallback((data) => onDrivePicked(data, access_token))
+        .build();
+      picker.setVisible(true);
+    } catch (e) {
+      alert('드라이브 선택기 열기 실패: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.innerHTML = old;
+    }
+  }
+  async function onDrivePicked(data, token) {
+    if (!window.google || data.action !== google.picker.Action.PICKED) return;
+    const doc = (data.docs || [])[0]; if (!doc) return;
+    const picked = $('drive-picked'); if (!picked) return;
+    picked.classList.remove('hidden'); picked.textContent = '공유 설정 중…';
+    try {
+      await window.DB.driveShareAnyone(doc.id, token);
+      $('drive-url').value = doc.url || ('https://drive.google.com/file/d/' + doc.id + '/view');
+      $('drive-name').value = doc.name || '';
+      const nameInput = document.querySelector('[name="name"]');
+      if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name || '';
+      const fi = document.querySelector('[name="file"]'); if (fi) fi.value = '';
+      picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 링크로 등록됩니다.';
+    } catch (e) {
+      picked.textContent = '공유 설정 실패: ' + e.message;
+    }
   }
 
   $('modal-close').addEventListener('click', closeModal);
@@ -485,15 +553,23 @@
         payload.teacher_only = fd.get('teacher_only') === 'on';
         const t = MATERIAL_TYPES[payload.type];
         if (t.file) {
-          const file = fd.get('file');
-          if (file && file.size) {
-            const path2 = `${parentId()}/${Date.now()}-${safeStorageName(file.name)}`;
-            await uploadToBucket('materials', path2, file);
-            payload.storage_path = path2;
-            payload.original_filename = file.name;
-            payload.url = supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
-          } else if (!editingItem) {
-            throw new Error('파일을 선택하세요.');
+          const driveUrl = (fd.get('drive_url') || '').trim();
+          if (driveUrl) {
+            // 구글 드라이브에서 선택한 파일: 링크만 저장(Supabase 용량 0)
+            payload.url = driveUrl;
+            payload.storage_path = '';
+            payload.original_filename = (fd.get('drive_name') || '').trim();
+          } else {
+            const file = fd.get('file');
+            if (file && file.size) {
+              const path2 = `${parentId()}/${Date.now()}-${safeStorageName(file.name)}`;
+              await uploadToBucket('materials', path2, file);
+              payload.storage_path = path2;
+              payload.original_filename = file.name;
+              payload.url = supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
+            } else if (!editingItem) {
+              throw new Error('파일을 업로드하거나 드라이브에서 고르세요.');
+            }
           }
         } else {
           payload.url = (fd.get('url') || '').trim();
