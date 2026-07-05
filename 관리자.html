@@ -215,7 +215,7 @@
 <script src="js/db.js"></script>
 <script>
 (function () {
-  const { supabase, MATERIAL_TYPES, TEACHER_EMAIL, esc, callManageStudents, uploadToBucket, removeFromBucket } = window.DB;
+  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, removeFromBucket } = window.DB;
 
   const $ = (id) => document.getElementById(id);
   const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2200); };

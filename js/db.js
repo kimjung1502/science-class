@@ -3,7 +3,6 @@
 (function () {
   const SUPABASE_URL = 'https://razxfewnttqbqaxgypju.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_I4a3qah7BkbvUr_NS1dHfA_fURwDbw9';
-  const TEACHER_EMAIL = 'kimjung1502@gmail.com';
   const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 
   // ---------- 외부 리소스(CDN) 로드 실패 안내 ----------
@@ -421,7 +420,7 @@
 
   // 전역 노출
   window.DB = {
-    SUPABASE_URL, SUPABASE_KEY, TEACHER_EMAIL, FUNCTIONS_URL,
+    SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL,
     supabase,
     studentSignIn, currentStudent, requireLogin, signOut, callManageStudents,
     uploadToBucket, removeFromBucket,
