@@ -146,7 +146,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/db.js?v=20260705a"></script>
 <script>
-  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, supabase, uploadToBucket, removeFromBucket, driveAccessToken, driveShareAnyone } = window.DB;
+  // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
+  //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
+  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, uploadToBucket, removeFromBucket, driveAccessToken, driveShareAnyone } = window.DB;
 
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
@@ -498,14 +500,14 @@
             const path2 = `${state.addingSubId}/${Date.now()}-${safeStorageName(file.name)}`;
             await uploadToBucket('materials', path2, file);
             payload.storage_path = path2; payload.original_filename = file.name;
-            payload.url = supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
+            payload.url = window.DB.supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
           } else throw new Error('파일을 업로드하거나 드라이브에서 고르세요.');
         }
       } else {
         payload.url = (fd.get('url') || '').trim(); payload.storage_path = '';
         if (!payload.url) throw new Error('링크 주소를 입력하세요.');
       }
-      const { error } = await supabase.from('materials').insert(payload);
+      const { error } = await window.DB.supabase.from('materials').insert(payload);
       if (error) throw error;
       closeMatModal();
       await reloadTree();
@@ -515,7 +517,7 @@
     if (!confirm('이 자료를 삭제할까요?')) return;
     try {
       if (storagePath) await removeFromBucket('materials', [storagePath]);
-      const { error } = await supabase.from('materials').delete().eq('id', id);
+      const { error } = await window.DB.supabase.from('materials').delete().eq('id', id);
       if (error) throw error;
       await reloadTree();
     } catch (e) { alert('삭제 실패: ' + e.message); }
