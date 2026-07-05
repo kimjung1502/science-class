@@ -146,13 +146,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/db.js"></script>
 <script>
-  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin } = window.DB;
+  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, supabase, uploadToBucket, removeFromBucket, driveAccessToken, driveShareAnyone } = window.DB;
 
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
 
   const $ = (id) => document.getElementById(id);
-  const state = { tree: null, lastUnitId: null, midUnitId: null, subunitId: null };
+  const state = { tree: null, lastUnitId: null, midUnitId: null, subunitId: null, isAdmin: false, addingSubId: null };
 
   // ---------- 모바일 사이드바 서랍 ----------
   function openSidebar() { $('sidebar').classList.add('drawer-open'); $('sidebar-backdrop').classList.remove('hidden'); }
@@ -198,14 +198,24 @@
     </a>`;
   }
 
-  function materialsBlock(materials) {
-    if (!materials || materials.length === 0) {
-      return `<p class="flex items-center justify-center gap-2 text-on-surface-variant text-label-md py-lg">
-        <span class="material-symbols-outlined text-outline">folder_off</span>등록된 학습 자료가 없습니다.
-      </p>`;
+  function matCardWrap(m) {
+    const card = materialCard(m);
+    if (!state.isAdmin) return card;
+    return `<div class="relative group/mat">${card}
+      <button data-del-mat="${m.id}" data-del-path="${esc(m.storage_path || '')}" title="자료 삭제" class="del-material absolute top-1.5 right-1.5 p-1 rounded-md bg-white/95 border border-outline-variant text-on-surface-variant hover:text-error shadow-sm opacity-0 group-hover/mat:opacity-100 transition-opacity">
+        <span class="material-symbols-outlined text-[16px]">delete</span></button>
+    </div>`;
+  }
+  function materialsBlock(sub) {
+    const materials = sub.materials || [];
+    const addBtn = state.isAdmin
+      ? `<button data-add-sub="${sub.id}" class="add-material inline-flex items-center gap-1 text-caption font-bold text-primary px-2.5 py-1.5 rounded-lg border border-primary/40 hover:bg-primary/5 transition-colors"><span class="material-symbols-outlined text-[18px]">add</span>자료 추가</button>`
+      : '';
+    const header = `<div class="flex items-center justify-between mb-sm"><h5 class="text-label-md font-bold text-primary uppercase tracking-wider">학습 자료</h5>${addBtn}</div>`;
+    if (!materials.length) {
+      return `${header}<p class="flex items-center justify-center gap-2 text-on-surface-variant text-label-md py-lg"><span class="material-symbols-outlined text-outline">folder_off</span>등록된 학습 자료가 없습니다.</p>`;
     }
-    return `<h5 class="text-label-md font-bold text-primary mb-sm uppercase tracking-wider">학습 자료</h5>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-sm">${materials.map(materialCard).join('')}</div>`;
+    return `${header}<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-sm">${materials.map(matCardWrap).join('')}</div>`;
   }
 
   function subunitItem(u, i) {
@@ -224,7 +234,7 @@
       </button>
       <div class="acc-panel" style="height:${active ? 'auto' : '0'}">
         <div class="p-md border-t border-outline-variant bg-surface-container-lowest">
-          ${materialsBlock(u.materials)}
+          ${materialsBlock(u)}
         </div>
       </div>
     </div>`;
@@ -362,13 +372,160 @@
       btn.setAttribute('aria-expanded', open);
       setOpen(box, open);
     }));
+    if (state.isAdmin) {
+      document.querySelectorAll('#subunit-list .add-material').forEach((btn) => btn.addEventListener('click', (e) => { e.stopPropagation(); openMatModal(btn.dataset.addSub); }));
+      document.querySelectorAll('#subunit-list .del-material').forEach((btn) => btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); deleteMaterial(btn.dataset.delMat, btn.dataset.delPath); }));
+    }
   }
 
   function render(animate) { findSelection(); renderSidebar(animate); renderMain(animate); }
 
+  // ================= 교사: 이 화면에서 자료 추가/삭제 =================
+  function safeStorageName(fn) {
+    fn = String(fn || '');
+    const dot = fn.lastIndexOf('.');
+    const ext = (dot > 0 ? fn.slice(dot + 1) : '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+    let base = (dot > 0 ? fn.slice(0, dot) : fn).replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_').replace(/^[_.-]+|[_.-]+$/g, '');
+    if (!base) base = 'file';
+    return ext ? `${base}.${ext}` : base;
+  }
+  async function reloadTree() {
+    state.tree = await fetchSubjectTree(subjectId);
+    render();
+    if (state.subunitId) scrollToActive();
+  }
+
+  let matModalEl = null;
+  function ensureMatModal() {
+    if (matModalEl) return matModalEl;
+    const el = document.createElement('div');
+    el.id = 'mat-modal';
+    el.className = 'hidden fixed inset-0 z-[70] bg-black/40 flex items-center justify-center p-4';
+    el.innerHTML = `<div class="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-lg shadow-xl">
+      <div class="flex items-center justify-between mb-md"><h3 class="text-title-lg font-bold">자료 추가</h3>
+        <button id="mat-close" class="p-1 text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined">close</span></button></div>
+      <form id="mat-form" class="space-y-sm"></form></div>`;
+    document.body.appendChild(el);
+    el.addEventListener('click', (e) => { if (e.target === el) closeMatModal(); });
+    el.querySelector('#mat-close').addEventListener('click', closeMatModal);
+    matModalEl = el;
+    return el;
+  }
+  function matFormHtml() {
+    const typeOpts = Object.entries(MATERIAL_TYPES).map(([k, t]) => `<option value="${k}">${esc(t.label)}</option>`).join('');
+    return `
+      <div><label class="text-label-md text-on-surface-variant">자료 유형</label>
+        <select name="type" id="m2-type" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">${typeOpts}</select></div>
+      <div><label class="text-label-md text-on-surface-variant">이름 <span class="text-outline">(비우면 유형 기본)</span></label>
+        <input name="name" id="m2-name" type="text" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 1강 학습지"></div>
+      <div id="m2-file-field"><label class="text-label-md text-on-surface-variant">파일 업로드 <span class="text-outline">(Supabase)</span></label>
+        <input name="file" id="m2-file" type="file" class="w-full mt-1 text-caption">
+        <div class="mt-2 flex items-center gap-2"><span class="text-caption text-on-surface-variant">또는</span>
+          <button type="button" id="m2-drive" class="inline-flex items-center gap-1 text-caption px-2.5 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[16px] text-primary">add_to_drive</span>구글 드라이브에서 선택 <span class="text-outline">(용량 0)</span></button></div>
+        <p id="m2-picked" class="text-caption text-primary mt-1 hidden"></p>
+        <input type="hidden" name="drive_url" id="m2-drive-url"><input type="hidden" name="drive_name" id="m2-drive-name"></div>
+      <div id="m2-url-field" class="hidden"><label class="text-label-md text-on-surface-variant">링크 주소 (URL)</label>
+        <input name="url" id="m2-url" type="url" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="https://..."></div>
+      <div><label class="text-label-md text-on-surface-variant">부가 설명 <span class="text-outline">(선택)</span></label>
+        <input name="meta" id="m2-meta" type="text" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 12쪽"></div>
+      <label class="flex items-center gap-2 p-1 cursor-pointer"><input type="checkbox" name="teacher_only" id="m2-teacher" class="rounded text-primary focus:ring-primary"><span class="text-body-md">교사만 보기 <span class="text-caption text-on-surface-variant">(학생 화면에 안 보임)</span></span></label>
+      <div class="flex gap-2 pt-1"><button type="button" id="m2-cancel" class="flex-1 border border-outline-variant py-2.5 rounded-lg text-label-md">취소</button><button type="submit" id="m2-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">저장</button></div>`;
+  }
+  function openMatModal(subId) {
+    state.addingSubId = subId;
+    ensureMatModal();
+    const form = matModalEl.querySelector('#mat-form');
+    form.innerHTML = matFormHtml();
+    const sel = form.querySelector('#m2-type');
+    const sync = () => { const t = MATERIAL_TYPES[sel.value]; form.querySelector('#m2-file-field').classList.toggle('hidden', !t.file); form.querySelector('#m2-url-field').classList.toggle('hidden', t.file); };
+    sel.addEventListener('change', sync); sync();
+    form.querySelector('#m2-drive').addEventListener('click', () => openDrivePicker(form));
+    form.querySelector('#m2-cancel').addEventListener('click', closeMatModal);
+    form.onsubmit = onMatSubmit;
+    matModalEl.classList.remove('hidden');
+  }
+  function closeMatModal() { if (matModalEl) { matModalEl.classList.add('hidden'); matModalEl.querySelector('#mat-form').innerHTML = ''; } state.addingSubId = null; }
+
+  function loadPickerApi() {
+    return new Promise((resolve, reject) => {
+      if (window.google && window.google.picker) return resolve();
+      const finish = () => window.gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('Picker 모듈 로드 실패')) });
+      if (window.gapi) return finish();
+      const s = document.createElement('script');
+      s.src = 'https://apis.google.com/js/api.js';
+      s.onload = finish;
+      s.onerror = () => reject(new Error('구글 API를 불러오지 못했습니다 (네트워크/차단 확인). 대신 파일 업로드를 쓰세요.'));
+      document.head.appendChild(s);
+    });
+  }
+  async function openDrivePicker(form) {
+    const btn = form.querySelector('#m2-drive'); const old = btn.innerHTML; btn.disabled = true; btn.textContent = '여는 중…';
+    try {
+      const { access_token, api_key, app_id } = await driveAccessToken();
+      await loadPickerApi();
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(false).setSelectFolderEnabled(false).setMode(google.picker.DocsViewMode.LIST);
+      const picker = new google.picker.PickerBuilder().setAppId(app_id).setOAuthToken(access_token).setDeveloperKey(api_key).setTitle('수업 자료로 넣을 파일 선택').addView(view).setCallback((data) => onDrivePicked(data, access_token, form)).build();
+      picker.setVisible(true);
+    } catch (e) { alert('드라이브 선택기 열기 실패: ' + e.message); } finally { btn.disabled = false; btn.innerHTML = old; }
+  }
+  async function onDrivePicked(data, token, form) {
+    if (!window.google || data.action !== google.picker.Action.PICKED) return;
+    const doc = (data.docs || [])[0]; if (!doc) return;
+    const picked = form.querySelector('#m2-picked'); picked.classList.remove('hidden'); picked.textContent = '공유 설정 중…';
+    try {
+      await driveShareAnyone(doc.id, token);
+      form.querySelector('#m2-drive-url').value = doc.url || ('https://drive.google.com/file/d/' + doc.id + '/view');
+      form.querySelector('#m2-drive-name').value = doc.name || '';
+      const nameInput = form.querySelector('#m2-name'); if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name || '';
+      const fi = form.querySelector('#m2-file'); if (fi) fi.value = '';
+      picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 링크로 등록';
+    } catch (e) { picked.textContent = '공유 설정 실패: ' + e.message; }
+  }
+  async function onMatSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const saveBtn = form.querySelector('#m2-save'); saveBtn.disabled = true; saveBtn.textContent = '저장 중…';
+    try {
+      const fd = new FormData(form);
+      const type = fd.get('type'); const t = MATERIAL_TYPES[type];
+      const payload = { type, name: (fd.get('name') || '').trim(), meta: (fd.get('meta') || '').trim(), teacher_only: fd.get('teacher_only') === 'on', subunit_id: state.addingSubId, sort_order: Date.now() % 100000 };
+      if (t.file) {
+        const driveUrl = (fd.get('drive_url') || '').trim();
+        if (driveUrl) { payload.url = driveUrl; payload.storage_path = ''; payload.original_filename = (fd.get('drive_name') || '').trim(); }
+        else {
+          const file = fd.get('file');
+          if (file && file.size) {
+            const path2 = `${state.addingSubId}/${Date.now()}-${safeStorageName(file.name)}`;
+            await uploadToBucket('materials', path2, file);
+            payload.storage_path = path2; payload.original_filename = file.name;
+            payload.url = supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
+          } else throw new Error('파일을 업로드하거나 드라이브에서 고르세요.');
+        }
+      } else {
+        payload.url = (fd.get('url') || '').trim(); payload.storage_path = '';
+        if (!payload.url) throw new Error('링크 주소를 입력하세요.');
+      }
+      const { error } = await supabase.from('materials').insert(payload);
+      if (error) throw error;
+      closeMatModal();
+      await reloadTree();
+    } catch (err) { alert('저장 실패: ' + err.message); } finally { if (form.querySelector('#m2-save')) { saveBtn.disabled = false; saveBtn.textContent = '저장'; } }
+  }
+  async function deleteMaterial(id, storagePath) {
+    if (!confirm('이 자료를 삭제할까요?')) return;
+    try {
+      if (storagePath) await removeFromBucket('materials', [storagePath]);
+      const { error } = await supabase.from('materials').delete().eq('id', id);
+      if (error) throw error;
+      await reloadTree();
+    } catch (e) { alert('삭제 실패: ' + e.message); }
+  }
+
   // ---------- 시작 ----------
   (async () => {
-    if (!(await requireLogin())) return; // 로그인 필수
+    const auth = await requireLogin(); // 로그인 필수
+    if (!auth) return;
+    state.isAdmin = !auth.student; // 학생이 아니면 교사(관리자)
     if (!subjectId) { location.replace('과목-선택.html'); return; }
     try {
       state.tree = await fetchSubjectTree(subjectId);
