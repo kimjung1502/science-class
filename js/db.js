@@ -430,16 +430,16 @@
   }
 
   // PDF에서 수행평가 필드 자동 추출 (Claude API, 서버 전용). 관리자만. base64는 data URL 접두어 없이.
-  async function extractAssessmentFromPdf(pdfB64) {
+  async function extractAssessmentFromPdf(pdfB64, units) {
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`${FUNCTIONS_URL}/assessment-from-pdf`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${(session && session.access_token) || ''}`, 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pdf_base64: pdfB64 }),
+      body: JSON.stringify({ pdf_base64: pdfB64, units: units || [] }),
     });
     const out = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(out.error || `자동 작성 실패 (${res.status})`);
-    return out; // { data:{title,summary,status,weight,tags,body,rubric}, usage }
+    return out; // { data:{title,summary,status,weight,tags,start_date,due_date,unit_name,mid_name,sub_name,body,rubric}, usage }
   }
 
   // 전역 노출

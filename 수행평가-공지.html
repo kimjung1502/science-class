@@ -282,7 +282,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260705a"></script>
+<script src="js/db.js?v=20260705b"></script>
 <script>
 (function () {
   const {
@@ -648,6 +648,25 @@
       r.readAsDataURL(file);
     });
   }
+  // 단원 트리를 Claude가 매칭할 수 있는 형태로 직렬화
+  function unitsForAi() {
+    return (state.subject && state.subject.units || []).map((u) => ({
+      name: u.name,
+      mids: (u.mid_units || []).map((m) => ({
+        name: m.name,
+        subs: (m.subunits || []).map((s) => s.name),
+      })),
+    }));
+  }
+  // 이름 → id 해석 후 단원 셀렉터 반영
+  function applyUnitByName(unitName, midName, subName) {
+    const units = (state.subject && state.subject.units) || [];
+    const u = unitName ? units.find((x) => x.name === unitName) : null;
+    if (!u) { setUnitSelectors('', '', ''); return; }
+    const m = midName ? (u.mid_units || []).find((x) => x.name === midName) : null;
+    const s = (m && subName) ? (m.subunits || []).find((x) => x.name === subName) : null;
+    setUnitSelectors(u.id, m ? m.id : '', s ? s.id : '');
+  }
   async function onPdfFill(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
@@ -659,7 +678,7 @@
     st.textContent = 'Claude가 PDF를 읽는 중이에요… (수십 초 걸릴 수 있어요)';
     try {
       const b64 = await fileToBase64(file);
-      const out = await extractAssessmentFromPdf(b64);
+      const out = await extractAssessmentFromPdf(b64, unitsForAi());
       const d = (out && out.data) || {};
       if (d.title) $('f-title').value = d.title;
       if (d.status && ['ongoing', 'upcoming', 'closed'].includes(d.status)) $('f-status').value = d.status;
@@ -667,11 +686,15 @@
       if (Array.isArray(d.tags) && d.tags.length) $('f-tags').value = d.tags.join(', ');
       if (d.summary) $('f-summary').value = d.summary;
       if (d.body) $('f-body').value = d.body;
+      const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+      if (isDate(d.start_date)) $('f-start').value = d.start_date;
+      if (isDate(d.due_date)) $('f-due').value = d.due_date;
       if (Array.isArray(d.rubric) && d.rubric.length) {
         $('rubric-rows').innerHTML = '';
         d.rubric.forEach(addRubricRow);
       }
-      st.textContent = '✓ 자동 작성됨 — 내용을 검토하고 날짜·관련 단원을 채운 뒤 등록하세요.';
+      if (d.unit_name) applyUnitByName(d.unit_name, d.mid_name, d.sub_name);
+      st.textContent = '✓ 자동 작성됨 — 내용을 검토한 뒤 등록하세요.';
     } catch (err) {
       st.classList.remove('text-primary'); st.classList.add('text-error');
       st.textContent = '자동 작성 실패: ' + err.message;
