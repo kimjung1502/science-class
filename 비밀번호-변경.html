@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>비밀번호 변경 · 정환쌤과 함께하는 과학 수업</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">try{
+  tailwind.config = { darkMode: "class", theme: { extend: {
+    colors: {
+      "surface-container": "#e6eeff", "on-surface-variant": "#414754", "surface-container-lowest": "#ffffff",
+      "background": "#f8f9ff", "surface": "#f8f9ff", "on-surface": "#0d1c2e", "primary": "#005bbf", "on-primary": "#ffffff",
+      "primary-container": "#1a73e8", "error": "#ba1a1a", "outline": "#727785", "outline-variant": "#c1c6d6",
+      "secondary": "#006b5f", "secondary-container": "#c9e9e2"
+    },
+    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+    spacing: { "sm": "16px", "xs": "8px", "gutter": "24px", "xl": "64px", "lg": "40px", "base": "4px", "max-width": "1280px", "md": "24px", "margin-desktop": "48px", "margin-mobile": "16px" },
+    fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
+    fontSize: {
+      "title-lg": ["20px", {"lineHeight":"1.4","fontWeight":"600"}], "label-md": ["14px", {"lineHeight":"1.2","fontWeight":"500"}],
+      "headline-md": ["24px", {"lineHeight":"1.35","fontWeight":"600"}], "caption": ["13px", {"lineHeight":"1.35","fontWeight":"400"}],
+      "body-md": ["16px", {"lineHeight":"1.6","fontWeight":"400"}]
+    }
+  }}}
+}catch(_e){}</script>
+<style>
+  body { font-family: 'Be Vietnam Pro', sans-serif; -webkit-font-smoothing: antialiased; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+</style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex items-center justify-center p-margin-mobile">
+
+<div class="w-full max-w-md">
+  <div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+    <div class="h-1.5 w-full bg-primary"></div>
+    <div class="p-lg md:p-xl flex flex-col gap-lg">
+      <div class="text-center">
+        <span class="material-symbols-outlined text-primary text-4xl">encrypted</span>
+        <h2 class="text-headline-md text-on-surface mt-xs mb-xs">새 비밀번호 설정</h2>
+        <p class="text-caption text-on-surface-variant">처음 로그인하셨네요. 안전을 위해 비밀번호를 바꿔주세요.</p>
+      </div>
+
+      <form id="pw-form" class="flex flex-col gap-md">
+        <div class="flex flex-col gap-base">
+          <label class="text-label-md text-on-surface-variant px-base" for="pw1">새 비밀번호 <span class="text-outline">(6자 이상)</span></label>
+          <input id="pw1" type="password" required minlength="6" autocomplete="new-password" class="w-full px-sm py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface transition-all text-body-md" placeholder="새 비밀번호">
+        </div>
+        <div class="flex flex-col gap-base">
+          <label class="text-label-md text-on-surface-variant px-base" for="pw2">새 비밀번호 확인</label>
+          <input id="pw2" type="password" required minlength="6" autocomplete="new-password" class="w-full px-sm py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface transition-all text-body-md" placeholder="한 번 더 입력">
+        </div>
+
+        <p id="pw-error" class="text-caption text-error px-base hidden"></p>
+
+        <button id="pw-btn" type="submit" class="w-full bg-primary text-on-primary py-sm rounded-lg text-title-lg hover:bg-primary-container transition-all active:scale-[0.98] shadow-sm disabled:opacity-60">
+          <span id="pw-label">비밀번호 변경</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<script>
+(async () => {
+  const { supabase, requireLogin } = window.DB;
+  const $ = (id) => document.getElementById(id);
+
+  // 로그인 상태 확인 (이 페이지는 비번 변경 필요 학생용)
+  await requireLogin({ allowPasswordChangePage: true });
+
+  $('pw-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('pw-error').classList.add('hidden');
+    const p1 = $('pw1').value, p2 = $('pw2').value;
+    if (p1 !== p2) { showError('두 비밀번호가 일치하지 않습니다.'); return; }
+    if (p1.length < 6) { showError('비밀번호는 6자 이상이어야 합니다.'); return; }
+    const btn = $('pw-btn'); btn.disabled = true; $('pw-label').textContent = '변경 중…';
+    try {
+      const { error } = await supabase.auth.updateUser({ password: p1 });
+      if (error) throw error;
+      const { error: rpcErr } = await supabase.rpc('mark_password_changed');
+      if (rpcErr) throw rpcErr;
+      location.replace('과목-선택.html');
+    } catch (err) {
+      showError(err.message); btn.disabled = false; $('pw-label').textContent = '비밀번호 변경';
+    }
+  });
+
+  function showError(msg) { $('pw-error').textContent = msg; $('pw-error').classList.remove('hidden'); }
+})();
+</script>
+
+</body>
+</html>

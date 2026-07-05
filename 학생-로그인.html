@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>학생 로그인 · 정환쌤과 함께하는 과학 수업</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">try{
+  tailwind.config = { darkMode: "class", theme: { extend: {
+    colors: {
+      "surface-container": "#e6eeff", "on-surface-variant": "#414754", "surface-variant": "#d5e3fc",
+      "surface-container-low": "#eff4ff", "on-background": "#0d1c2e", "secondary-container": "#c9e9e2",
+      "on-secondary-container": "#00504a", "secondary": "#006b5f", "surface-container-lowest": "#ffffff",
+      "surface": "#f8f9ff", "background": "#f8f9ff", "primary-fixed": "#d8e2ff", "outline": "#727785", "surface-dim": "#ccdbf3",
+      "surface-container-highest": "#d5e3fc", "on-surface": "#0d1c2e", "primary": "#005bbf", "on-primary": "#ffffff",
+      "primary-container": "#1a73e8", "error": "#ba1a1a", "outline-variant": "#c1c6d6", "primary-fixed-dim": "#adc7ff"
+    },
+    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+    spacing: { "sm": "16px", "xs": "8px", "gutter": "24px", "xl": "64px", "lg": "40px", "base": "4px", "max-width": "1280px", "md": "24px", "margin-desktop": "48px", "margin-mobile": "16px" },
+    fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
+    fontSize: {
+      "title-lg": ["20px", {"lineHeight":"1.4","fontWeight":"600"}], "label-md": ["14px", {"lineHeight":"1.2","fontWeight":"500"}],
+      "headline-md": ["24px", {"lineHeight":"1.35","fontWeight":"600"}], "caption": ["13px", {"lineHeight":"1.35","fontWeight":"400"}],
+      "body-md": ["16px", {"lineHeight":"1.6","fontWeight":"400"}]
+    }
+  }}}
+}catch(_e){}</script>
+<style>
+  body { font-family: 'Be Vietnam Pro', sans-serif; -webkit-font-smoothing: antialiased; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  .login-card-shadow { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+</style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col">
+
+<header class="bg-surface border-b border-outline-variant fixed top-0 left-0 right-0 z-50">
+  <div class="flex items-center w-full px-margin-mobile md:px-margin-desktop py-md max-w-max-width mx-auto">
+    <div class="flex items-center gap-xs">
+      <span class="material-symbols-outlined text-primary text-3xl">science</span>
+      <h1 class="text-title-lg font-bold text-primary">정환쌤과 함께하는 과학 수업</h1>
+    </div>
+  </div>
+</header>
+
+<main class="flex-grow flex items-center justify-center px-margin-mobile md:px-margin-desktop pt-32 pb-xl relative overflow-hidden">
+  <div class="absolute top-0 right-0 -mr-32 -mt-32 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl"></div>
+  <div class="absolute bottom-0 left-0 -ml-32 -mb-32 w-96 h-96 bg-secondary-container/20 rounded-full blur-3xl"></div>
+
+  <div class="w-full max-w-md relative z-10">
+    <div class="bg-surface-container-lowest rounded-xl border border-outline-variant login-card-shadow overflow-hidden">
+      <div class="h-1.5 w-full bg-primary"></div>
+      <div class="p-lg md:p-xl flex flex-col gap-lg">
+        <div class="text-center">
+          <h2 class="text-headline-md text-on-surface mb-xs">학생 로그인</h2>
+          <p class="text-body-md text-on-surface-variant">과학적 호기심을 깨울 시간입니다.</p>
+        </div>
+
+        <form id="login-form" class="flex flex-col gap-md">
+          <div class="flex flex-col gap-base">
+            <label class="text-label-md text-on-surface-variant px-base" for="student-id">아이디 <span class="text-outline">(이름)</span></label>
+            <div class="relative group">
+              <span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">person</span>
+              <input class="w-full pl-xl pr-sm py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface transition-all text-body-md placeholder:text-outline/60" id="student-id" autocomplete="username" placeholder="이름을 입력하세요 (예: 김능곡)" type="text" required>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-base">
+            <label class="text-label-md text-on-surface-variant px-base" for="student-password">비밀번호 <span class="text-outline">(처음엔 학번)</span></label>
+            <div class="relative group">
+              <span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock</span>
+              <input class="w-full pl-xl pr-xl py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface transition-all text-body-md placeholder:text-outline/60" id="student-password" autocomplete="current-password" placeholder="비밀번호를 입력하세요" type="password" required>
+              <button class="absolute right-sm top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors" type="button" id="toggle-pw" aria-label="비밀번호 표시">
+                <span class="material-symbols-outlined">visibility</span>
+              </button>
+            </div>
+          </div>
+
+          <p id="login-error" class="text-caption text-error px-base hidden"></p>
+
+          <button class="w-full bg-primary text-on-primary py-sm rounded-lg text-title-lg hover:bg-primary-container transition-all active:scale-[0.98] mt-xs flex items-center justify-center gap-xs shadow-sm disabled:opacity-60" type="submit" id="login-btn">
+            <span id="login-label">로그인</span>
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+        </form>
+
+        <div class="pt-md border-t border-outline-variant">
+          <div class="bg-surface-container flex items-start gap-sm p-sm rounded-lg">
+            <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">info</span>
+            <p class="text-caption text-on-surface-variant">
+              처음 로그인하는 경우 비밀번호는 <span class="font-bold">학번</span>입니다. 로그인 후 새 비밀번호로 바꿔주세요. 문의는 <span class="font-bold">정환쌤</span>께 해주세요.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<script>
+(function () {
+  const { supabase, studentSignIn, currentStudent } = window.DB;
+
+  const $ = (id) => document.getElementById(id);
+
+  // 이미 (유효하게) 로그인돼 있으면 통과
+  (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { await supabase.auth.signOut(); return; } // 죽은 세션 정리 후 로그인 화면 유지
+    const s = await currentStudent();
+    location.replace(s && s.must_change_password ? '비밀번호-변경.html' : '과목-선택.html');
+  })();
+
+  // 비밀번호 표시 토글
+  $('toggle-pw').addEventListener('click', function () {
+    const input = $('student-password');
+    const icon = this.querySelector('.material-symbols-outlined');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    icon.textContent = show ? 'visibility_off' : 'visibility';
+  });
+
+  $('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('login-error').classList.add('hidden');
+    const id = $('student-id').value.trim();
+    const pw = $('student-password').value;
+    const btn = $('login-btn'); btn.disabled = true; $('login-label').textContent = '로그인 중…';
+    const fail = (msg) => { $('login-error').textContent = msg; $('login-error').classList.remove('hidden'); btn.disabled = false; $('login-label').textContent = '로그인'; };
+
+    // 1) 학생으로 로그인 시도
+    try {
+      await studentSignIn(id, pw);
+      const s = await currentStudent();
+      location.replace(s && s.must_change_password ? '비밀번호-변경.html' : '과목-선택.html');
+      return;
+    } catch (_) { /* 학생이 아니거나 실패 → 관리자로 시도 */ }
+
+    // 2) 관리자(교사)로 로그인 시도 → 성공하면 학생 화면을 교사 시점으로 보여줌
+    const email = id.includes('@') ? id : `${id}@science-class.local`;
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
+    if (!error) {
+      const { data: isAdmin } = await supabase.rpc('is_admin');
+      if (isAdmin) { location.replace('과목-선택.html'); return; }
+      await supabase.auth.signOut(); // 학생도 관리자도 아님
+    }
+    fail('아이디 또는 비밀번호를 확인하세요.');
+  });
+})();
+</script>
+
+</body>
+</html>

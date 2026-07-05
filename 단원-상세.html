@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>통합과학 · 원소의 기원 · 정환쌤과 함께하는 과학 수업</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">try{
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "surface-container-low": "#eff4ff",
+          "secondary": "#006b5f",
+          "on-surface-variant": "#414754",
+          "secondary-container": "#c9e9e2",
+          "on-secondary-container": "#00504a",
+          "on-surface": "#0d1c2e",
+          "surface-container-lowest": "#ffffff",
+          "background": "#f8f9ff",
+          "primary": "#005bbf",
+          "on-primary": "#ffffff",
+          "surface-container": "#e6eeff",
+          "outline-variant": "#c1c6d6",
+          "surface-variant": "#d5e3fc",
+          "primary-fixed": "#d8e2ff",
+          "on-primary-fixed": "#001a41",
+          "outline": "#727785",
+          "surface": "#f8f9ff",
+          "surface-container-highest": "#d5e3fc",
+          "on-background": "#0d1c2e"
+        },
+        borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+        spacing: { "gutter": "24px", "base": "4px", "md": "24px", "sm": "16px", "xl": "64px", "lg": "40px", "xs": "8px", "max-width": "1280px" },
+        fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
+        fontSize: {
+          "title-lg": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+          "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+          "caption": ["13px", {"lineHeight": "1.35", "fontWeight": "400"}],
+          "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+          "headline-lg": ["32px", {"lineHeight": "1.25", "fontWeight": "700"}],
+          "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "500"}],
+          "headline-md": ["24px", {"lineHeight": "1.35", "fontWeight": "600"}]
+        }
+      }
+    }
+  }
+}catch(_e){}</script>
+<style>
+  body { font-family: "Be Vietnam Pro", sans-serif; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+  /* 모바일 사이드바 서랍 (md 미만에서만 슬라이드) */
+  @media (max-width: 767px) {
+    #sidebar { left: -288px; transition: left .3s cubic-bezier(.4,0,.2,1); }
+    #sidebar.drawer-open { left: 0; }
+  }
+
+  /* 부드러운 펼침/접힘 (height 애니메이션, JS 제어) */
+  .acc-panel { overflow: hidden; height: 0; transition: height .3s cubic-bezier(.4,0,.2,1); }
+
+  .arrow, .arrow-icon, .mid-arrow-icon { transition: transform .3s cubic-bezier(.4,0,.2,1); }
+
+  /* 대단원·중단원 전환 시 본문/사이드바 목록이 부드럽게 나타남 */
+  @keyframes swapIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .swap-in { animation: swapIn .28s cubic-bezier(.4,0,.2,1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .acc-panel { transition: none; }
+    .swap-in { animation: none; }
+  }
+</style>
+</head>
+<body class="bg-background text-on-background">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- 모바일 사이드바 배경 -->
+  <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/40 z-40 md:hidden"></div>
+
+  <!-- SideNavBar (모바일: 슬라이드 서랍) -->
+  <aside id="sidebar" class="fixed md:static inset-y-0 md:left-auto z-50 md:z-auto w-72 shrink-0 flex flex-col h-full py-md px-sm bg-surface-container-low border-r border-outline-variant">
+    <div class="mb-md px-xs flex items-center justify-between gap-2">
+      <h1 id="subject-title" class="text-title-lg font-semibold text-on-surface min-w-0 truncate">불러오는 중…</h1>
+      <button id="sidebar-close" class="md:hidden p-1 text-on-surface-variant hover:text-on-surface rounded-full shrink-0" aria-label="닫기"><span class="material-symbols-outlined">close</span></button>
+    </div>
+
+    <nav class="flex-1 space-y-2 overflow-y-auto">
+      <!-- 1. 과목 홈 -->
+      <a id="home-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">home</span><span class="text-label-md font-bold">과목 홈 (공지)</span></a>
+      <!-- 2. 단원 선택 -->
+      <div class="pt-md mt-md border-t border-outline-variant">
+        <p class="px-3 mb-1 text-caption font-bold text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">menu_book</span>단원 바로가기</p>
+        <div id="sidebar-nav" class="space-y-2"></div>
+      </div>
+      <!-- 3~6. 수행평가·산출물·질의응답·안전 -->
+      <div class="pt-md mt-md border-t border-outline-variant space-y-1">
+        <a id="assess-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">assignment</span><span class="text-label-md font-bold">수행평가 공지</span></a>
+        <a id="submit-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">upload_file</span><span class="text-label-md font-bold">산출물 제출</span></a>
+        <a id="qna-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">forum</span><span class="text-label-md font-bold">질의응답 (Q&amp;A)</span></a>
+        <a href="#" class="fixed-link flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">health_and_safety</span><span class="text-label-md font-bold">실험실 안전 수칙</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <div class="flex-1 flex flex-col h-full overflow-y-auto">
+    <!-- TopNavBar -->
+    <header class="sticky top-0 z-10 bg-surface/80 backdrop-blur-md border-b border-outline-variant w-full">
+      <div class="flex justify-between items-center h-16 px-md w-full gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <a href="과목-선택.html" title="과목 선택으로 돌아가기" class="shrink-0 flex items-center gap-1 text-label-md text-on-surface-variant hover:text-primary transition-colors">
+            <span class="material-symbols-outlined text-[20px]">arrow_back</span><span class="hidden sm:inline">과목 선택</span>
+          </a>
+          <span class="text-outline-variant hidden sm:inline">|</span>
+          <nav id="breadcrumb" class="flex items-center gap-2 text-body-md flex-wrap min-w-0"></nav>
+        </div>
+        <button id="menu-btn" class="md:hidden p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-all shrink-0" aria-label="단원 메뉴 열기"><span class="material-symbols-outlined">menu</span></button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 w-full max-w-max-width mx-auto p-md md:p-lg space-y-lg">
+      <section>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md">
+          <div>
+            <h2 id="hero-subject" class="text-headline-lg text-on-surface mb-2">&nbsp;</h2>
+            <p id="hero-path" class="text-body-lg text-on-surface-variant"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 소단원 리스트 -->
+      <section class="space-y-sm">
+        <h3 class="text-title-lg text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">list_alt</span>소단원 리스트
+        </h3>
+        <div id="subunit-list" class="space-y-sm"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<script>
+  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin } = window.DB;
+
+  const params = new URLSearchParams(location.search);
+  const subjectId = params.get('subject');
+
+  const $ = (id) => document.getElementById(id);
+  const state = { tree: null, lastUnitId: null, midUnitId: null, subunitId: null };
+
+  // ---------- 모바일 사이드바 서랍 ----------
+  function openSidebar() { $('sidebar').classList.add('drawer-open'); $('sidebar-backdrop').classList.remove('hidden'); }
+  function closeSidebar() { $('sidebar').classList.remove('drawer-open'); $('sidebar-backdrop').classList.add('hidden'); }
+  $('menu-btn').addEventListener('click', openSidebar);
+  $('sidebar-close').addEventListener('click', closeSidebar);
+  $('sidebar-backdrop').addEventListener('click', closeSidebar);
+
+  // height 애니메이션으로 펼치기/접기
+  function setOpen(box, open) {
+    if (open) {
+      box.style.height = box.scrollHeight + 'px';
+      const done = (e) => { if (e.propertyName === 'height') { box.style.height = 'auto'; box.removeEventListener('transitionend', done); } };
+      box.addEventListener('transitionend', done);
+    } else {
+      box.style.height = box.scrollHeight + 'px';
+      box.getBoundingClientRect(); // reflow
+      requestAnimationFrame(() => { box.style.height = '0px'; });
+    }
+  }
+
+  // ---------- 자료 카드 ----------
+  function materialCard(m) {
+    const t = MATERIAL_TYPES[m.type];
+    if (!t) return '';
+    const name = m.name || t.label;
+    const tabAttr = t.newTab ? ' target="_blank" rel="noopener"' : '';
+    const meta = m.meta || (t.newTab ? '새 탭에서 열기' : '');
+    let href = m.url || '#';
+    // 업로드 파일: 다운로드 시 원본(한글) 파일명으로 받게 ?download 부여 (영상은 재생용이라 제외)
+    if (t.file && m.original_filename && m.type !== 'video' && href !== '#') {
+      href += (href.indexOf('?') >= 0 ? '&' : '?') + 'download=' + encodeURIComponent(m.original_filename);
+    }
+    const teacherBadge = m.teacher_only ? '<span class="text-caption text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '';
+    return `<a href="${esc(href)}"${tabAttr} class="group p-sm bg-white border border-outline-variant rounded-lg hover:border-primary hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 min-h-[56px]">
+      <div class="p-2 ${t.box} rounded shrink-0"><span class="material-symbols-outlined">${t.icon}</span></div>
+      <div class="flex-1 overflow-hidden"><p class="text-label-md font-bold truncate">${esc(name)}</p><p class="text-caption text-on-surface-variant truncate">${esc(meta)}</p></div>
+      ${teacherBadge}
+      <span class="material-symbols-outlined text-outline opacity-0 group-hover:opacity-100 transition-opacity">${t.action}</span>
+    </a>`;
+  }
+
+  function materialsBlock(materials) {
+    if (!materials || materials.length === 0) {
+      return `<p class="flex items-center justify-center gap-2 text-on-surface-variant text-label-md py-lg">
+        <span class="material-symbols-outlined text-outline">folder_off</span>등록된 학습 자료가 없습니다.
+      </p>`;
+    }
+    return `<h5 class="text-label-md font-bold text-primary mb-sm uppercase tracking-wider">학습 자료</h5>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-sm">${materials.map(materialCard).join('')}</div>`;
+  }
+
+  function subunitItem(u, i) {
+    const no = String(i + 1).padStart(2, '0');
+    const active = u.id === state.subunitId; // 선택한 소단원만 펼침 (중단원만 고르면 모두 접힘)
+    return `<div id="sub-${u.id}" class="sub-card scroll-mt-20 bg-white border ${active ? 'border-primary/40' : 'border-outline-variant'} rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+      <button class="card-toggle w-full flex items-center justify-between p-md text-left hover:bg-surface-container-low transition-colors" aria-expanded="${active}">
+        <div class="flex items-center gap-md">
+          <div class="sub-badge w-10 h-10 rounded-lg ${active ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant'} flex items-center justify-center font-bold shrink-0 transition-colors">${no}</div>
+          <div>
+            <h4 class="text-title-lg text-on-surface">${esc(u.name)}</h4>
+            <p class="text-caption text-on-surface-variant mt-0.5">${esc(u.description)}</p>
+          </div>
+        </div>
+        <span class="material-symbols-outlined arrow ${active ? 'rotate-180' : ''}">expand_more</span>
+      </button>
+      <div class="acc-panel" style="height:${active ? 'auto' : '0'}">
+        <div class="p-md border-t border-outline-variant bg-surface-container-lowest">
+          ${materialsBlock(u.materials)}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ---------- 현재 선택 정보 찾기 ----------
+  function findSelection() {
+    const units = state.tree.units || [];
+    // 열려 있는 대단원 (중단원 미선택 시에도 유지)
+    const unit = units.find((u) => u.id === state.lastUnitId) || null;
+    // 선택된 중단원 (없으면 null → 메인 비움)
+    let mid = null;
+    for (const u of units) {
+      for (const m of u.mid_units || []) {
+        if (m.id === state.midUnitId) mid = m;
+      }
+    }
+    return { unit, mid };
+  }
+
+  // ---------- 사이드바 ----------
+  function renderSidebar(animate) {
+    const nav = $('sidebar-nav');
+    nav.innerHTML = (state.tree.units || []).map((u) => {
+      const unitOpen = u.id === state.lastUnitId;
+      const mids = (u.mid_units || []).map((m) => {
+        const on = m.id === state.midUnitId;
+        const subs = (m.subunits || []).map((s) => {
+          const sOn = s.id === state.subunitId;
+          return `<button data-sub="${s.id}" data-mid="${m.id}" class="sub-btn w-full flex items-center gap-2 p-2 rounded-lg transition-all text-caption text-left ${sOn ? 'bg-primary-fixed text-primary font-bold' : 'text-on-surface hover:bg-surface-container-highest'}">
+            <span class="material-symbols-outlined text-[18px] ${sOn ? 'text-primary' : 'text-outline'}">${sOn ? 'radio_button_checked' : 'radio_button_unchecked'}</span>
+            <span>${esc(s.name)}</span>
+          </button>`;
+        }).join('');
+        return `<div>
+          <button data-mid="${m.id}" data-unit="${u.id}" class="mid-btn w-full flex items-center justify-between p-3 rounded-lg transition-all text-left ${on ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'}">
+            <span class="text-label-md text-left">${esc(m.name)}</span>
+            <span class="material-symbols-outlined text-[18px] mid-chevron ${on ? 'rotate-180' : ''}">expand_more</span>
+          </button>
+          ${on ? `<div class="mt-1 ml-4 space-y-0.5 ${animate ? 'swap-in' : ''}">${subs || '<p class="text-caption text-on-surface-variant p-2">소단원이 없습니다.</p>'}</div>` : ''}
+        </div>`;
+      }).join('');
+      return `<div>
+        <button data-unit="${u.id}" class="unit-toggle w-full flex items-center justify-between p-3 rounded-lg hover:bg-surface-container-highest transition-all text-left">
+          <span class="text-label-md font-bold ${unitOpen ? 'text-primary' : 'text-on-surface-variant'}">${esc(u.name)}</span>
+          <span class="material-symbols-outlined arrow-icon text-outline ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
+        </button>
+        <div class="acc-panel" style="height:${unitOpen ? 'auto' : '0'}"><div class="mt-1 space-y-1">${mids}</div></div>
+      </div>`;
+    }).join('');
+
+    nav.querySelectorAll('.unit-toggle').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const box = btn.nextElementSibling;
+        const open = btn.querySelector('.arrow-icon').classList.toggle('rotate-180');
+        if (open) state.lastUnitId = btn.dataset.unit; // 열면 이 대단원을 현재 열린 것으로 기억
+        setOpen(box, open);
+      })
+    );
+    nav.querySelectorAll('.mid-btn').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        state.lastUnitId = btn.dataset.unit;                 // 부모 대단원은 계속 열림
+        state.midUnitId = (state.midUnitId === btn.dataset.mid) ? null : btn.dataset.mid; // 같은 중단원 다시 누르면 접기
+        state.subunitId = null;
+        render(true);
+      })
+    );
+    nav.querySelectorAll('.sub-btn').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const sameMid = btn.dataset.mid === state.midUnitId;
+        state.midUnitId = btn.dataset.mid;
+        state.subunitId = btn.dataset.sub;
+        if (sameMid) { renderSidebar(); openSubunitCard(state.subunitId); }  // 목록 유지 → 카드만 애니메이션
+        else { render(true); scrollToActive(); }                             // 다른 중단원 → 목록 교체(애니메이션)
+        closeSidebar(); // 모바일: 소단원 선택 시 서랍 닫아 본문 표시
+      })
+    );
+  }
+
+  function scrollToActive() {
+    if (!state.subunitId) return;
+    requestAnimationFrame(() => $('sub-' + state.subunitId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  // 메인 목록을 다시 그리지 않고, 클릭한 소단원 카드만 부드럽게 펼치고 나머지는 접기
+  function openSubunitCard(subId) {
+    document.querySelectorAll('#subunit-list .sub-card').forEach((card) => {
+      const on = card.id === 'sub-' + subId;
+      const btn = card.querySelector('.card-toggle');
+      const arrow = btn.querySelector('.arrow');
+      const badge = card.querySelector('.sub-badge');
+      const wasOpen = arrow.classList.contains('rotate-180');
+      if (on !== wasOpen) {
+        arrow.classList.toggle('rotate-180', on);
+        btn.setAttribute('aria-expanded', on);
+        setOpen(btn.nextElementSibling, on);
+      }
+      // 강조 스타일 전환
+      card.classList.toggle('border-primary/40', on);
+      card.classList.toggle('border-outline-variant', !on);
+      badge.classList.toggle('bg-primary', on);
+      badge.classList.toggle('text-white', on);
+      badge.classList.toggle('bg-surface-container', !on);
+      badge.classList.toggle('text-on-surface-variant', !on);
+    });
+    scrollToActive();
+  }
+
+  // ---------- 브레드크럼 · 히어로 · 소단원 ----------
+  function renderMain(animate) {
+    const { unit, mid } = findSelection();
+    const chev = '<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>';
+    $('breadcrumb').innerHTML = [
+      `<span class="text-on-surface-variant">${esc(state.tree.name)}</span>`,
+      unit ? `<span class="text-on-surface-variant">${esc(unit.name)}</span>` : '',
+      mid ? `<span class="text-primary font-bold border-b-2 border-primary">${esc(mid.name)}</span>` : '',
+    ].filter(Boolean).join(chev);
+
+    $('hero-subject').textContent = state.tree.name;
+    $('hero-path').innerHTML = [unit && esc(unit.name), mid && esc(mid.name)].filter(Boolean).join(' <span class="text-outline">›</span> ');
+
+    const list = $('subunit-list');
+    const subs = (mid && mid.subunits) || [];
+    list.innerHTML = !mid
+      ? '<p class="flex items-center justify-center gap-2 text-center text-on-surface-variant py-xl"><span class="material-symbols-outlined text-outline">list</span>왼쪽에서 중단원을 선택하세요.</p>'
+      : (subs.length
+          ? subs.map(subunitItem).join('')
+          : '<p class="text-center text-on-surface-variant py-lg">이 중단원에는 소단원이 없습니다.</p>');
+    if (animate) { list.classList.remove('swap-in'); void list.offsetWidth; list.classList.add('swap-in'); }
+
+    document.querySelectorAll('#subunit-list a[href="#"]').forEach((a) => a.addEventListener('click', (e) => e.preventDefault()));
+    document.querySelectorAll('#subunit-list .card-toggle').forEach((btn) => btn.addEventListener('click', () => {
+      const box = btn.nextElementSibling;
+      const open = btn.querySelector('.arrow').classList.toggle('rotate-180');
+      btn.setAttribute('aria-expanded', open);
+      setOpen(box, open);
+    }));
+  }
+
+  function render(animate) { findSelection(); renderSidebar(animate); renderMain(animate); }
+
+  // ---------- 시작 ----------
+  (async () => {
+    if (!(await requireLogin())) return; // 로그인 필수
+    if (!subjectId) { location.replace('과목-선택.html'); return; }
+    try {
+      state.tree = await fetchSubjectTree(subjectId);
+      $('subject-title').textContent = state.tree.name;
+      document.title = `${state.tree.name} · 정환쌤과 함께하는 과학 수업`;
+      $('home-link').href = `과목-홈.html?subject=${encodeURIComponent(subjectId)}`;
+      $('qna-link').href = `질의응답.html?subject=${encodeURIComponent(subjectId)}`;
+      $('assess-link').href = `수행평가-공지.html?subject=${encodeURIComponent(subjectId)}`;
+      $('submit-link').href = `산출물-제출.html?subject=${encodeURIComponent(subjectId)}`;
+      document.querySelectorAll('.fixed-link').forEach((a) => a.addEventListener('click', (e) => e.preventDefault())); // 미구현 링크(실험실 안전)
+      // ?sub=<소단원id> 로 들어오면 그 소단원을 펼침 (질의응답 사이드바 등에서 연결)
+      const subParam = params.get('sub');
+      let target = null;
+      if (subParam) {
+        for (const u of state.tree.units || []) {
+          for (const m of u.mid_units || []) {
+            if ((m.subunits || []).some((s) => s.id === subParam)) { target = { unit: u, mid: m }; break; }
+          }
+          if (target) break;
+        }
+      }
+      if (target) {
+        state.lastUnitId = target.unit.id;
+        state.midUnitId = target.mid.id;
+        state.subunitId = subParam;
+      } else {
+        // 초기: 첫 대단원 열고 첫 중단원 선택
+        const firstUnit = (state.tree.units || [])[0];
+        const firstMid = firstUnit && (firstUnit.mid_units || [])[0];
+        state.lastUnitId = firstUnit ? firstUnit.id : null;
+        state.midUnitId = firstMid ? firstMid.id : null;
+      }
+      render();
+      if (target) scrollToActive();
+    } catch (e) {
+      $('subunit-list').innerHTML = `<p class="text-error py-lg text-center">단원을 불러오지 못했습니다. (${esc(e.message)})</p>`;
+    }
+  })();
+</script>
+
+</body>
+</html>

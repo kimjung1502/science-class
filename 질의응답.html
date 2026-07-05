@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>질의응답 · 정환쌤과 함께하는 과학 수업</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">try{
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "surface-container-low": "#eff4ff",
+          "secondary": "#006b5f",
+          "error": "#ba1a1a",
+          "on-surface-variant": "#414754",
+          "secondary-container": "#c9e9e2",
+          "on-surface": "#0d1c2e",
+          "surface-container-lowest": "#ffffff",
+          "on-secondary-container": "#00504a",
+          "background": "#f8f9ff",
+          "surface-bright": "#f8f9ff",
+          "primary": "#005bbf",
+          "on-primary": "#ffffff",
+          "surface-container": "#e6eeff",
+          "outline-variant": "#c1c6d6",
+          "surface-variant": "#d5e3fc",
+          "primary-container": "#1a73e8",
+          "primary-fixed": "#d8e2ff",
+          "on-primary-fixed": "#001a41",
+          "outline": "#727785",
+          "surface": "#f8f9ff",
+          "surface-container-highest": "#d5e3fc",
+          "on-background": "#0d1c2e"
+        },
+        borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+        spacing: { "gutter": "24px", "base": "4px", "md": "24px", "sm": "16px", "xl": "64px", "lg": "40px", "xs": "8px", "max-width": "1280px" },
+        fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
+        fontSize: {
+          "title-lg": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+          "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+          "caption": ["13px", {"lineHeight": "1.35", "fontWeight": "400"}],
+          "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+          "headline-lg": ["32px", {"lineHeight": "1.25", "fontWeight": "700"}],
+          "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "500"}],
+          "headline-md": ["24px", {"lineHeight": "1.35", "fontWeight": "600"}]
+        }
+      }
+    }
+  }
+}catch(_e){}</script>
+<style>
+  body { font-family: "Be Vietnam Pro", sans-serif; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  /* 모바일 사이드바 서랍 (md 미만에서만 슬라이드) */
+  @media (max-width: 767px) {
+    #sidebar { left: -288px; transition: left .3s cubic-bezier(.4,0,.2,1); }
+    #sidebar.drawer-open { left: 0; }
+  }
+  @keyframes swapIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .swap-in { animation: swapIn .28s cubic-bezier(.4,0,.2,1); }
+  .arrow { transition: transform .25s cubic-bezier(.4,0,.2,1); }
+  @media (prefers-reduced-motion: reduce) { .swap-in { animation: none; } .arrow { transition: none; } }
+</style>
+</head>
+<body class="bg-background text-on-background">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- 모바일 사이드바 배경 -->
+  <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/40 z-40 md:hidden"></div>
+
+  <!-- SideNavBar (모바일: 슬라이드 서랍) -->
+  <aside id="sidebar" class="fixed md:static inset-y-0 md:left-auto z-50 md:z-auto w-72 shrink-0 flex flex-col h-full py-md px-sm bg-surface-container-low border-r border-outline-variant">
+    <div class="mb-md px-xs flex items-start justify-between gap-2">
+      <div class="min-w-0">
+        <h1 id="subject-title" class="text-title-lg font-semibold text-on-surface truncate">불러오는 중…</h1>
+        <p class="text-caption text-on-surface-variant mt-0.5">정환쌤과 함께하는 과학 수업</p>
+      </div>
+      <button id="sidebar-close" class="md:hidden p-1 text-on-surface-variant hover:text-on-surface rounded-full shrink-0" aria-label="닫기"><span class="material-symbols-outlined">close</span></button>
+    </div>
+
+    <nav class="flex-1 space-y-2 overflow-y-auto">
+      <!-- 1. 과목 홈 -->
+      <a id="home-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">home</span><span class="text-label-md font-bold">과목 홈 (공지)</span></a>
+      <!-- 2. 단원 선택 -->
+      <div class="pt-md mt-md border-t border-outline-variant">
+        <p class="px-3 mb-1 text-caption font-bold text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">menu_book</span>단원 바로가기</p>
+        <div id="sidebar-nav" class="space-y-2"></div>
+      </div>
+      <!-- 3~6. 수행평가·산출물·질의응답·안전 -->
+      <div class="pt-md mt-md border-t border-outline-variant space-y-1">
+        <a id="assess-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">assignment</span><span class="text-label-md font-bold">수행평가 공지</span></a>
+        <a id="submit-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">upload_file</span><span class="text-label-md font-bold">산출물 제출</span></a>
+        <div class="flex items-center gap-3 p-3 rounded-lg bg-secondary-container text-on-secondary-container"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">forum</span><span class="text-label-md font-bold">질의응답 (Q&amp;A)</span></div>
+        <a href="#" class="fixed-link flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">health_and_safety</span><span class="text-label-md font-bold">실험실 안전 수칙</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <div class="flex-1 flex flex-col h-full overflow-y-auto">
+    <!-- TopNavBar -->
+    <header class="sticky top-0 z-10 bg-surface/80 backdrop-blur-md border-b border-outline-variant w-full">
+      <div class="flex justify-between items-center h-16 px-md w-full gap-3">
+        <div class="flex items-center gap-2 md:gap-3 min-w-0">
+          <button id="menu-btn" class="md:hidden p-2 -ml-1 text-on-surface-variant hover:bg-surface-container rounded-full shrink-0" aria-label="단원 메뉴 열기"><span class="material-symbols-outlined">menu</span></button>
+          <a href="과목-선택.html" title="과목 선택으로 돌아가기" class="shrink-0 flex items-center gap-1 text-label-md text-on-surface-variant hover:text-primary transition-colors">
+            <span class="material-symbols-outlined text-[20px]">arrow_back</span><span class="hidden sm:inline">과목 선택</span>
+          </a>
+          <span class="text-outline-variant hidden sm:inline">|</span>
+          <nav class="flex items-center gap-2 text-body-md flex-wrap min-w-0">
+            <a id="crumb-subject" href="#" class="text-on-surface-variant hover:text-primary truncate">과목</a>
+            <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+            <span class="text-primary font-bold">질의응답</span>
+          </nav>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <span id="teacher-badge" class="hidden text-caption text-white bg-primary px-2 py-0.5 rounded-full font-semibold">교사 시점</span>
+          <span id="who" class="text-caption text-on-surface-variant hidden sm:inline"></span>
+          <button id="logout-btn" class="text-caption text-on-surface-variant hover:text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[20px]">logout</span><span class="hidden sm:inline">로그아웃</span></button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 w-full max-w-5xl mx-auto p-md md:p-lg">
+
+      <!-- ===================== 목록 뷰 ===================== -->
+      <section id="list-view">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-md">
+          <div>
+            <h2 class="text-headline-lg text-on-surface mb-1">질의응답 <span class="text-on-surface-variant text-headline-md">(Q&amp;A)</span></h2>
+            <p id="list-subtitle" class="text-body-md text-on-surface-variant">궁금한 점을 자유롭게 질문하고 답변을 확인하세요.</p>
+          </div>
+          <button id="ask-btn" class="px-md py-3 bg-primary text-on-primary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-primary-container transition-all active:scale-95 shrink-0">
+            <span class="material-symbols-outlined">edit_square</span>질문하기
+          </button>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="bg-surface-container-lowest p-sm rounded-xl border border-outline-variant mb-md flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+          <div class="relative flex-1">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">search</span>
+            <input id="search-input" type="text" placeholder="질문 검색 (제목·내용)" class="w-full pl-11 pr-4 py-2.5 bg-surface-container-low border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-body-md outline-none">
+          </div>
+          <div class="flex gap-2">
+            <button data-filter="all"      class="filter-chip flex-1 md:flex-none px-4 py-2 rounded-full border border-primary bg-primary-fixed text-on-primary-fixed text-label-md font-bold">전체</button>
+            <button data-filter="waiting"  class="filter-chip flex-1 md:flex-none px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container transition-colors">답변 대기</button>
+            <button data-filter="answered" class="filter-chip flex-1 md:flex-none px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container transition-colors">답변 완료</button>
+          </div>
+        </div>
+
+        <div id="question-list" class="space-y-3">
+          <p class="text-on-surface-variant py-lg text-center">질문을 불러오는 중…</p>
+        </div>
+      </section>
+
+      <!-- ===================== 상세 뷰 ===================== -->
+      <section id="detail-view" class="hidden"></section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ===================== 질문 작성 모달 ===================== -->
+<div id="write-modal" class="hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-md">
+  <div id="write-backdrop" class="absolute inset-0 bg-black/40"></div>
+  <div class="relative bg-surface-container-lowest w-full md:max-w-lg rounded-t-xl md:rounded-xl border border-outline-variant shadow-xl max-h-[92vh] overflow-y-auto swap-in">
+    <div class="flex items-center justify-between p-md border-b border-outline-variant sticky top-0 bg-surface-container-lowest">
+      <h3 class="text-title-lg font-semibold text-on-surface">질문하기</h3>
+      <button id="write-close" class="p-1 text-on-surface-variant hover:text-on-surface rounded-full"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="write-form" class="p-md flex flex-col gap-md">
+      <div class="flex flex-col gap-base">
+        <label for="q-title" class="text-label-md text-on-surface-variant">제목</label>
+        <input id="q-title" type="text" required maxlength="120" placeholder="질문 제목을 입력하세요" class="w-full px-4 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md">
+      </div>
+      <div class="flex flex-col gap-base">
+        <label class="text-label-md text-on-surface-variant">단원 <span class="text-outline">(선택)</span></label>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <select id="q-unit" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md">
+            <option value="">대단원 전체</option>
+          </select>
+          <select id="q-mid" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md disabled:opacity-50 disabled:bg-surface-container" disabled>
+            <option value="">중단원 전체</option>
+          </select>
+          <select id="q-sub" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md disabled:opacity-50 disabled:bg-surface-container" disabled>
+            <option value="">소단원 전체</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex flex-col gap-base">
+        <label for="q-body" class="text-label-md text-on-surface-variant">내용</label>
+        <textarea id="q-body" rows="6" required placeholder="궁금한 내용을 자세히 적어주세요." class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md resize-y"></textarea>
+      </div>
+      <p id="write-error" class="text-caption text-error hidden"></p>
+      <div class="flex gap-3 justify-end">
+        <button type="button" id="write-cancel" class="px-5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-colors">취소</button>
+        <button type="submit" id="write-submit" class="px-5 py-2.5 rounded-lg bg-primary text-on-primary font-bold hover:bg-primary-container transition-colors disabled:opacity-60 flex items-center gap-2">
+          <span id="write-submit-label">등록</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<script>
+(function () {
+  const {
+    supabase, requireLogin, signOut, esc,
+    fetchSubjectTree, fetchQuestions, fetchQuestion, fetchAnswers,
+    createQuestion, createAnswer, deleteQuestion, deleteAnswer, incrementQuestionViews,
+  } = window.DB;
+
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const subjectId = params.get('subject');
+
+  const state = { subject: null, isAdmin: false, viewerName: '', viewerId: null, filter: 'all', search: '', questions: [] };
+  // 단원 조회용 인덱스 (id → {name, 부모})
+  const topic = { units: new Map(), mids: new Map(), subs: new Map() };
+  // 사이드바 아코디언 펼침 상태
+  const sb = { openUnit: null, openMid: null };
+
+  function indexTree(tree) {
+    (tree.units || []).forEach((u) => {
+      topic.units.set(u.id, u);
+      (u.mid_units || []).forEach((m) => {
+        topic.mids.set(m.id, Object.assign({ unit: u }, m));
+        (m.subunits || []).forEach((s) => topic.subs.set(s.id, Object.assign({ unit: u, mid: m }, s)));
+      });
+    });
+  }
+
+  // 질문에 연결된 단원 경로 이름 배열 (활성 단원만)
+  function topicPath(q) {
+    const parts = [];
+    if (q.unit_id && topic.units.has(q.unit_id)) parts.push(topic.units.get(q.unit_id).name);
+    if (q.mid_unit_id && topic.mids.has(q.mid_unit_id)) parts.push(topic.mids.get(q.mid_unit_id).name);
+    if (q.subunit_id && topic.subs.has(q.subunit_id)) parts.push(topic.subs.get(q.subunit_id).name);
+    return parts;
+  }
+
+  function topicChip(q) {
+    const parts = topicPath(q);
+    if (!parts.length) return '';
+    return `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-container text-on-surface-variant text-caption rounded-full max-w-full">
+      <span class="material-symbols-outlined text-[16px] text-primary shrink-0">account_tree</span>
+      <span class="truncate">${parts.map(esc).join(' › ')}</span>
+    </span>`;
+  }
+
+  // ---------- 사이드바 단원 트리 ----------
+  function subLink(s) {
+    return `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 p-2 rounded-lg text-caption text-on-surface hover:bg-surface-container-highest transition-all">
+      <span class="material-symbols-outlined text-[18px] text-outline">radio_button_unchecked</span><span>${esc(s.name)}</span>
+    </a>`;
+  }
+
+  function renderSidebarNav() {
+    const nav = $('sidebar-nav');
+    const units = state.subject.units || [];
+    nav.innerHTML = units.map((u) => {
+      const unitOpen = u.id === sb.openUnit;
+      const midsHtml = unitOpen ? (u.mid_units || []).map((m) => {
+        const on = m.id === sb.openMid;
+        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-caption text-on-surface-variant p-2">소단원이 없습니다.</p>';
+        return `<div>
+          <button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between p-3 rounded-lg text-left transition-all ${on ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'}">
+            <span class="text-label-md">${esc(m.name)}</span>
+            <span class="material-symbols-outlined text-[18px] arrow ${on ? 'rotate-180' : ''}">expand_more</span>
+          </button>
+          ${on ? `<div class="mt-1 ml-4 space-y-0.5 swap-in">${subs}</div>` : ''}
+        </div>`;
+      }).join('') : '';
+      return `<div>
+        <button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between p-3 rounded-lg hover:bg-surface-container-highest text-left transition-all">
+          <span class="text-label-md font-bold ${unitOpen ? 'text-primary' : 'text-on-surface-variant'}">${esc(u.name)}</span>
+          <span class="material-symbols-outlined arrow text-outline ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
+        </button>
+        ${unitOpen ? `<div class="mt-1 space-y-1 swap-in">${midsHtml}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    nav.querySelectorAll('.sb-unit').forEach((btn) => btn.addEventListener('click', () => {
+      const id = btn.dataset.unit;
+      if (sb.openUnit === id) { sb.openUnit = null; sb.openMid = null; }
+      else { sb.openUnit = id; sb.openMid = null; }
+      renderSidebarNav();
+    }));
+    nav.querySelectorAll('.sb-mid').forEach((btn) => btn.addEventListener('click', () => {
+      const id = btn.dataset.mid;
+      sb.openMid = (sb.openMid === id) ? null : id;
+      renderSidebarNav();
+    }));
+  }
+
+  const fmtDate = (iso) => {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
+  };
+  const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
+
+  // ---------- 목록 ----------
+  function statusPill(answered) {
+    return answered
+      ? '<span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-caption font-bold rounded-full">답변 완료</span>'
+      : '<span class="px-3 py-1 bg-amber-100 text-amber-700 text-caption font-bold rounded-full">답변 대기</span>';
+  }
+
+  function questionCard(q) {
+    const answered = q.answer_count > 0;
+    return `<div data-qid="${q.id}" class="q-card group bg-surface-container-lowest p-md rounded-xl border border-outline-variant hover:border-primary hover:shadow-md transition-all cursor-pointer">
+      <div class="flex justify-between items-start gap-3 mb-2">
+        <div class="flex flex-wrap items-center gap-2 min-w-0">${statusPill(answered)}${topicChip(q)}</div>
+        <span class="text-caption text-outline shrink-0">${fmtDate(q.created_at)}</span>
+      </div>
+      <h3 class="text-title-lg text-on-surface mb-3 group-hover:text-primary transition-colors break-words">${esc(q.title)}</h3>
+      <div class="flex items-center justify-between text-outline">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="material-symbols-outlined text-[20px] text-outline">account_circle</span>
+          <span class="text-label-md text-on-surface-variant font-medium truncate">${esc(q.author_name || '학생')}</span>
+        </div>
+        <div class="flex items-center gap-4 text-label-md shrink-0">
+          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">chat_bubble_outline</span>${q.answer_count}</span>
+          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">visibility</span>${q.view_count || 0}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function filteredQuestions() {
+    const term = state.search.trim().toLowerCase();
+    return state.questions.filter((q) => {
+      if (state.filter === 'waiting' && q.answer_count > 0) return false;
+      if (state.filter === 'answered' && q.answer_count === 0) return false;
+      if (term && !((q.title || '').toLowerCase().includes(term) || (q.body || '').toLowerCase().includes(term))) return false;
+      return true;
+    });
+  }
+
+  function renderList() {
+    const list = $('question-list');
+    const items = filteredQuestions();
+    if (!state.questions.length) {
+      list.innerHTML = `<div class="text-center py-20 px-md bg-surface-container-lowest border border-dashed border-outline-variant rounded-xl">
+        <div class="w-16 h-16 mx-auto rounded-full bg-primary-fixed flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-[36px] text-primary">forum</span>
+        </div>
+        <p class="text-title-lg text-on-surface">아직 등록된 질문이 없습니다</p>
+        <p class="text-body-md text-on-surface-variant mt-1 mb-md">궁금한 점이 있다면 가장 먼저 질문을 남겨보세요!</p>
+        <button id="empty-ask" class="px-md py-2.5 bg-primary text-on-primary rounded-lg font-bold inline-flex items-center gap-2 hover:bg-primary-container transition-all active:scale-95"><span class="material-symbols-outlined">edit_square</span>질문하기</button>
+      </div>`;
+      $('empty-ask')?.addEventListener('click', openWrite);
+      return;
+    }
+    if (!items.length) {
+      list.innerHTML = '<p class="text-on-surface-variant py-lg text-center">조건에 맞는 질문이 없습니다.</p>';
+      return;
+    }
+    list.innerHTML = items.map(questionCard).join('');
+    list.querySelectorAll('.q-card').forEach((c) => c.addEventListener('click', () => go(c.dataset.qid)));
+  }
+
+  async function loadList() {
+    try {
+      state.questions = await fetchQuestions(subjectId);
+      renderList();
+    } catch (e) {
+      $('question-list').innerHTML = `<p class="text-error py-lg text-center">질문을 불러오지 못했습니다. (${esc(e.message)})</p>`;
+    }
+  }
+
+  // ---------- 상세 ----------
+  function answerCard(a) {
+    const del = state.isAdmin
+      ? `<button data-aid="${a.id}" class="ans-del text-caption text-outline hover:text-error flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">delete</span>삭제</button>`
+      : '';
+    return `<div class="bg-primary-fixed border border-primary/20 rounded-xl p-md">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">verified</span>
+          <span class="text-label-md font-bold text-on-primary-fixed">${esc(a.author_name || '선생님')}</span>
+          <span class="text-caption text-white bg-primary px-2 py-0.5 rounded-full">교사 답변</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-caption text-on-surface-variant">${fmtDate(a.created_at)}</span>
+          ${del}
+        </div>
+      </div>
+      <p class="text-body-md text-on-surface whitespace-pre-wrap break-words">${nl2br(a.body)}</p>
+    </div>`;
+  }
+
+  async function showDetail(qid) {
+    $('list-view').classList.add('hidden');
+    const view = $('detail-view');
+    view.classList.remove('hidden');
+    view.innerHTML = '<p class="text-on-surface-variant py-lg text-center">불러오는 중…</p>';
+    window.scrollTo({ top: 0 });
+
+    let q, answers;
+    try {
+      q = await fetchQuestion(qid);
+      if (!q) { view.innerHTML = '<p class="text-on-surface-variant py-lg text-center">질문을 찾을 수 없습니다.</p><div class="text-center"><button id="d-back" class="mt-2 text-primary font-bold">← 목록으로</button></div>'; $('d-back').addEventListener('click', () => go(null)); return; }
+      incrementQuestionViews(qid); // 조회수 (실패 무시)
+      answers = await fetchAnswers(qid);
+    } catch (e) {
+      view.innerHTML = `<p class="text-error py-lg text-center">불러오지 못했습니다. (${esc(e.message)})</p>`;
+      return;
+    }
+
+    const canDeleteQ = state.isAdmin || (state.viewerId && q.author_id === state.viewerId);
+    const answered = answers.length > 0;
+
+    view.innerHTML = `
+      <button id="d-back" class="mb-md inline-flex items-center gap-1 text-on-surface-variant hover:text-primary text-label-md font-bold">
+        <span class="material-symbols-outlined text-[20px]">arrow_back</span>목록으로
+      </button>
+
+      <article class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md md:p-lg mb-md swap-in">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div class="flex flex-wrap items-center gap-2 min-w-0">${statusPill(answered)}${topicChip(q)}</div>
+          ${canDeleteQ ? '<button id="q-del" class="text-caption text-outline hover:text-error flex items-center gap-1 shrink-0"><span class="material-symbols-outlined text-[18px]">delete</span>질문 삭제</button>' : ''}
+        </div>
+        <h2 class="text-headline-md text-on-surface mb-3 break-words">${esc(q.title)}</h2>
+        <div class="flex items-center gap-3 text-outline text-label-md mb-md pb-md border-b border-outline-variant">
+          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[20px]">account_circle</span>${esc(q.author_name || '학생')}</span>
+          <span>·</span><span>${fmtDate(q.created_at)}</span>
+          <span>·</span><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">visibility</span>${q.view_count || 0}</span>
+        </div>
+        <p class="text-body-md text-on-surface whitespace-pre-wrap break-words">${nl2br(q.body)}</p>
+      </article>
+
+      <div class="flex items-center gap-2 mb-3">
+        <span class="material-symbols-outlined text-primary">forum</span>
+        <h3 class="text-title-lg text-on-surface">답변 <span class="text-primary">${answers.length}</span></h3>
+      </div>
+      <div id="answer-list" class="space-y-3 mb-md">
+        ${answers.length ? answers.map(answerCard).join('') : '<p class="text-on-surface-variant text-center py-lg bg-surface-container-lowest border border-dashed border-outline-variant rounded-xl">아직 답변이 없습니다. 선생님의 답변을 기다려주세요.</p>'}
+      </div>
+
+      ${state.isAdmin ? `
+      <form id="answer-form" class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md">
+        <label for="a-body" class="text-label-md font-bold text-on-surface flex items-center gap-2 mb-2"><span class="material-symbols-outlined text-primary text-[20px]">reply</span>답변 작성 (교사)</label>
+        <textarea id="a-body" rows="4" required placeholder="학생에게 전달할 답변을 작성하세요." class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md resize-y"></textarea>
+        <p id="answer-error" class="text-caption text-error hidden mt-1"></p>
+        <div class="flex justify-end mt-3">
+          <button type="submit" id="answer-submit" class="px-5 py-2.5 rounded-lg bg-primary text-on-primary font-bold hover:bg-primary-container transition-colors disabled:opacity-60">답변 등록</button>
+        </div>
+      </form>` : ''}
+    `;
+
+    $('d-back').addEventListener('click', () => go(null));
+    if (canDeleteQ) $('q-del')?.addEventListener('click', async () => {
+      if (!confirm('이 질문을 삭제하시겠습니까? 답변도 함께 삭제됩니다.')) return;
+      try { await deleteQuestion(qid); go(null); } catch (e) { alert('삭제 실패: ' + e.message); }
+    });
+    view.querySelectorAll('.ans-del').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('이 답변을 삭제하시겠습니까?')) return;
+      try { await deleteAnswer(b.dataset.aid); showDetail(qid); } catch (e) { alert('삭제 실패: ' + e.message); }
+    }));
+    if (state.isAdmin) $('answer-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = $('a-body').value.trim();
+      if (!body) return;
+      const btn = $('answer-submit'); btn.disabled = true;
+      try {
+        await createAnswer({ questionId: qid, body, authorName: state.viewerName });
+        showDetail(qid);
+      } catch (err) {
+        const el = $('answer-error'); el.textContent = '등록 실패: ' + err.message; el.classList.remove('hidden');
+        btn.disabled = false;
+      }
+    });
+  }
+
+  // ---------- 라우팅 ----------
+  function go(qid) {
+    const url = qid ? `?subject=${encodeURIComponent(subjectId)}&q=${encodeURIComponent(qid)}` : `?subject=${encodeURIComponent(subjectId)}`;
+    history.pushState({}, '', url);
+    route();
+  }
+  function route() {
+    const qid = new URLSearchParams(location.search).get('q');
+    if (qid) { showDetail(qid); }
+    else { $('detail-view').classList.add('hidden'); $('detail-view').innerHTML = ''; $('list-view').classList.remove('hidden'); loadList(); }
+  }
+  window.addEventListener('popstate', route);
+
+  // ---------- 작성 모달 · 단원 드롭다운 ----------
+  function fillSelect(sel, items, placeholder) {
+    sel.innerHTML = `<option value="">${placeholder}</option>` + (items || []).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  }
+  function populateUnits() {
+    fillSelect($('q-unit'), state.subject.units || [], '대단원 전체');
+    resetMidSub();
+  }
+  function resetMidSub() {
+    fillSelect($('q-mid'), [], '중단원 전체'); $('q-mid').disabled = true;
+    fillSelect($('q-sub'), [], '소단원 전체'); $('q-sub').disabled = true;
+  }
+
+  function openWrite() {
+    $('write-error').classList.add('hidden');
+    $('q-title').value = ''; $('q-body').value = '';
+    $('q-unit').value = ''; resetMidSub();
+    $('write-modal').classList.remove('hidden');
+    $('q-title').focus();
+  }
+  function closeWrite() { $('write-modal').classList.add('hidden'); }
+
+  // ---------- 시작 ----------
+  (async () => {
+    const auth = await requireLogin();
+    if (!auth) return;
+    if (!subjectId) { location.replace('과목-선택.html'); return; }
+
+    state.isAdmin = !auth.student;
+    state.viewerName = auth.student ? auth.student.name : '선생님';
+    const { data: { user } } = await supabase.auth.getUser();
+    state.viewerId = user ? user.id : null;
+
+    $('who').textContent = auth.student ? auth.student.name : '관리자';
+    if (state.isAdmin) $('teacher-badge').classList.remove('hidden');
+    $('logout-btn').addEventListener('click', async () => { await signOut(); location.replace('학생-로그인.html'); });
+
+    try {
+      state.subject = await fetchSubjectTree(subjectId); // 이름·accent + 단원 트리(사이드바/드롭다운/태그용)
+    } catch (_) { state.subject = null; }
+    if (!state.subject) {
+      $('list-view').innerHTML = '<p class="text-center text-on-surface-variant py-xl">이 과목에 접근할 권한이 없습니다.</p>';
+      return;
+    }
+    indexTree(state.subject);
+    populateUnits();
+    document.title = `질의응답 · ${state.subject.name}`;
+    $('subject-title').textContent = state.subject.name;
+    $('crumb-subject').textContent = state.subject.name;
+    $('crumb-subject').href = `과목-홈.html?subject=${encodeURIComponent(subjectId)}`;
+    $('home-link').href = `과목-홈.html?subject=${encodeURIComponent(subjectId)}`;
+    $('assess-link').href = `수행평가-공지.html?subject=${encodeURIComponent(subjectId)}`;
+    $('submit-link').href = `산출물-제출.html?subject=${encodeURIComponent(subjectId)}`;
+    $('list-subtitle').textContent = `${state.subject.name} 과목에 대해 자유롭게 질문하고 선생님의 답변을 확인하세요.`;
+
+    // 사이드바: 특정 단원을 보는 페이지가 아니므로 강조 없이 접힌 상태로 시작
+    sb.openUnit = null;
+    sb.openMid = null;
+    renderSidebarNav();
+
+    // 이벤트 바인딩
+    $('ask-btn').addEventListener('click', openWrite);
+    $('write-close').addEventListener('click', closeWrite);
+    $('write-cancel').addEventListener('click', closeWrite);
+    $('write-backdrop').addEventListener('click', closeWrite);
+    document.querySelectorAll('.fixed-link').forEach((a) => a.addEventListener('click', (e) => e.preventDefault())); // 미구현 링크
+    // 모바일 사이드바 서랍
+    const openSidebar = () => { $('sidebar').classList.add('drawer-open'); $('sidebar-backdrop').classList.remove('hidden'); };
+    const closeSidebar = () => { $('sidebar').classList.remove('drawer-open'); $('sidebar-backdrop').classList.add('hidden'); };
+    $('menu-btn').addEventListener('click', openSidebar);
+    $('sidebar-close').addEventListener('click', closeSidebar);
+    $('sidebar-backdrop').addEventListener('click', closeSidebar);
+    // 단원 연쇄 드롭다운
+    $('q-unit').addEventListener('change', () => {
+      const u = topic.units.get($('q-unit').value);
+      fillSelect($('q-mid'), u && u.mid_units, '중단원 전체'); $('q-mid').disabled = !u;
+      fillSelect($('q-sub'), [], '소단원 전체'); $('q-sub').disabled = true;
+    });
+    $('q-mid').addEventListener('change', () => {
+      const m = topic.mids.get($('q-mid').value);
+      fillSelect($('q-sub'), m && m.subunits, '소단원 전체'); $('q-sub').disabled = !m;
+    });
+    $('search-input').addEventListener('input', (e) => { state.search = e.target.value; renderList(); });
+    document.querySelectorAll('.filter-chip').forEach((chip) => chip.addEventListener('click', () => {
+      state.filter = chip.dataset.filter;
+      document.querySelectorAll('.filter-chip').forEach((c) => {
+        const on = c === chip;
+        c.classList.toggle('border-primary', on);
+        c.classList.toggle('bg-primary-fixed', on);
+        c.classList.toggle('text-on-primary-fixed', on);
+        c.classList.toggle('font-bold', on);
+        c.classList.toggle('border-outline-variant', !on);
+        c.classList.toggle('text-on-surface-variant', !on);
+      });
+      renderList();
+    }));
+    $('write-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = $('q-title').value.trim();
+      const body = $('q-body').value.trim();
+      if (!title || !body) return;
+      const btn = $('write-submit'); btn.disabled = true; $('write-submit-label').textContent = '등록 중…';
+      try {
+        const { id } = await createQuestion({
+          subjectId, title, body, authorName: state.viewerName,
+          unitId: $('q-unit').value, midUnitId: $('q-mid').value, subunitId: $('q-sub').value,
+        });
+        closeWrite();
+        go(id);
+      } catch (err) {
+        const el = $('write-error'); el.textContent = '등록 실패: ' + err.message; el.classList.remove('hidden');
+        btn.disabled = false; $('write-submit-label').textContent = '등록';
+      }
+    });
+
+    route(); // 초기 화면 (목록 또는 상세)
+  })();
+})();
+</script>
+
+</body>
+</html>

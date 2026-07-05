@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>교사용 관리자 · 정환쌤과 함께하는 과학 수업</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">try{
+  tailwind.config = { darkMode: "class", theme: { extend: {
+    colors: {
+      "surface-container-low": "#eff4ff", "on-surface-variant": "#414754", "on-surface": "#0d1c2e",
+      "surface-container-lowest": "#ffffff", "background": "#f8f9ff", "primary": "#005bbf", "on-primary": "#ffffff",
+      "surface-container": "#e6eeff", "outline-variant": "#c1c6d6", "surface-variant": "#d5e3fc",
+      "outline": "#727785", "surface": "#f8f9ff", "surface-container-highest": "#d5e3fc",
+      "error": "#ba1a1a", "error-container": "#ffdad6", "on-error-container": "#93000a", "secondary-container": "#c9e9e2", "on-secondary-container": "#00504a"
+    },
+    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+    spacing: { "gutter": "24px", "md": "24px", "sm": "16px", "xl": "64px", "lg": "40px", "xs": "8px", "max-width": "1000px" },
+    fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
+    fontSize: {
+      "title-lg": ["20px", {"lineHeight":"1.4","fontWeight":"600"}], "body-lg": ["18px", {"lineHeight":"1.6"}],
+      "caption": ["13px", {"lineHeight":"1.35"}], "body-md": ["16px", {"lineHeight":"1.6"}],
+      "headline-lg": ["30px", {"lineHeight":"1.25","fontWeight":"700"}],
+      "label-md": ["14px", {"lineHeight":"1.2","fontWeight":"500"}], "headline-md": ["22px", {"lineHeight":"1.35","fontWeight":"600"}]
+    }
+  }}}
+}catch(_e){}</script>
+<style>
+  body { font-family: "Be Vietnam Pro", sans-serif; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  details > summary { list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details:not([open]) > summary .arrow { transform: rotate(-90deg); }
+  .arrow { transition: transform .15s ease; }
+</style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+
+<!-- 로그인 화면 -->
+<div id="login-view" class="hidden min-h-screen flex items-center justify-center p-md">
+  <div class="w-full max-w-sm bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm p-lg">
+    <div class="flex items-center gap-2 mb-md">
+      <span class="material-symbols-outlined text-primary text-[28px]">admin_panel_settings</span>
+      <h1 class="text-headline-md text-on-surface">교사용 관리자</h1>
+    </div>
+    <p class="text-caption text-on-surface-variant mb-md">관리자 계정으로 로그인하세요.</p>
+    <form id="login-form" class="space-y-sm">
+      <div>
+        <label class="text-label-md text-on-surface-variant">아이디 또는 이메일</label>
+        <input id="login-email" type="text" required autocomplete="username" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="admin 또는 이메일">
+      </div>
+      <div>
+        <label class="text-label-md text-on-surface-variant">비밀번호</label>
+        <input id="login-password" type="password" required autocomplete="current-password" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="••••••••">
+      </div>
+      <p id="login-error" class="text-caption text-error hidden"></p>
+      <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg text-label-md font-bold hover:opacity-90 transition-opacity">로그인</button>
+    </form>
+  </div>
+</div>
+
+<!-- 관리 화면 -->
+<div id="admin-view" class="hidden">
+  <header class="bg-surface border-b border-outline-variant sticky top-0 z-40">
+    <div class="flex justify-between items-center h-16 px-md max-w-max-width mx-auto w-full">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[26px]">admin_panel_settings</span>
+        <h1 class="text-headline-md text-primary">자료 관리</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="과목-선택.html" target="_blank" class="text-caption text-on-surface-variant hover:text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">open_in_new</span>사이트 보기</a>
+        <span id="who" class="text-caption text-on-surface-variant hidden sm:inline"></span>
+        <button id="change-pw-btn" class="text-caption text-on-surface-variant hover:text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">key</span>비밀번호 변경</button>
+        <button id="logout-btn" class="text-caption text-on-surface-variant hover:text-error flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">logout</span>로그아웃</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-max-width mx-auto p-md space-y-md">
+    <!-- 탭 -->
+    <div class="flex gap-1 border-b border-outline-variant">
+      <button id="tab-curriculum" class="tab px-md py-2 text-label-md font-bold border-b-2 border-primary text-primary -mb-px">교육과정</button>
+      <button id="tab-classes" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">분반 관리</button>
+      <button id="tab-students" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">학생 관리</button>
+      <button id="tab-admins" class="tab hidden px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">관리자 관리</button>
+    </div>
+
+    <!-- 교육과정 -->
+    <div id="curriculum-view" class="space-y-md">
+      <nav id="admin-path" class="flex items-center gap-1 flex-wrap text-body-md"></nav>
+      <div class="flex items-center justify-between gap-md">
+        <h2 id="level-title" class="text-title-lg text-on-surface"></h2>
+        <button id="add-btn" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"><span class="material-symbols-outlined text-[20px]">add</span><span id="add-label">추가</span></button>
+      </div>
+      <div id="list" class="space-y-2"></div>
+    </div>
+
+    <!-- 분반 관리 -->
+    <div id="classes-view" class="hidden space-y-md">
+      <div class="flex items-center justify-between gap-md">
+        <h2 class="text-title-lg text-on-surface">분반</h2>
+        <button id="add-class-btn" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"><span class="material-symbols-outlined text-[20px]">group_add</span>분반 추가</button>
+      </div>
+      <p class="text-caption text-on-surface-variant">분반을 만들고 볼 수 있는 과목을 배정하세요. 학생은 자기 분반에 배정된 과목만 볼 수 있습니다.</p>
+      <div id="classes-list" class="space-y-2"></div>
+    </div>
+
+    <!-- 관리자 관리 (소유자 전용) -->
+    <div id="admins-view" class="hidden space-y-md">
+      <div class="flex items-center justify-between gap-md">
+        <h2 class="text-title-lg text-on-surface">관리자 계정</h2>
+        <button id="add-admin-btn" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"><span class="material-symbols-outlined text-[20px]">person_add</span>관리자 초대</button>
+      </div>
+      <p class="text-caption text-on-surface-variant">같은 과목 교과 선생님을 관리자로 초대합니다. 초대된 관리자는 수업 자료·학생·분반을 관리할 수 있지만, <span class="font-bold">관리자 계정을 만들거나 지울 수는 없습니다(소유자만 가능).</span> 초대 시 이메일과 초기 비밀번호를 정해서 알려주세요.</p>
+      <div id="admins-list" class="space-y-2"></div>
+    </div>
+
+    <!-- 학생 관리 -->
+    <div id="students-view" class="hidden space-y-md">
+      <div class="flex items-center justify-between gap-md flex-wrap">
+        <h2 class="text-title-lg text-on-surface">학생 계정</h2>
+        <div class="flex items-center gap-2">
+          <button id="bulk-student-btn" class="border border-primary text-primary px-md py-2 rounded-lg text-label-md font-bold flex items-center gap-1 hover:bg-primary/5 transition-colors"><span class="material-symbols-outlined text-[20px]">upload_file</span>엑셀로 일괄 등록</button>
+          <button id="add-student-btn" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"><span class="material-symbols-outlined text-[20px]">person_add</span>학생 추가</button>
+        </div>
+      </div>
+      <p class="text-caption text-on-surface-variant">아이디는 학생 이름(중복 시 분반 표기, 예: 김능곡B), 초기 비밀번호는 학번입니다. 학생이 처음 로그인하면 스스로 비밀번호를 바꿉니다.</p>
+      <div id="student-toolbar" class="hidden flex-wrap items-center gap-x-3 gap-y-2 p-2 rounded-lg bg-surface-container border border-outline-variant">
+        <label class="inline-flex items-center gap-1.5 text-label-md cursor-pointer"><input type="checkbox" id="stu-select-all" class="rounded border-outline-variant text-primary focus:ring-primary">전체 선택</label>
+        <span class="text-outline-variant">|</span>
+        <label class="inline-flex items-center gap-1.5 text-label-md">분반으로 선택
+          <select id="stu-select-class" class="rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-label-md py-1"><option value="">분반…</option></select>
+        </label>
+        <span id="stu-sel-count" class="text-caption text-on-surface-variant sm:ml-auto">0명 선택</span>
+        <button id="stu-bulk-del" class="px-3 py-1.5 rounded-lg bg-error text-white text-label-md font-bold disabled:opacity-40 flex items-center gap-1" disabled><span class="material-symbols-outlined text-[18px]">delete</span>선택 삭제</button>
+      </div>
+      <div id="students-list" class="space-y-2"></div>
+    </div>
+  </main>
+</div>
+
+<!-- 편집 모달 -->
+<div id="modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-md">
+  <div class="w-full max-w-md bg-surface-container-lowest rounded-xl shadow-lg p-lg max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-md">
+      <h3 id="modal-title" class="text-title-lg text-on-surface"></h3>
+      <button id="modal-close" class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="modal-form" class="space-y-sm"></form>
+  </div>
+</div>
+
+<!-- 엑셀 일괄 등록 모달 -->
+<div id="bulk-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-md">
+  <div class="w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-lg p-lg max-h-[92vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-md">
+      <h3 class="text-title-lg text-on-surface flex items-center gap-2"><span class="material-symbols-outlined text-primary">upload_file</span>엑셀로 학생 일괄 등록</h3>
+      <button id="bulk-close" class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined">close</span></button>
+    </div>
+
+    <div class="bg-surface-container rounded-lg p-sm text-caption text-on-surface-variant mb-md space-y-1">
+      <p><b class="text-on-surface">이름·학번·분반</b> 표 또는 <b class="text-on-surface">NEIS 교과별 출석부</b>(연번·학년·반·번호·성명)를 그대로 올려도 됩니다. .xlsx / .csv 지원.</p>
+      <p>· 출석부 형식은 <b>성명</b>을 이름으로 읽고, 초기 비밀번호(학번)를 <b>학년+반+번호</b>로 자동 생성합니다(예: 1학년 9반 1번 → 10901).</p>
+      <p>· 분반은 아래 <b>기본 분반</b>으로 지정됩니다(파일에 '분반' 열이 있으면 그 값이 우선).</p>
+      <p>· <b>이미 등록된 학생</b>이면 새 계정을 만들지 않고 <b>선택한 분반만 추가</b>합니다(다른 학기·과목 겸수강 대응).</p>
+      <button id="bulk-template" class="mt-1 inline-flex items-center gap-1 text-primary font-bold hover:underline"><span class="material-symbols-outlined text-[18px]">download</span>단순표 CSV 템플릿 내려받기</button>
+    </div>
+
+    <label for="bulk-file" class="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-outline-variant rounded-xl py-lg cursor-pointer hover:border-primary hover:bg-surface-container-low transition-colors">
+      <span class="material-symbols-outlined text-[32px] text-primary">file_upload</span>
+      <span class="text-label-md font-bold text-on-surface">엑셀/CSV 파일 선택</span>
+      <span class="text-caption text-on-surface-variant">.xlsx · .xls · .csv</span>
+      <input id="bulk-file" type="file" accept=".xlsx,.xls,.csv" class="hidden">
+    </label>
+    <p id="bulk-parse-msg" class="text-caption mt-2"></p>
+
+    <div id="bulk-class-row" class="hidden mt-md flex items-center gap-2 flex-wrap">
+      <label class="text-label-md font-bold text-on-surface">기본 분반</label>
+      <select id="bulk-class" class="rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-label-md"></select>
+      <span class="text-caption text-on-surface-variant">분반 열이 없거나 안 맞는 학생은 이 분반으로 등록됩니다.</span>
+    </div>
+
+    <div id="bulk-preview" class="hidden mt-md">
+      <p id="bulk-summary" class="text-label-md text-on-surface mb-2"></p>
+      <div class="overflow-auto max-h-[38vh] border border-outline-variant rounded-lg">
+        <table class="w-full text-label-md">
+          <thead class="bg-surface-container text-on-surface sticky top-0"><tr>
+            <th class="px-2 py-1.5 text-left font-bold">#</th>
+            <th class="px-2 py-1.5 text-left font-bold">이름</th>
+            <th class="px-2 py-1.5 text-left font-bold">학번</th>
+            <th class="px-2 py-1.5 text-left font-bold">분반</th>
+            <th class="px-2 py-1.5 text-left font-bold">상태</th>
+            <th class="px-2 py-1.5 text-left font-bold">비고</th>
+          </tr></thead>
+          <tbody id="bulk-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="bulk-progress" class="hidden mt-md text-label-md"></div>
+    <div id="bulk-result" class="hidden mt-md text-label-md"></div>
+
+    <div class="flex gap-2 pt-md">
+      <button id="bulk-cancel" class="flex-1 border border-outline-variant py-2.5 rounded-lg text-label-md">닫기</button>
+      <button id="bulk-import" disabled class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold disabled:opacity-50">등록</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<script>
+(function () {
+  const { supabase, MATERIAL_TYPES, TEACHER_EMAIL, esc, callManageStudents, uploadToBucket, removeFromBucket } = window.DB;
+
+  const $ = (id) => document.getElementById(id);
+  const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2200); };
+
+  // Supabase Storage 키는 ASCII 안전 문자만 허용 → 한글·로마숫자(Ⅰ)·공백 등은 _ 로 치환.
+  // (화면에 보이는 자료 이름은 별도 필드라 영향 없음)
+  function safeStorageName(fn) {
+    fn = String(fn || '');
+    const dot = fn.lastIndexOf('.');
+    const ext = (dot > 0 ? fn.slice(dot + 1) : '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+    let base = (dot > 0 ? fn.slice(0, dot) : fn)
+      .replace(/[^A-Za-z0-9._-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^[_.-]+|[_.-]+$/g, '');
+    if (!base) base = 'file';
+    return ext ? `${base}.${ext}` : base;
+  }
+
+  // 계층 정의
+  const LEVELS = [
+    { table: 'subjects',  parent: null,          title: '과목',     childName: '대단원',
+      fields: [
+        { k: 'name', label: '과목명', required: true },
+        { k: 'description', label: '설명', type: 'textarea' },
+        { k: 'icon', label: '아이콘 (Material Symbols 이름)', placeholder: '예: science, public, experiment, bolt' },
+        { k: 'accent', label: '색상', type: 'select', options: [['blue','파랑'],['emerald','초록'],['orange','주황'],['violet','보라']] },
+      ] },
+    { table: 'units',     parent: 'subject_id',  title: '대단원',   childName: '중단원',
+      fields: [{ k: 'name', label: '대단원명', required: true }] },
+    { table: 'mid_units', parent: 'unit_id',     title: '중단원',   childName: '소단원',
+      fields: [{ k: 'name', label: '중단원명', required: true }] },
+    { table: 'subunits',  parent: 'mid_unit_id', title: '소단원',   childName: '학습자료',
+      fields: [{ k: 'name', label: '소단원명', required: true }, { k: 'description', label: '설명', type: 'textarea' }] },
+    { table: 'materials', parent: 'subunit_id',  title: '학습자료', childName: null, material: true },
+  ];
+
+  // path: [{ level, id, name }] — 현재 위치까지의 조상들. 현재 레벨 = path.length
+  let path = [];
+
+  const curLevel = () => path.length;
+  const curConfig = () => LEVELS[curLevel()];
+  const parentId = () => (path.length ? path[path.length - 1].id : null);
+
+  // ---------------- 인증 ----------------
+  // 아이디(예: admin) → 내부 이메일. @가 있으면 그대로 이메일로 사용
+  const toEmail = (raw) => (raw.includes('@') ? raw : `${raw}@science-class.local`);
+
+  async function refreshAuth() {
+    // getSession(로컬)만으로는 만료 세션도 통과되므로 getUser로 서버 검증 + is_admin 확인
+    let adminUser = null;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: ok } = await supabase.rpc('is_admin');
+        if (ok) adminUser = user; else await supabase.auth.signOut(); // 관리자 아님(학생 등) → 정리
+      } else {
+        await supabase.auth.signOut(); // 죽은 세션 정리
+      }
+    }
+    if (adminUser) {
+      $('login-view').classList.add('hidden');
+      $('admin-view').classList.remove('hidden');
+      $('who').textContent = adminUser.email;
+      // 소유자만 "관리자 관리" 탭 노출
+      const { data: owner } = await supabase.rpc('is_owner');
+      isOwner = !!owner;
+      $('tab-admins').classList.toggle('hidden', !isOwner);
+      path = [];
+      loadLevel();
+    } else {
+      $('admin-view').classList.add('hidden');
+      $('login-view').classList.remove('hidden');
+    }
+  }
+
+  $('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('login-error').classList.add('hidden');
+    const email = toEmail($('login-email').value.trim());
+    const password = $('login-password').value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { $('login-error').textContent = '로그인 실패: 아이디 또는 비밀번호를 확인하세요.'; $('login-error').classList.remove('hidden'); return; }
+    const { data: ok } = await supabase.rpc('is_admin');
+    if (!ok) { await supabase.auth.signOut(); $('login-error').textContent = '이 계정은 관리 권한이 없습니다.'; $('login-error').classList.remove('hidden'); return; }
+    refreshAuth();
+  });
+
+  $('logout-btn').addEventListener('click', async () => { await supabase.auth.signOut(); refreshAuth(); });
+
+  // ---------------- 목록 로드 ----------------
+  async function loadLevel() {
+    const cfg = curConfig();
+    renderPath();
+    $('level-title').textContent = path.length ? `${path[path.length - 1].name} — ${cfg.title}` : cfg.title;
+    $('add-label').textContent = cfg.title + ' 추가';
+
+    let q = supabase.from(cfg.table).select('*').order('sort_order');
+    if (cfg.parent) q = q.eq(cfg.parent, parentId());
+    const { data, error } = await q;
+    if (error) { $('list').innerHTML = `<p class="text-error py-md">불러오기 실패: ${esc(error.message)}</p>`; return; }
+    renderList(data || []);
+  }
+
+  function renderPath() {
+    const nav = $('admin-path');
+    // 최상위(과목 목록)에서는 경로줄이 아래 제목과 중복되므로 숨김
+    if (!path.length) { nav.innerHTML = ''; nav.classList.add('hidden'); return; }
+    nav.classList.remove('hidden');
+    const crumbs = [`<button data-i="-1" class="crumb text-on-surface-variant hover:text-primary">과목</button>`];
+    path.forEach((p, i) => {
+      crumbs.push('<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>');
+      const last = i === path.length - 1;
+      crumbs.push(`<button data-i="${i}" class="crumb ${last ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-primary'}">${esc(p.name)}</button>`);
+    });
+    $('admin-path').innerHTML = crumbs.join('');
+    $('admin-path').querySelectorAll('.crumb').forEach((b) =>
+      b.addEventListener('click', () => { path = path.slice(0, Number(b.dataset.i) + 1); loadLevel(); })
+    );
+  }
+
+  function itemLabel(cfg, item) {
+    if (cfg.material) {
+      const t = MATERIAL_TYPES[item.type];
+      const name = item.name || (t ? t.label : item.type);
+      const meta = item.meta || (t && !t.file ? (item.url || '') : '');
+      return { icon: t ? t.icon : 'description', box: t ? t.box : 'bg-surface-container text-on-surface-variant', title: name, sub: `${t ? t.label : item.type}${meta ? ' · ' + meta : ''}` };
+    }
+    return { icon: cfg.table === 'subjects' ? (item.icon || 'science') : 'folder', box: 'bg-surface-container text-primary', title: item.name, sub: item.description || '' };
+  }
+
+  function renderList(items) {
+    const cfg = curConfig();
+    if (!items.length) { $('list').innerHTML = `<div class="text-center text-on-surface-variant py-lg border border-dashed border-outline-variant rounded-xl">아직 등록된 ${cfg.title}이(가) 없습니다. 오른쪽 위 "추가" 버튼으로 만들어 보세요.</div>`; return; }
+    $('list').innerHTML = items.map((item, idx) => {
+      const L = itemLabel(cfg, item);
+      const canOpen = !cfg.material; // 자료는 최하위(더 들어갈 곳 없음)
+      const canToggle = true; // 모든 단계 공개/비공개 전환 가능
+      const off = !item.is_active;
+      return `<div class="bg-surface-container-lowest border ${off ? 'border-outline-variant/60' : 'border-outline-variant'} rounded-xl p-3 flex items-center gap-3 ${off ? 'opacity-60' : ''}">
+        <div class="flex flex-col">
+          <button data-act="up" data-id="${item.id}" data-idx="${idx}" class="text-outline hover:text-primary disabled:opacity-30" ${idx === 0 ? 'disabled' : ''}><span class="material-symbols-outlined text-[18px]">keyboard_arrow_up</span></button>
+          <button data-act="down" data-id="${item.id}" data-idx="${idx}" class="text-outline hover:text-primary disabled:opacity-30" ${idx === items.length - 1 ? 'disabled' : ''}><span class="material-symbols-outlined text-[18px]">keyboard_arrow_down</span></button>
+        </div>
+        <div class="p-2 rounded-lg ${L.box} shrink-0"><span class="material-symbols-outlined">${esc(L.icon)}</span></div>
+        <div class="flex-1 min-w-0 ${canOpen ? 'cursor-pointer' : ''}" ${canOpen ? `data-act="open" data-id="${item.id}" data-name="${esc(item.name)}"` : ''}>
+          <p class="text-label-md font-bold text-on-surface truncate flex items-center gap-2">${esc(L.title)}${off ? '<span class="text-caption font-medium text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">비공개</span>' : ''}</p>
+          ${L.sub ? `<p class="text-caption text-on-surface-variant truncate">${esc(L.sub)}</p>` : ''}
+        </div>
+        ${canToggle ? `<button data-act="toggle" data-id="${item.id}" title="${item.is_active ? '공개 중 — 누르면 숨김' : '숨김 — 누르면 공개'}" class="shrink-0 flex items-center gap-1.5 pr-1">
+          <span class="relative inline-block w-10 h-6 rounded-full transition-colors ${item.is_active ? 'bg-primary' : 'bg-outline-variant'}"><span class="absolute top-0.5 ${item.is_active ? 'left-[18px]' : 'left-0.5'} w-5 h-5 bg-white rounded-full shadow transition-all"></span></span>
+        </button>` : ''}
+        <button data-act="edit" data-id="${item.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+        <button data-act="del" data-id="${item.id}" class="p-2 text-on-surface-variant hover:text-error rounded-lg"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+        ${canOpen ? `<button data-act="open" data-id="${item.id}" data-name="${esc(item.name)}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="${esc(cfg.childName)} 관리"><span class="material-symbols-outlined">chevron_right</span></button>` : ''}
+      </div>`;
+    }).join('');
+
+    $('list').querySelectorAll('[data-act]').forEach((el) => el.addEventListener('click', () => handleAction(el, items)));
+  }
+
+  function handleAction(el, items) {
+    const act = el.dataset.act;
+    const id = el.dataset.id;
+    const item = items.find((x) => x.id === id);
+    if (act === 'open') { path.push({ level: curLevel(), id, name: el.dataset.name }); loadLevel(); }
+    else if (act === 'edit') openModal(item);
+    else if (act === 'del') removeItem(item);
+    else if (act === 'toggle') toggleActive(item);
+    else if (act === 'up' || act === 'down') reorder(items, Number(el.dataset.idx), act);
+  }
+
+  // ---------------- 공개/비공개 전환 ----------------
+  async function toggleActive(item) {
+    const next = !item.is_active;
+    const { error } = await supabase.from(curConfig().table).update({ is_active: next }).eq('id', item.id);
+    if (error) { alert('변경 실패: ' + error.message); return; }
+    toast(next ? '공개로 전환했습니다.' : '숨김으로 전환했습니다.');
+    loadLevel();
+  }
+
+  // ---------------- 순서 변경 ----------------
+  async function reorder(items, idx, dir) {
+    const j = dir === 'up' ? idx - 1 : idx + 1;
+    if (j < 0 || j >= items.length) return;
+    const cfg = curConfig();
+    const a = items[idx], b = items[j];
+    await supabase.from(cfg.table).update({ sort_order: b.sort_order }).eq('id', a.id);
+    await supabase.from(cfg.table).update({ sort_order: a.sort_order }).eq('id', b.id);
+    loadLevel();
+  }
+
+  // ---------------- 추가/편집 모달 ----------------
+  function fieldInput(f, val) {
+    const v = esc(val ?? '');
+    if (f.type === 'textarea') return `<textarea name="${f.k}" rows="2" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="${esc(f.placeholder||'')}">${v}</textarea>`;
+    if (f.type === 'select') return `<select name="${f.k}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">${f.options.map(([ov, ol]) => `<option value="${ov}" ${val === ov ? 'selected' : ''}>${esc(ol)}</option>`).join('')}</select>`;
+    return `<input name="${f.k}" type="text" ${f.required ? 'required' : ''} value="${v}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="${esc(f.placeholder||'')}">`;
+  }
+
+  function materialForm(item) {
+    const type = item?.type || 'print';
+    const typeOpts = Object.entries(MATERIAL_TYPES).map(([k, t]) => `<option value="${k}" ${type === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('');
+    return `
+      <div><label class="text-label-md text-on-surface-variant">자료 유형</label>
+        <select name="type" id="mtype" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">${typeOpts}</select></div>
+      <div><label class="text-label-md text-on-surface-variant">이름 <span class="text-outline">(비우면 유형 기본 이름)</span></label>
+        <input name="name" type="text" value="${esc(item?.name || '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학 교과서"></div>
+      <div id="file-field" class="hidden"><label class="text-label-md text-on-surface-variant">파일 업로드</label>
+        <input name="file" type="file" class="w-full mt-1 text-caption"><p class="text-caption text-on-surface-variant mt-1" id="cur-file"></p></div>
+      <div id="url-field" class="hidden"><label class="text-label-md text-on-surface-variant">링크 주소 (URL)</label>
+        <input name="url" type="url" value="${esc(item?.url && item.url !== '#' ? item.url : '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="https://..."></div>
+      <div><label class="text-label-md text-on-surface-variant">부가 설명 <span class="text-outline">(용량·쪽수·출판사 등, 선택)</span></label>
+        <input name="meta" type="text" value="${esc(item?.meta || '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 12.5 MB · 24쪽"></div>
+      <label class="flex items-center gap-2 p-1 cursor-pointer">
+        <input type="checkbox" name="teacher_only" ${item?.teacher_only ? 'checked' : ''} class="rounded text-primary focus:ring-primary">
+        <span class="text-body-md">교사만 보기 <span class="text-caption text-on-surface-variant">(체크하면 학생 화면에 안 보임)</span></span>
+      </label>
+    `;
+  }
+
+  let editingItem = null;
+  function openModal(item = null) {
+    editingItem = item;
+    const cfg = curConfig();
+    $('modal-title').textContent = (item ? '수정' : '추가') + ' — ' + cfg.title;
+    const form = $('modal-form');
+    if (cfg.material) {
+      form.innerHTML = materialForm(item) + modalButtons();
+      wireMaterialForm(item);
+    } else {
+      form.innerHTML = cfg.fields.map((f) => `<div><label class="text-label-md text-on-surface-variant">${esc(f.label)}${f.required ? ' *' : ''}</label>${fieldInput(f, item?.[f.k])}</div>`).join('') + modalButtons();
+    }
+    $('modal').classList.remove('hidden');
+  }
+  const modalButtons = () => `<div class="flex gap-2 pt-2"><button type="button" id="modal-cancel" class="flex-1 border border-outline-variant py-2.5 rounded-lg text-label-md">취소</button><button type="submit" id="modal-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">저장</button></div>`;
+
+  function wireMaterialForm(item) {
+    const sel = $('mtype');
+    const sync = () => {
+      const t = MATERIAL_TYPES[sel.value];
+      $('file-field').classList.toggle('hidden', !t.file);
+      $('url-field').classList.toggle('hidden', t.file);
+      if (t.file && item?.storage_path) $('cur-file').textContent = '현재 파일: ' + item.storage_path.split('/').pop();
+    };
+    sel.addEventListener('change', sync); sync();
+  }
+
+  $('modal-close').addEventListener('click', closeModal);
+  function closeModal() { $('modal').classList.add('hidden'); $('modal-form').innerHTML = ''; $('modal-form').onsubmit = null; editingItem = null; }
+  $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeModal(); });
+
+  $('modal-form').addEventListener('click', (e) => { if (e.target.id === 'modal-cancel') closeModal(); });
+
+  $('modal-form').addEventListener('submit', async (e) => {
+    if (e.target.querySelector('[name="student_number"], [name="new_password"], [name="class_name"], [name="admin_email"]')) return; // 학생·비번·분반·관리자 폼은 별도 처리
+    e.preventDefault();
+    const cfg = curConfig();
+    const saveBtn = $('modal-save'); saveBtn.disabled = true; saveBtn.textContent = '저장 중…';
+    try {
+      const fd = new FormData(e.target);
+      let payload = {};
+      if (cfg.material) {
+        payload.type = fd.get('type');
+        payload.name = fd.get('name').trim();
+        payload.meta = fd.get('meta').trim();
+        payload.teacher_only = fd.get('teacher_only') === 'on';
+        const t = MATERIAL_TYPES[payload.type];
+        if (t.file) {
+          const file = fd.get('file');
+          if (file && file.size) {
+            const path2 = `${parentId()}/${Date.now()}-${safeStorageName(file.name)}`;
+            await uploadToBucket('materials', path2, file);
+            payload.storage_path = path2;
+            payload.original_filename = file.name;
+            payload.url = supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
+          } else if (!editingItem) {
+            throw new Error('파일을 선택하세요.');
+          }
+        } else {
+          payload.url = (fd.get('url') || '').trim();
+          payload.storage_path = '';
+          if (!payload.url) throw new Error('링크 주소를 입력하세요.');
+        }
+      } else {
+        cfg.fields.forEach((f) => { payload[f.k] = (fd.get(f.k) || '').toString().trim(); });
+      }
+
+      if (editingItem) {
+        const { error } = await supabase.from(cfg.table).update(payload).eq('id', editingItem.id);
+        if (error) throw error;
+        toast('수정되었습니다.');
+      } else {
+        if (cfg.parent) payload[cfg.parent] = parentId();
+        payload.sort_order = Date.now() % 100000; // 맨 뒤로
+        const { error } = await supabase.from(cfg.table).insert(payload);
+        if (error) throw error;
+        toast('추가되었습니다.');
+      }
+      closeModal(); loadLevel();
+    } catch (err) {
+      alert('저장 실패: ' + err.message);
+    } finally {
+      if ($('modal-save')) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
+    }
+  });
+
+  $('add-btn').addEventListener('click', () => openModal(null));
+
+  // ---------------- 삭제 ----------------
+  async function removeItem(item) {
+    const cfg = curConfig();
+    const name = item.name || (MATERIAL_TYPES[item.type]?.label ?? '항목');
+    const warn = cfg.material ? '' : '\n하위 항목(대단원·중단원·소단원·자료)도 함께 삭제됩니다.';
+    if (!confirm(`"${name}"을(를) 삭제할까요?${warn}`)) return;
+    if (cfg.material && item.storage_path) await removeFromBucket('materials', [item.storage_path]);
+    const { error } = await supabase.from(cfg.table).delete().eq('id', item.id);
+    if (error) { alert('삭제 실패: ' + error.message); return; }
+    toast('삭제되었습니다.'); loadLevel();
+  }
+
+  // ---------------- 탭 전환 ----------------
+  let isOwner = false;
+  const TABS = ['curriculum', 'classes', 'students', 'admins'];
+  function switchTab(which) {
+    TABS.forEach((t) => {
+      $(`${t}-view`).classList.toggle('hidden', t !== which);
+      const base = `tab px-md py-2 text-label-md font-bold border-b-2 -mb-px ${t === which ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-primary'}`;
+      $(`tab-${t}`).className = (t === 'admins' && !isOwner ? 'hidden ' : '') + base;
+    });
+    if (which === 'students') loadStudents();
+    if (which === 'classes') loadClasses();
+    if (which === 'admins') loadAdmins();
+  }
+  TABS.forEach((t) => $(`tab-${t}`).addEventListener('click', () => switchTab(t)));
+
+  // ---------------- 분반 관리 ----------------
+  let classesCache = [];
+  async function refreshClassesCache() {
+    const { data } = await supabase.from('classes').select('*').order('name');
+    classesCache = data || [];
+    return classesCache;
+  }
+
+  async function loadClasses() {
+    const [cRes, sRes, lRes] = await Promise.all([
+      supabase.from('classes').select('*').order('name'),
+      supabase.from('subjects').select('id, name').order('sort_order'),
+      supabase.from('class_subjects').select('*'),
+    ]);
+    if (cRes.error) { $('classes-list').innerHTML = `<p class="text-error py-md">불러오기 실패: ${esc(cRes.error.message)}</p>`; return; }
+    classesCache = cRes.data || [];
+    renderClasses(cRes.data || [], sRes.data || [], lRes.data || []);
+  }
+
+  function renderClasses(classes, subjects, links) {
+    if (!classes.length) { $('classes-list').innerHTML = `<div class="text-center text-on-surface-variant py-lg border border-dashed border-outline-variant rounded-xl">아직 분반이 없습니다. "분반 추가"로 만들어 보세요.</div>`; return; }
+    const subjName = (id) => subjects.find((s) => s.id === id)?.name || '';
+    $('classes-list').innerHTML = classes.map((c) => {
+      const subs = links.filter((l) => l.class_id === c.id).map((l) => subjName(l.subject_id)).filter(Boolean);
+      const chips = subs.length ? subs.map((n) => `<span class="text-caption bg-primary-fixed text-primary px-2 py-0.5 rounded-full">${esc(n)}</span>`).join(' ') : '<span class="text-caption text-on-surface-variant">배정된 과목 없음</span>';
+      return `<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center gap-3">
+        <div class="p-2 rounded-lg bg-surface-container text-primary shrink-0"><span class="material-symbols-outlined">group</span></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-label-md font-bold text-on-surface truncate">${esc(c.name)}</p>
+          <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
+        </div>
+        <button data-cact="edit" data-id="${c.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="과목 배정·이름 수정"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+        <button data-cact="del" data-id="${c.id}" data-name="${esc(c.name)}" class="p-2 text-on-surface-variant hover:text-error rounded-lg" title="삭제"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+      </div>`;
+    }).join('');
+    $('classes-list').querySelectorAll('[data-cact]').forEach((el) => el.addEventListener('click', () => {
+      if (el.dataset.cact === 'edit') openClassModal(classes.find((c) => c.id === el.dataset.id), subjects, links);
+      else deleteClass(el.dataset.id, el.dataset.name);
+    }));
+  }
+
+  function openClassModal(cls, subjects, links) {
+    const editing = !!cls;
+    const assigned = new Set(links.filter((l) => cls && l.class_id === cls.id).map((l) => l.subject_id));
+    $('modal-title').textContent = editing ? '분반 수정' : '분반 추가';
+    $('modal-form').innerHTML = `
+      <div><label class="text-label-md text-on-surface-variant">분반 이름 *</label>
+        <input name="class_name" type="text" required value="${editing ? esc(cls.name) : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학2 3반"></div>
+      <div><label class="text-label-md text-on-surface-variant">볼 수 있는 과목</label>
+        <div class="mt-1 space-y-0.5 max-h-56 overflow-y-auto border border-outline-variant rounded-lg p-2">
+          ${subjects.map((s) => `<label class="flex items-center gap-2 p-1 cursor-pointer hover:bg-surface-container rounded"><input type="checkbox" name="subj" value="${s.id}" ${assigned.has(s.id) ? 'checked' : ''} class="rounded text-primary focus:ring-primary"><span class="text-body-md">${esc(s.name)}</span></label>`).join('')}
+        </div></div>
+      <div class="flex gap-2 pt-2">
+        <button type="button" id="modal-cancel" class="flex-1 border border-outline-variant py-2.5 rounded-lg text-label-md">취소</button>
+        <button type="submit" id="class-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">저장</button>
+      </div>`;
+    const form = $('modal-form');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = $('class-save'); btn.disabled = true; btn.textContent = '저장 중…';
+      try {
+        const fd = new FormData(form);
+        const name = fd.get('class_name').trim();
+        const subjectIds = fd.getAll('subj');
+        let classId = cls?.id;
+        if (editing) {
+          const { error } = await supabase.from('classes').update({ name }).eq('id', classId);
+          if (error) throw error;
+        } else {
+          const { data, error } = await supabase.from('classes').insert({ name }).select('id').single();
+          if (error) throw error;
+          classId = data.id;
+        }
+        await supabase.from('class_subjects').delete().eq('class_id', classId);
+        if (subjectIds.length) {
+          const { error: e2 } = await supabase.from('class_subjects').insert(subjectIds.map((sid) => ({ class_id: classId, subject_id: sid })));
+          if (e2) throw e2;
+        }
+        toast('저장되었습니다.'); form.onsubmit = null; closeModal(); loadClasses();
+      } catch (err) { alert('저장 실패: ' + err.message); btn.disabled = false; btn.textContent = '저장'; }
+    };
+    $('modal').classList.remove('hidden');
+  }
+
+  async function deleteClass(id, name) {
+    if (!confirm(`"${name}" 분반을 삭제할까요?\n이 분반 학생들은 분반이 없어져 과목을 못 보게 됩니다.`)) return;
+    const { error } = await supabase.from('classes').delete().eq('id', id);
+    if (error) { alert('삭제 실패: ' + error.message); return; }
+    toast('삭제되었습니다.'); loadClasses();
+  }
+
+  $('add-class-btn').addEventListener('click', async () => {
+    const [sRes, lRes] = await Promise.all([
+      supabase.from('subjects').select('id, name').order('sort_order'),
+      supabase.from('class_subjects').select('*'),
+    ]);
+    openClassModal(null, sRes.data || [], lRes.data || []);
+  });
+
+  // ---------------- 학생 관리 ----------------
+  async function loadStudents() {
+    const [sRes] = await Promise.all([
+      supabase.from('students').select('*, student_classes(class_id)').order('name'),
+      refreshClassesCache(),
+    ]);
+    if (sRes.error) { $('students-list').innerHTML = `<p class="text-error py-md">불러오기 실패: ${esc(sRes.error.message)}</p>`; return; }
+    renderStudents(sRes.data || []);
+  }
+
+  let studentsCache = [];
+  // 학번(예 10901) → 학년1 + 반2 + 번호2
+  function parseSid(sn) {
+    const d = String(sn || '').replace(/[^0-9]/g, '');
+    if (d.length === 5) return { grade: +d[0], cls: +d.slice(1, 3), num: +d.slice(3, 5), ok: true };
+    return { ok: false };
+  }
+  const snNum = (s) => { const d = String(s.student_number || '').replace(/[^0-9]/g, ''); return d ? +d : Infinity; };
+
+  function studentRowHtml(s) {
+    const ids = (s.student_classes || []).map((x) => x.class_id);
+    const chips = ids.map((cid) => {
+      const c = classesCache.find((cc) => cc.id === cid);
+      return c ? `<span class="inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container text-caption px-2 py-0.5 rounded-full">${esc(c.name)}<button data-rm-sid="${s.id}" data-rm-cid="${cid}" class="rm-class leading-none hover:text-error font-bold" title="이 분반에서 빼기">×</button></span>` : '';
+    }).join('');
+    const remaining = classesCache.filter((c) => !ids.includes(c.id));
+    const addSel = remaining.length
+      ? `<select data-add-sid="${s.id}" class="add-class text-caption border border-outline-variant rounded-lg px-1.5 py-1 bg-surface-container-lowest"><option value="">+ 분반 추가</option>${remaining.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>`
+      : '';
+    return `<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3">
+      <div class="flex items-center gap-3">
+        <input type="checkbox" data-sid="${s.id}" class="stu-check rounded border-outline-variant text-primary focus:ring-primary shrink-0" title="선택">
+        <div class="p-2 rounded-lg bg-surface-container text-primary shrink-0"><span class="material-symbols-outlined">person</span></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-label-md font-bold text-on-surface truncate">${esc(s.name)}</p>
+          <p class="text-caption text-on-surface-variant">학번 ${esc(s.student_number)}</p>
+        </div>
+        ${s.must_change_password
+          ? '<span class="text-caption text-secondary bg-secondary-container px-2 py-0.5 rounded-full font-semibold shrink-0 hidden sm:inline">초기 비번</span>'
+          : '<span class="text-caption text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full shrink-0 hidden sm:inline">변경 완료</span>'}
+        <button data-act="rename" data-id="${s.id}" data-name="${esc(s.name)}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="이름 수정"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+        <button data-act="reset" data-id="${s.id}" data-name="${esc(s.name)}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="비밀번호 초기화(학번으로)"><span class="material-symbols-outlined text-[20px]">lock_reset</span></button>
+        <button data-act="del" data-id="${s.id}" data-name="${esc(s.name)}" class="p-2 text-on-surface-variant hover:text-error rounded-lg" title="삭제"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+      </div>
+      <div class="flex flex-wrap items-center gap-1.5 mt-2 sm:pl-11">
+        <span class="material-symbols-outlined text-[16px] text-outline" title="소속 분반">groups</span>
+        ${chips || '<span class="text-caption text-on-surface-variant">분반 없음</span>'}
+        ${addSel}
+      </div>
+    </div>`;
+  }
+
+  function renderStudents(items) {
+    studentsCache = items;
+    if (!items.length) { $('students-list').innerHTML = `<div class="text-center text-on-surface-variant py-lg border border-dashed border-outline-variant rounded-xl">아직 등록된 학생이 없습니다. "학생 추가"로 만들어 보세요.</div>`; $('student-toolbar').classList.add('hidden'); return; }
+    // 학년 > 반 폴더로 그룹핑 (학번 파싱), 반 안에서는 학번 순 정렬
+    const groups = new Map(); // grade -> Map(cls -> [students])
+    items.forEach((s) => {
+      const p = parseSid(s.student_number);
+      const g = p.ok ? p.grade : '기타', c = p.ok ? p.cls : '기타';
+      if (!groups.has(g)) groups.set(g, new Map());
+      const gm = groups.get(g);
+      if (!gm.has(c)) gm.set(c, []);
+      gm.get(c).push(s);
+    });
+    const keySort = (a, b) => (a === '기타' ? 1 : 0) - (b === '기타' ? 1 : 0) || (a - b);
+    let html = '';
+    for (const g of [...groups.keys()].sort(keySort)) {
+      const gm = groups.get(g);
+      const clsKeys = [...gm.keys()].sort(keySort);
+      const gradeCount = clsKeys.reduce((n, c) => n + gm.get(c).length, 0);
+      const gradeLabel = g === '기타' ? '학번 미상' : `${g}학년`;
+      let inner = '';
+      for (const c of clsKeys) {
+        const list = gm.get(c).slice().sort((a, b) => snNum(a) - snNum(b));
+        const clsLabel = c === '기타' ? '반 미상' : `${c}반`;
+        inner += `<details class="mt-2">
+          <summary class="cursor-pointer flex items-center gap-1.5 text-label-md font-semibold text-on-surface-variant px-1 py-1"><span class="material-symbols-outlined text-[18px] arrow">expand_more</span><span class="material-symbols-outlined text-[18px] text-outline">folder</span>${clsLabel} <span class="text-caption text-outline font-normal">(${list.length})</span></summary>
+          <div class="space-y-2 mt-1 pl-2 border-l-2 border-outline-variant ml-2">${list.map(studentRowHtml).join('')}</div>
+        </details>`;
+      }
+      html += `<details class="border border-outline-variant rounded-xl p-2 bg-surface-container-low">
+        <summary class="cursor-pointer flex items-center gap-1.5 text-title-lg font-bold text-on-surface px-1 py-1"><span class="material-symbols-outlined arrow">expand_more</span><span class="material-symbols-outlined text-primary">school</span>${gradeLabel} <span class="text-caption text-on-surface-variant font-normal">(${gradeCount}명)</span></summary>
+        <div class="pl-1">${inner}</div>
+      </details>`;
+    }
+    $('students-list').innerHTML = html;
+    $('students-list').querySelectorAll('[data-act]').forEach((el) => el.addEventListener('click', () => studentAction(el.dataset.act, el.dataset.id, el.dataset.name)));
+    $('students-list').querySelectorAll('.rm-class').forEach((b) => b.addEventListener('click', async () => {
+      try { await callManageStudents({ action: 'remove_class', student_id: b.dataset.rmSid, class_id: b.dataset.rmCid }); loadStudents(); }
+      catch (e) { alert('분반 제거 실패: ' + e.message); }
+    }));
+    $('students-list').querySelectorAll('.add-class').forEach((sel) => sel.addEventListener('change', async () => {
+      if (!sel.value) return;
+      try { await callManageStudents({ action: 'add_class', student_id: sel.dataset.addSid, class_id: sel.value }); toast('분반을 추가했습니다.'); loadStudents(); }
+      catch (e) { alert('분반 추가 실패: ' + e.message); loadStudents(); }
+    }));
+    // 선택 삭제 툴바
+    $('students-list').querySelectorAll('.stu-check').forEach((c) => c.addEventListener('change', updateSelCount));
+    $('student-toolbar').classList.remove('hidden');
+    $('student-toolbar').classList.add('flex');
+    $('stu-select-all').checked = false;
+    $('stu-select-class').innerHTML = '<option value="">분반으로 선택…</option>' + classesCache.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    updateSelCount();
+  }
+
+  // ---- 다중 선택 삭제 ----
+  function selectedSids() { return [...document.querySelectorAll('#students-list .stu-check:checked')].map((c) => c.dataset.sid); }
+  function updateSelCount() {
+    const total = document.querySelectorAll('#students-list .stu-check').length;
+    const n = selectedSids().length;
+    $('stu-sel-count').textContent = n + '명 선택';
+    $('stu-bulk-del').disabled = n === 0;
+    $('stu-select-all').checked = total > 0 && n === total;
+  }
+  async function bulkDeleteSelected() {
+    const sids = selectedSids();
+    if (!sids.length) return;
+    if (!confirm(`선택한 ${sids.length}명의 학생 계정을 완전히 삭제할까요?\n여러 분반에 속한 학생은 모든 분반에서 사라지며, 되돌릴 수 없습니다.`)) return;
+    const btn = $('stu-bulk-del'); btn.disabled = true; const orig = btn.innerHTML; btn.textContent = '삭제 중…';
+    let ok = 0; const fails = [];
+    for (const id of sids) { try { await callManageStudents({ action: 'delete', id }); ok++; } catch (e) { fails.push(e.message); } }
+    btn.innerHTML = orig;
+    toast(`${ok}명 삭제${fails.length ? `, 실패 ${fails.length}` : ''}`);
+    loadStudents();
+  }
+  $('stu-select-all').addEventListener('change', () => {
+    const on = $('stu-select-all').checked;
+    document.querySelectorAll('#students-list .stu-check').forEach((c) => { c.checked = on; });
+    updateSelCount();
+  });
+  $('stu-select-class').addEventListener('change', () => {
+    const cid = $('stu-select-class').value;
+    $('stu-select-class').value = '';
+    if (!cid) return;
+    const target = new Set(studentsCache.filter((s) => (s.student_classes || []).some((x) => x.class_id === cid)).map((s) => s.id));
+    if (!target.size) { toast('그 분반에 속한 학생이 없습니다.'); return; }
+    document.querySelectorAll('#students-list .stu-check').forEach((c) => { if (target.has(c.dataset.sid)) c.checked = true; });
+    updateSelCount();
+  });
+  $('stu-bulk-del').addEventListener('click', bulkDeleteSelected);
+
+  // 이름 수정 (이름 = 로그인 아이디, 유니크 제약으로 중복 방지)
+  function openRename(id, currentName) {
+    $('modal-title').textContent = '이름 수정';
+    $('modal-form').innerHTML = `
+      <div><label class="text-label-md text-on-surface-variant">이름 (로그인 아이디) *</label>
+        <input name="name" type="text" required value="${esc(currentName)}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">
+        <p class="text-caption text-on-surface-variant mt-1">다른 학년에 동명이인이 있으면 구분되게 지어주세요(예: 김민수9, 김민수(1-9)).</p></div>
+      <div class="flex gap-2 pt-2">
+        <button type="button" id="modal-cancel" class="flex-1 border border-outline-variant py-2.5 rounded-lg text-label-md">취소</button>
+        <button type="submit" id="rename-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">저장</button>
+      </div>`;
+    const form = $('modal-form');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const v = new FormData(form).get('name').trim();
+      if (!v || v === currentName) { closeModal(); return; }
+      const btn = $('rename-save'); btn.disabled = true; btn.textContent = '저장 중…';
+      const { error } = await supabase.from('students').update({ name: v }).eq('id', id);
+      if (error) { alert(error.code === '23505' ? ('이미 있는 이름입니다: ' + v) : ('수정 실패: ' + error.message)); btn.disabled = false; btn.textContent = '저장'; return; }
+      toast('이름을 수정했습니다.'); form.onsubmit = null; closeModal(); loadStudents();
+    };
+    $('modal').classList.remove('hidden');
+    setTimeout(() => { const el = $('modal-form').querySelector('[name="name"]'); if (el) { el.focus(); el.select(); } }, 50);
+  }
+
+  async function studentAction(act, id, name) {
+    if (act === 'rename') { openRename(id, name); return; }
+    if (act === 'reset') {
+      if (!confirm(`"${name}"의 비밀번호를 학번으로 초기화할까요? 다음 로그인 때 다시 변경하게 됩니다.`)) return;
+      try { await callManageStudents({ action: 'reset', id }); toast('비밀번호를 초기화했습니다.'); loadStudents(); }
+      catch (e) { alert('실패: ' + e.message); }
+    } else if (act === 'del') {
+      if (!confirm(`"${name}" 학생 계정을 삭제할까요?`)) return;
+      try { await callManageStudents({ action: 'delete', id }); toast('삭제되었습니다.'); loadStudents(); }
+      catch (e) { alert('실패: ' + e.message); }
+    }
+  }
+
+  $('add-student-btn').addEventListener('click', async () => {
+    await refreshClassesCache();
+    const classChecks = classesCache.length
+      ? classesCache.map((c) => `<label class="inline-flex items-center gap-1.5 text-label-md bg-surface-container px-2 py-1 rounded-lg cursor-pointer"><input type="checkbox" name="class_ids" value="${c.id}" class="rounded border-outline-variant text-primary focus:ring-primary">${esc(c.name)}</label>`).join('')
+      : '<p class="text-caption text-on-surface-variant">먼저 "분반 관리"에서 분반을 만들면 여기서 선택할 수 있습니다.</p>';
+    $('modal-title').textContent = '학생 추가';
+    $('modal-form').innerHTML = `
+      <div><label class="text-label-md text-on-surface-variant">아이디 (이름) *</label>
+        <input name="name" type="text" required class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 김능곡 (중복 시 김능곡B)"></div>
+      <div><label class="text-label-md text-on-surface-variant">학번 (초기 비밀번호) *</label>
+        <input name="student_number" type="text" required class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 20301"></div>
+      <div><label class="text-label-md text-on-surface-variant">분반 <span class="text-outline">(여러 개 선택 가능)</span></label>
+        <div class="mt-1 flex flex-wrap gap-2 max-h-40 overflow-auto border border-outline-variant rounded-lg p-2">${classChecks}</div></div>
+      <div class="flex gap-2 pt-2">
+        <button type="button" id="modal-cancel" class="flex-1 border border-outline-variant py-2.5 rounded-lg text-label-md">취소</button>
+        <button type="submit" id="student-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">추가</button>
+      </div>`;
+    const form = $('modal-form');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = $('student-save'); btn.disabled = true; btn.textContent = '추가 중…';
+      try {
+        const fd = new FormData(form);
+        const classIds = [...form.querySelectorAll('input[name="class_ids"]:checked')].map((i) => i.value);
+        await callManageStudents({ action: 'create', name: fd.get('name'), student_number: fd.get('student_number'), class_ids: classIds });
+        toast('학생을 추가했습니다.'); form.onsubmit = null; closeModal(); loadStudents();
+      } catch (err) { alert('추가 실패: ' + err.message); btn.disabled = false; btn.textContent = '추가'; }
+    };
+    $('modal').classList.remove('hidden');
+  });
+
+  // ---------------- 엑셀 일괄 등록 ----------------
+  let bulkRows = [];
+
+  function loadXLSX() {
+    return new Promise((resolve, reject) => {
+      if (window.XLSX) return resolve(window.XLSX);
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('엑셀 라이브러리 초기화에 실패했습니다.'));
+      s.onerror = () => reject(new Error('엑셀 라이브러리를 불러오지 못했습니다. 네트워크(학교망 차단 등)를 확인하세요. — CSV 파일은 그래도 열 수 있어요.'));
+      document.head.appendChild(s);
+    });
+  }
+
+  const normHdr = (k) => String(k).trim().toLowerCase().replace(/[()\s_·|\-]/g, '');
+  const LBL = {
+    name:    ['이름', '성명', '아이디', '학생이름', '성명이름', 'name'],
+    sn:      ['학번', 'studentnumber', 'sn'],
+    cls:     ['분반', '분반명', '반명', 'class', 'classname'],
+    grade:   ['학년', 'grade'],
+    classno: ['반', '학반'],
+    num:     ['번호', '출석번호', '번', 'no'],
+  };
+
+  // 머리글 줄 자동 탐색: 단순표(이름·학번·분반) + NEIS 출석부(성명·학년·반·번호) 모두 대응.
+  // (출석부는 위에 제목 줄들이 있어 머리글이 몇 번째 줄인지 모르므로 스캔한다)
+  function findHeader(rows) {
+    for (let i = 0; i < Math.min(rows.length, 40); i++) {
+      const cells = (rows[i] || []).map(normHdr);
+      const find = (labels) => { for (let c = 0; c < cells.length; c++) if (cells[c] && labels.includes(cells[c])) return c; return -1; };
+      const nameC = find(LBL.name);
+      if (nameC < 0) continue;
+      const snC = find(LBL.sn), clsC = find(LBL.cls), gradeC = find(LBL.grade), classNoC = find(LBL.classno), numC = find(LBL.num);
+      if (snC >= 0 || (gradeC >= 0 && classNoC >= 0 && numC >= 0)) {
+        return { idx: i, nameC, snC, clsC, gradeC, classNoC, numC, neis: snC < 0 };
+      }
+    }
+    return null;
+  }
+
+  const dig = (v) => String(v == null ? '' : v).replace(/[^0-9]/g, '');
+  const cellAt = (row, c) => (c >= 0 && row && row[c] != null) ? String(row[c]).trim() : '';
+  const classNameById = (id) => { const c = classesCache.find((cc) => cc.id === id); return c ? c.name : ''; };
+
+  // XLSX 없이도 되는 간단 CSV 파서 → 2차원 배열
+  function parseCsv(text) {
+    return text.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim() !== '')
+      .map((l) => l.split(',').map((c) => c.replace(/^"(.*)"$/, '$1').trim()));
+  }
+
+  // 파일 → 기본 행 [{name(수정가능), student_number, fileCls}] (검증 전)
+  function parseBulkRows(rows, H) {
+    const out = [];
+    for (let i = H.idx + 1; i < rows.length; i++) {
+      const row = rows[i]; if (!row) continue;
+      const name = cellAt(row, H.nameC);
+      if (!name) continue; // 이름 없는 줄(빈 줄·제목·합계 등) 스킵
+      let sn = '';
+      if (H.snC >= 0) sn = cellAt(row, H.snC);
+      else {
+        const g = dig(cellAt(row, H.gradeC)), b = dig(cellAt(row, H.classNoC)), n = dig(cellAt(row, H.numC));
+        if (g && b && n) sn = g + b.padStart(2, '0') + n.padStart(2, '0'); // 학년+반+번호 → 학번
+      }
+      out.push({ name, student_number: sn, fileCls: cellAt(row, H.clsC) });
+    }
+    return out;
+  }
+
+  // bulkRows(이름·분반 편집 반영)에 대해 분반 결정 + 상태 재판정 → 렌더 (재파싱 없음)
+  function resolveAndValidate() {
+    if (!bulkParsed) return;
+    const defaultClassId = $('bulk-class').value || null;
+    const { existingMap, neis } = bulkParsed;
+    const seen = new Set();
+    bulkRows.forEach((r) => {
+      let class_id = defaultClassId || null;
+      if (r.fileCls) {
+        const c = classesCache.find((cc) => cc.name.trim().toLowerCase() === r.fileCls.toLowerCase());
+        class_id = c ? c.id : (defaultClassId || null);
+      }
+      r.class_id = class_id;
+      r.class_label = class_id ? classNameById(class_id) : '미지정';
+      const existing = existingMap.get(r.name);
+      if (!r.name) { r.status = 'error'; r.action = 'none'; r.existing_id = null; r.msg = '이름 없음'; }
+      else if (seen.has(r.name)) { r.status = 'error'; r.action = 'none'; r.existing_id = null; r.msg = '파일 안에서 이름 중복'; }
+      else if (existing) {
+        r.existing_id = existing.id;
+        if (!class_id) { r.status = 'skip'; r.action = 'none'; r.msg = '기존 학생 · 분반 미선택'; }
+        else if (existing.classIds.has(class_id)) { r.status = 'skip'; r.action = 'none'; r.msg = '이미 이 분반 소속'; }
+        else { r.status = 'ok'; r.action = 'addclass'; r.msg = '기존 학생 → 분반 추가'; }
+      }
+      else if (!r.student_number) { r.status = 'error'; r.action = 'none'; r.existing_id = null; r.msg = neis ? '학년/반/번호가 없어 학번 생성 불가' : '학번 없음'; }
+      else { r.existing_id = null; r.status = class_id ? 'ok' : 'warn'; r.action = 'create'; r.msg = class_id ? ('분반: ' + classNameById(class_id)) : '분반 미지정(그래도 등록)'; }
+      if (r.name) seen.add(r.name);
+    });
+    renderBulkPreview();
+  }
+
+  function renderBulkPreview() {
+    const creates = bulkRows.filter((r) => r.action === 'create').length;
+    const adds = bulkRows.filter((r) => r.action === 'addclass').length;
+    const skips = bulkRows.filter((r) => r.status === 'skip').length;
+    const errs = bulkRows.filter((r) => r.status === 'error').length;
+    const importable = creates + adds;
+    $('bulk-summary').innerHTML = `총 <b>${bulkRows.length}</b>행 · 신규등록 <b class="text-primary">${creates}</b> · 분반추가 <b class="text-primary">${adds}</b>`
+      + (skips ? ` · 건너뜀 <b class="text-on-surface-variant">${skips}</b>` : '')
+      + (errs ? ` · 오류 <b class="text-error">${errs}</b>` : '')
+      + `<br><span class="text-caption text-on-surface-variant">이름 칸을 눌러 직접 수정할 수 있어요(동명이인 구분용).</span>`;
+    const noClass = bulkRows.filter((r) => r.action === 'create' && !r.class_id).length;
+    $('bulk-class').classList.toggle('ring-2', noClass > 0);
+    $('bulk-class').classList.toggle('ring-error', noClass > 0);
+    if (noClass > 0) $('bulk-summary').innerHTML += `<br><span class="text-caption text-error font-bold">⚠ ${noClass}명이 분반 미지정입니다. 위 "기본 분반"을 선택하면 분반이 지정됩니다.</span>`;
+    const badge = (s) => s === 'ok' ? '<span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-caption font-bold">등록</span>'
+      : s === 'warn' ? '<span class="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full text-caption font-bold">경고</span>'
+      : s === 'skip' ? '<span class="text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full text-caption font-bold">건너뜀</span>'
+      : '<span class="text-on-error-container bg-error-container px-2 py-0.5 rounded-full text-caption font-bold">오류</span>';
+    $('bulk-tbody').innerHTML = bulkRows.map((r, i) => `<tr class="border-t border-outline-variant ${r.status === 'error' ? 'bg-error-container/30' : ''}">
+      <td class="px-2 py-1.5 text-on-surface-variant">${i + 1}</td>
+      <td class="px-1 py-1"><input data-bi="${i}" value="${esc(r.name || '')}" class="bulk-name w-28 px-2 py-1 rounded border ${r.status === 'error' ? 'border-error' : 'border-outline-variant'} focus:border-primary focus:ring-1 focus:ring-primary bg-surface text-label-md outline-none"></td>
+      <td class="px-2 py-1.5 text-on-surface-variant">${esc(r.student_number || '—')}</td>
+      <td class="px-2 py-1.5 text-on-surface-variant">${esc(r.class_label || '—')}</td>
+      <td class="px-2 py-1.5">${badge(r.status)}</td>
+      <td class="px-2 py-1.5 text-caption text-on-surface-variant">${esc(r.msg)}</td>
+    </tr>`).join('');
+    $('bulk-tbody').querySelectorAll('.bulk-name').forEach((inp) => inp.addEventListener('change', () => {
+      bulkRows[+inp.dataset.bi].name = inp.value.trim();
+      resolveAndValidate();
+    }));
+    $('bulk-preview').classList.remove('hidden');
+    $('bulk-import').disabled = importable === 0;
+    $('bulk-import').textContent = importable ? `${importable}건 반영` : '등록';
+  }
+
+  let bulkParsed = null; // { existingMap, neis }
+  function rebuildBulk() { resolveAndValidate(); } // 기본 분반 변경 시
+
+  async function openBulk() {
+    bulkRows = []; bulkParsed = null;
+    $('bulk-file').value = '';
+    $('bulk-preview').classList.add('hidden');
+    $('bulk-result').classList.add('hidden');
+    $('bulk-progress').classList.add('hidden');
+    $('bulk-class-row').classList.add('hidden');
+    $('bulk-parse-msg').textContent = '';
+    $('bulk-import').disabled = true; $('bulk-import').textContent = '등록';
+    await refreshClassesCache();
+    $('bulk-class').innerHTML = '<option value="">(분반 미지정)</option>' + classesCache.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    $('bulk-modal').classList.remove('hidden');
+  }
+  function closeBulk() { $('bulk-modal').classList.add('hidden'); }
+
+  async function onBulkFile(file) {
+    $('bulk-result').classList.add('hidden');
+    $('bulk-preview').classList.add('hidden');
+    $('bulk-class-row').classList.add('hidden');
+    $('bulk-parse-msg').innerHTML = '<span class="text-on-surface-variant">파일을 읽는 중…</span>';
+    let rows;
+    const isCsv = /\.csv$/i.test(file.name);
+    try {
+      try {
+        const XLSX = await loadXLSX();
+        const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' }); // 2차원 배열
+      } catch (libErr) {
+        if (isCsv) rows = parseCsv(await file.text()); // CDN 차단 시 CSV는 자체 파서로
+        else throw libErr;
+      }
+    } catch (e) {
+      $('bulk-parse-msg').innerHTML = `<span class="text-error">${esc(e.message)}</span>`;
+      return;
+    }
+    if (!rows || !rows.length) { $('bulk-parse-msg').innerHTML = '<span class="text-error">데이터가 없습니다.</span>'; return; }
+    const H = findHeader(rows);
+    if (!H) { $('bulk-parse-msg').innerHTML = '<span class="text-error">머리글을 찾지 못했습니다. <b>이름·학번</b> 표이거나 NEIS <b>출석부(성명·학년·반·번호)</b> 형식이어야 합니다.</span>'; return; }
+    const { data: existing } = await supabase.from('students').select('id, name, student_classes(class_id)');
+    const existingMap = new Map();
+    (existing || []).forEach((s) => existingMap.set(s.name, { id: s.id, classIds: new Set((s.student_classes || []).map((x) => x.class_id)) }));
+    bulkRows = parseBulkRows(rows, H);
+    bulkParsed = { existingMap, neis: H.neis };
+    resolveAndValidate();
+    $('bulk-class-row').classList.remove('hidden');
+    const kind = H.neis ? 'NEIS 출석부(성명·학년·반·번호)' : '표(이름·학번)';
+    if (!bulkRows.length) {
+      $('bulk-parse-msg').innerHTML = H.neis
+        ? '<span class="text-error">성명(이름) 칸이 비어 있습니다. 이름이 채워진 출석부를 올려주세요.</span>'
+        : '<span class="text-error">등록할 데이터 행을 찾지 못했습니다.</span>';
+      $('bulk-preview').classList.add('hidden');
+      return;
+    }
+    $('bulk-parse-msg').innerHTML = `<span class="text-on-surface-variant">${esc(file.name)} · <b>${kind}</b> 인식 · ${bulkRows.length}행</span>`;
+  }
+
+  async function runBulkImport() {
+    const targets = bulkRows.filter((r) => r.action === 'create' || r.action === 'addclass');
+    if (!targets.length) return;
+    $('bulk-import').disabled = true;
+    $('bulk-cancel').disabled = true;
+    $('bulk-progress').classList.remove('hidden');
+    let created = 0, added = 0; const fails = [];
+    for (let i = 0; i < targets.length; i++) {
+      const r = targets[i];
+      $('bulk-progress').innerHTML = `<div class="flex items-center gap-2 text-on-surface-variant"><span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>${i + 1} / ${targets.length} 처리 중… (${esc(r.name)})</div>`;
+      try {
+        if (r.action === 'create') {
+          await callManageStudents({ action: 'create', name: r.name, student_number: r.student_number, class_ids: r.class_id ? [r.class_id] : [] });
+          created++;
+        } else {
+          await callManageStudents({ action: 'add_class', student_id: r.existing_id, class_id: r.class_id });
+          added++;
+        }
+      } catch (e) { fails.push({ name: r.name, msg: e.message }); }
+    }
+    $('bulk-progress').classList.add('hidden');
+    $('bulk-cancel').disabled = false;
+    $('bulk-result').classList.remove('hidden');
+    $('bulk-result').innerHTML = `<div class="rounded-lg border border-outline-variant p-sm">
+      <p class="font-bold text-on-surface mb-1">완료</p>
+      <p class="text-emerald-700">신규 등록 ${created}명 · 분반 추가 ${added}명</p>
+      ${fails.length ? `<p class="text-error mt-1">실패 ${fails.length}명</p><ul class="text-caption text-on-surface-variant list-disc pl-5 mt-1 max-h-32 overflow-auto">${fails.map((f) => `<li>${esc(f.name)}: ${esc(f.msg)}</li>`).join('')}</ul>` : ''}
+    </div>`;
+    toast(`신규 ${created} · 분반추가 ${added}${fails.length ? ` · 실패 ${fails.length}` : ''}`);
+    loadStudents();
+  }
+
+  function downloadTemplate() {
+    const csv = '이름,학번,분반\n김능곡,20301,1반\n박능실,20302,2반\n';
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = '학생등록_템플릿.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  $('bulk-student-btn').addEventListener('click', openBulk);
+  $('bulk-close').addEventListener('click', closeBulk);
+  $('bulk-cancel').addEventListener('click', closeBulk);
+  $('bulk-template').addEventListener('click', downloadTemplate);
+  $('bulk-file').addEventListener('change', (e) => { if (e.target.files[0]) onBulkFile(e.target.files[0]); });
+  $('bulk-class').addEventListener('change', rebuildBulk);
+  $('bulk-import').addEventListener('click', runBulkImport);
+
+  // ---------------- 관리자 계정 관리 (소유자 전용) ----------------
+  async function loadAdmins() {
+    const { data, error } = await supabase.from('admins').select('*').order('email');
+    if (error) { $('admins-list').innerHTML = `<p class="text-error py-md">불러오기 실패: ${esc(error.message)}</p>`; return; }
+    renderAdmins(data || []);
+  }
+
+  function renderAdmins(items) {
+    if (!items.length) { $('admins-list').innerHTML = '<div class="text-center text-on-surface-variant py-lg">관리자가 없습니다.</div>'; return; }
+    $('admins-list').innerHTML = items.map((a) => `
+      <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center gap-3">
+        <div class="p-2 rounded-lg ${a.is_owner ? 'bg-primary text-white' : 'bg-surface-container text-primary'} shrink-0"><span class="material-symbols-outlined">${a.is_owner ? 'shield_person' : 'manage_accounts'}</span></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-label-md font-bold text-on-surface truncate">${esc(a.email)}</p>
+          <p class="text-caption text-on-surface-variant">${a.is_owner ? '소유자 (삭제 불가)' : '관리자'}</p>
+        </div>
+        ${a.is_owner ? '' : `<button data-aemail="${esc(a.email)}" class="p-2 text-on-surface-variant hover:text-error rounded-lg" title="관리자 삭제"><span class="material-symbols-outlined text-[20px]">delete</span></button>`}
+      </div>`).join('');
+    $('admins-list').querySelectorAll('[data-aemail]').forEach((el) => el.addEventListener('click', () => deleteAdmin(el.dataset.aemail)));
+  }
+
+  async function deleteAdmin(email) {
+    if (!confirm(`관리자 "${email}"을(를) 삭제할까요?\n이 계정은 더 이상 로그인·관리할 수 없게 됩니다.`)) return;
+    try { await callManageStudents({ action: 'delete_admin', email }); toast('관리자를 삭제했습니다.'); loadAdmins(); }
+    catch (e) { alert('삭제 실패: ' + e.message); }
+  }
+
+  $('add-admin-btn').addEventListener('click', () => {
+    $('modal-title').textContent = '관리자 초대';
+    $('modal-form').innerHTML = `
+      <div><label class="text-label-md text-on-surface-variant">이메일 *</label>
+        <input name="admin_email" type="email" required class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="teacher@school.com"></div>
+      <div><label class="text-label-md text-on-surface-variant">초기 비밀번호 * <span class="text-outline">(4자 이상)</span></label>
+        <input name="admin_password" type="text" required minlength="4" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="선생님께 알려줄 초기 비밀번호"></div>
+      <p class="text-caption text-on-surface-variant">이 이메일과 비밀번호로 관리자 페이지에 로그인합니다. 로그인 후 본인이 비밀번호를 바꾸도록 안내해 주세요.</p>
+      <div class="flex gap-2 pt-2">
+        <button type="button" id="modal-cancel" class="flex-1 border border-outline-variant py-2.5 rounded-lg text-label-md">취소</button>
+        <button type="submit" id="admin-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">초대</button>
+      </div>`;
+    const form = $('modal-form');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = $('admin-save'); btn.disabled = true; btn.textContent = '초대 중…';
+      try {
+        const fd = new FormData(form);
+        await callManageStudents({ action: 'create_admin', email: fd.get('admin_email'), password: fd.get('admin_password') });
+        toast('관리자를 초대했습니다.'); form.onsubmit = null; closeModal(); loadAdmins();
+      } catch (err) { alert('초대 실패: ' + err.message); btn.disabled = false; btn.textContent = '초대'; }
+    };
+    $('modal').classList.remove('hidden');
+  });
+
+  // ---------------- 교사 비밀번호 변경 ----------------
+  $('change-pw-btn').addEventListener('click', () => {
+    $('modal-title').textContent = '내 비밀번호 변경';
+    $('modal-form').innerHTML = `
+      <div><label class="text-label-md text-on-surface-variant">새 비밀번호 (6자 이상)</label>
+        <input name="new_password" type="password" required minlength="6" autocomplete="new-password" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="새 비밀번호"></div>
+      <div><label class="text-label-md text-on-surface-variant">새 비밀번호 확인</label>
+        <input name="new_password2" type="password" required minlength="6" autocomplete="new-password" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="한 번 더 입력"></div>
+      <div class="flex gap-2 pt-2">
+        <button type="button" id="modal-cancel" class="flex-1 border border-outline-variant py-2.5 rounded-lg text-label-md">취소</button>
+        <button type="submit" id="pw-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">변경</button>
+      </div>`;
+    const form = $('modal-form');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const p1 = fd.get('new_password'), p2 = fd.get('new_password2');
+      if (p1 !== p2) { alert('두 비밀번호가 일치하지 않습니다.'); return; }
+      if (p1.length < 6) { alert('비밀번호는 6자 이상이어야 합니다.'); return; }
+      const btn = $('pw-save'); btn.disabled = true; btn.textContent = '변경 중…';
+      try {
+        const { error } = await supabase.auth.updateUser({ password: p1 });
+        if (error) throw error;
+        toast('비밀번호를 변경했습니다.'); form.onsubmit = null; closeModal();
+      } catch (err) { alert('변경 실패: ' + err.message); btn.disabled = false; btn.textContent = '변경'; }
+    };
+    $('modal').classList.remove('hidden');
+  });
+
+  // 시작
+  refreshAuth();
+})();
+</script>
+
+</body>
+</html>

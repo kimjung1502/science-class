@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>구글 드라이브 연결 · 정환쌤과 함께하는 과학 수업</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Malgun Gothic", sans-serif; background: #f8f9ff; color: #0d1c2e; margin: 0; display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
+  .card { max-width: 440px; width: 100%; background: #fff; border: 1px solid #c1c6d6; border-radius: 16px; padding: 32px 28px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+  .icon { font-size: 48px; margin-bottom: 12px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { font-size: 15px; line-height: 1.6; color: #414754; margin: 0 0 8px; }
+  .btn { display: inline-block; margin-top: 16px; background: #005bbf; color: #fff; text-decoration: none; font-weight: 700; padding: 12px 24px; border-radius: 10px; border: 0; cursor: pointer; font-size: 15px; }
+  .muted { color: #727785; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="icon">⏳</div>
+  <h1>구글 드라이브 연결 중…</h1>
+  <p class="muted">잠시만 기다려 주세요.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<script>
+(function () {
+  const card = document.getElementById('card');
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  const stateParam = params.get('state');
+  const err = params.get('error');
+  const redirectUri = location.origin + location.pathname; // 이 콜백 URL (authurl 때와 동일해야 함)
+  const returnTo = sessionStorage.getItem('drive_return_to') || '과목-선택.html';
+
+  function show(icon, title, msg, btnText, btnHref) {
+    card.innerHTML = `<div class="icon">${icon}</div><h1>${title}</h1><p>${msg}</p>` +
+      (btnText ? `<a class="btn" href="${btnHref}">${btnText}</a>` : '');
+  }
+
+  (async () => {
+    if (err) { show('⚠️', '연결이 취소되었어요', '구글 인증이 취소되었거나 오류가 발생했습니다. (' + err + ')', '돌아가기', returnTo); return; }
+    if (!code) { show('⚠️', '잘못된 접근', '인증 코드가 없습니다.', '돌아가기', returnTo); return; }
+    const savedState = sessionStorage.getItem('drive_oauth_state');
+    if (savedState && stateParam && savedState !== stateParam) { show('⚠️', '보안 확인 실패', '요청이 일치하지 않습니다. 다시 시도해 주세요.', '돌아가기', returnTo); return; }
+    try {
+      const { data: { session } } = await window.DB.supabase.auth.getSession();
+      if (!session) { show('🔒', '로그인이 필요해요', '관리자로 로그인한 뒤 다시 연결해 주세요.', '학생/교사 로그인', '학생-로그인.html'); return; }
+      const out = await window.DB.driveExchange(code, redirectUri);
+      sessionStorage.removeItem('drive_oauth_state');
+      show('✅', '구글 드라이브 연결 완료!', (out.email ? ('연결된 계정: <b>' + out.email + '</b><br>') : '') + '이제 학생 제출 파일이 선생님 드라이브에 저장됩니다.', '산출물 제출로 돌아가기', returnTo);
+    } catch (e) {
+      show('⚠️', '연결 실패', (e.message || '알 수 없는 오류') + '', '다시 시도', returnTo);
+    }
+  })();
+})();
+</script>
+</body>
+</html>

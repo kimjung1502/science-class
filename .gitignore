@@ -1,0 +1,10 @@
+# 에디터/에이전트 로컬 설정 (배포 불필요)
+.claude/
+
+# OS 부산물 (Windows / Google Drive)
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 개발용 임시
+*.log
