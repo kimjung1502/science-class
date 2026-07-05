@@ -681,7 +681,6 @@
       const out = await extractAssessmentFromPdf(b64, unitsForAi());
       const d = (out && out.data) || {};
       if (d.title) $('f-title').value = d.title;
-      if (d.status && ['ongoing', 'upcoming', 'closed'].includes(d.status)) $('f-status').value = d.status;
       if (d.weight) $('f-weight').value = d.weight;
       if (Array.isArray(d.tags) && d.tags.length) $('f-tags').value = d.tags.join(', ');
       if (d.summary) $('f-summary').value = d.summary;
@@ -689,6 +688,15 @@
       const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
       if (isDate(d.start_date)) $('f-start').value = d.start_date;
       if (isDate(d.due_date)) $('f-due').value = d.due_date;
+      // 상태는 날짜가 있으면 오늘 기준으로 계산(문서에 적힌 시점이 아니라 실제 기준). 날짜 없으면 Claude 추출값.
+      const t = today();
+      let status = (d.status && ['ongoing', 'upcoming', 'closed'].includes(d.status)) ? d.status : '';
+      if (isDate(d.start_date) || isDate(d.due_date)) {
+        if (isDate(d.due_date) && d.due_date < t) status = 'closed';
+        else if (isDate(d.start_date) && d.start_date > t) status = 'upcoming';
+        else status = 'ongoing';
+      }
+      if (status) $('f-status').value = status;
       if (Array.isArray(d.rubric) && d.rubric.length) {
         $('rubric-rows').innerHTML = '';
         d.rubric.forEach(addRubricRow);
