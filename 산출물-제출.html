@@ -465,7 +465,8 @@
       const state = Math.random().toString(36).slice(2) + Date.now();
       sessionStorage.setItem('drive_oauth_state', state);
       sessionStorage.setItem('drive_return_to', '산출물-제출.html' + location.search);
-      const redirectUri = location.origin + '/google-callback.html';
+      // 하위경로 배포 안전: 현재 폴더 기준으로 콜백 URL 생성 (google-callback.html의 origin+pathname과 일치해야 함)
+      const redirectUri = location.origin + location.pathname.replace(/[^/]*$/, '') + 'google-callback.html';
       const { url } = await window.DB.driveAuthUrl(redirectUri, state);
       location.href = url;
     } catch (e) { alert('연결 시작 실패: ' + e.message); }
