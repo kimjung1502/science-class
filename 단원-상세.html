@@ -154,7 +154,7 @@
   const subjectId = params.get('subject');
 
   const $ = (id) => document.getElementById(id);
-  const state = { tree: null, lastUnitId: null, midUnitId: null, subunitId: null, isAdmin: false, addingSubId: null };
+  const state = { tree: null, lastUnitId: null, midUnitId: null, subunitId: null, isAdmin: false, addingSubId: null, student: null };
 
   // ---------- 모바일 사이드바 서랍 ----------
   function openSidebar() { $('sidebar').classList.add('drawer-open'); $('sidebar-backdrop').classList.remove('hidden'); }
@@ -232,12 +232,19 @@
     </div>`;
   }
 
+  // html 실험 자료 안에서 이름·학번 입력창 없이 바로 쓸 수 있도록, 이 사이트에 로그인한 학생 정보를
+  // window.__SITE_STUDENT__ 전역으로 주입해 넘겨준다(해당 페이지 쪽에서 읽어 자동으로 채움).
+  function injectStudentInfo(html) {
+    const info = state.student ? { name: state.student.name || '', sid: state.student.student_number || '' } : null;
+    const tag = '<scr' + 'ipt>window.__SITE_STUDENT__=' + JSON.stringify(info).replace(/</g, '\\u003c') + ';</scr' + 'ipt>';
+    return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + tag) : tag + html;
+  }
   async function loadHtmlIntoIframe(iframe, url) {
     iframe.srcdoc = '<p style="font:14px system-ui;padding:16px;color:#666">불러오는 중…</p>';
     try {
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error('불러오기 실패 (' + res.status + ')');
-      iframe.srcdoc = await res.text();
+      iframe.srcdoc = injectStudentInfo(await res.text());
     } catch (e) {
       iframe.srcdoc = '<p style="font:14px system-ui;padding:16px;color:#b3261e">불러오지 못했습니다: ' + esc(e.message) + '</p>';
     }
@@ -248,7 +255,7 @@
     try {
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error('불러오기 실패 (' + res.status + ')');
-      const text = await res.text();
+      const text = injectStudentInfo(await res.text());
       const blobUrl = URL.createObjectURL(new Blob([text], { type: 'text/html' }));
       if (w) w.location = blobUrl;
     } catch (e) {
@@ -601,6 +608,7 @@
     const auth = await requireLogin(); // 로그인 필수
     if (!auth) return;
     state.isAdmin = !auth.student; // 학생이 아니면 교사(관리자)
+    state.student = auth.student || null;
     if (!subjectId) { location.replace('과목-선택.html'); return; }
     try {
       state.tree = await fetchSubjectTree(subjectId);
