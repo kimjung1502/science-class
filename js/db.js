@@ -136,6 +136,7 @@
     quiz:     { label: '형성평가 평가지', icon: 'quiz',           action: 'edit_note',   box: 'bg-green-50 text-green-600',   file: true },
     textbook: { label: '교과서',        icon: 'menu_book',      action: 'open_in_new', box: 'bg-indigo-50 text-indigo-600', file: false, newTab: true },
     link:     { label: '링크 자료',      icon: 'link',           action: 'open_in_new', box: 'bg-slate-100 text-slate-600',  file: false, newTab: true },
+    html:     { label: '실험 자료(HTML)', icon: 'science',       action: 'expand_more', box: 'bg-violet-50 text-violet-600', file: true, newTab: false },
   };
 
   const ACCENTS = {

@@ -144,7 +144,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260705a"></script>
+<script src="js/db.js?v=20260710a"></script>
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
@@ -183,10 +183,18 @@
     const name = m.name || t.label;
     // 파일형인데 storage_path가 없으면 외부(구글 드라이브 등) 링크 → 새 탭으로 열기, ?download 미부여
     const isExternal = t.file && !m.storage_path && m.url && m.url !== '#';
+    let href = m.url || '#';
+
+    // html 자료(실험 페이지 등): 링크로 열지 않고 카드 아래에 아코디언으로 펼쳐서 바로 보여준다.
+    // (Supabase 공개 오브젝트가 XSS 방지로 text/html을 text/plain으로 내려서 그냥 링크로 열면 소스가 보임
+    //  → 아코디언을 펼 때 fetch로 원문을 받아 iframe에 srcdoc으로 주입해 렌더링)
+    if (m.type === 'html' && !isExternal && href !== '#') {
+      return materialHtmlCard(m, t, name, href);
+    }
+
     const newTab = t.newTab || isExternal;
     const tabAttr = newTab ? ' target="_blank" rel="noopener"' : '';
     const meta = m.meta || (newTab ? '새 탭에서 열기' : '');
-    let href = m.url || '#';
     // 업로드 파일(Supabase): 다운로드 시 원본(한글) 파일명으로 받게 ?download 부여 (영상·외부링크 제외)
     if (t.file && !isExternal && m.original_filename && m.type !== 'video' && href !== '#') {
       href += (href.indexOf('?') >= 0 ? '&' : '?') + 'download=' + encodeURIComponent(m.original_filename);
@@ -200,10 +208,59 @@
     </a>`;
   }
 
+  function materialHtmlCard(m, t, name, href) {
+    const teacherBadge = m.teacher_only ? '<span class="text-caption text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '';
+    const meta = m.meta || '눌러서 펼치기';
+    const panelId = 'mat-html-panel-' + m.id;
+    return `<div class="col-span-full bg-white border border-outline-variant rounded-lg overflow-hidden">
+      <button type="button" class="mat-html-toggle w-full group p-sm flex items-center gap-3 min-h-[56px] text-left hover:bg-surface-container-low transition-colors" data-html-src="${esc(href)}" data-panel="${panelId}" aria-expanded="false">
+        <div class="p-2 ${t.box} rounded shrink-0"><span class="material-symbols-outlined">${t.icon}</span></div>
+        <div class="flex-1 overflow-hidden"><p class="text-label-md font-bold truncate">${esc(name)}</p><p class="text-caption text-on-surface-variant truncate">${esc(meta)}</p></div>
+        ${teacherBadge}
+        <span class="material-symbols-outlined text-outline mat-html-arrow transition-transform">expand_more</span>
+      </button>
+      <div class="acc-panel" id="${panelId}" style="height:0">
+        <div class="border-t border-outline-variant bg-surface-container-lowest">
+          <div class="flex items-center justify-end p-1.5">
+            <button type="button" class="mat-html-newtab inline-flex items-center gap-1 text-caption text-on-surface-variant hover:text-primary px-2 py-1 rounded" data-html-src="${esc(href)}">
+              <span class="material-symbols-outlined text-[16px]">open_in_new</span>새 탭에서 크게 보기
+            </button>
+          </div>
+          <div style="height:min(80vh,760px)"><iframe class="w-full h-full border-0" title="${esc(name)}"></iframe></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  async function loadHtmlIntoIframe(iframe, url) {
+    iframe.srcdoc = '<p style="font:14px system-ui;padding:16px;color:#666">불러오는 중…</p>';
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('불러오기 실패 (' + res.status + ')');
+      iframe.srcdoc = await res.text();
+    } catch (e) {
+      iframe.srcdoc = '<p style="font:14px system-ui;padding:16px;color:#b3261e">불러오지 못했습니다: ' + esc(e.message) + '</p>';
+    }
+  }
+  // 새 탭에서 크게 보기: 팝업 차단 회피를 위해 먼저 빈 탭을 열고, fetch한 원문을 text/html Blob으로 교체
+  async function openHtmlMaterial(url) {
+    const w = window.open('', '_blank');
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('불러오기 실패 (' + res.status + ')');
+      const text = await res.text();
+      const blobUrl = URL.createObjectURL(new Blob([text], { type: 'text/html' }));
+      if (w) w.location = blobUrl;
+    } catch (e) {
+      if (w) w.document.write('페이지를 불러오지 못했습니다: ' + esc(e.message));
+    }
+  }
+
   function matCardWrap(m) {
     const card = materialCard(m);
     if (!state.isAdmin) return card;
-    return `<div class="relative group/mat">${card}
+    const wrapClass = m.type === 'html' ? 'relative group/mat col-span-full' : 'relative group/mat';
+    return `<div class="${wrapClass}">${card}
       <button data-del-mat="${m.id}" data-del-path="${esc(m.storage_path || '')}" title="자료 삭제" class="del-material absolute top-1.5 right-1.5 p-1 rounded-md bg-white/95 border border-outline-variant text-on-surface-variant hover:text-error shadow-sm opacity-0 group-hover/mat:opacity-100 transition-opacity">
         <span class="material-symbols-outlined text-[16px]">delete</span></button>
     </div>`;
@@ -373,6 +430,22 @@
       const open = btn.querySelector('.arrow').classList.toggle('rotate-180');
       btn.setAttribute('aria-expanded', open);
       setOpen(box, open);
+    }));
+    document.querySelectorAll('#subunit-list .mat-html-toggle').forEach((btn) => btn.addEventListener('click', () => {
+      const panel = document.getElementById(btn.dataset.panel);
+      const arrow = btn.querySelector('.mat-html-arrow');
+      const opening = !arrow.classList.contains('rotate-180');
+      arrow.classList.toggle('rotate-180', opening);
+      btn.setAttribute('aria-expanded', opening);
+      if (opening) {
+        const iframe = panel.querySelector('iframe');
+        if (!iframe.dataset.loaded) { iframe.dataset.loaded = '1'; loadHtmlIntoIframe(iframe, btn.dataset.htmlSrc); }
+      }
+      setOpen(panel, opening);
+    }));
+    document.querySelectorAll('#subunit-list .mat-html-newtab').forEach((btn) => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openHtmlMaterial(btn.dataset.htmlSrc);
     }));
     if (state.isAdmin) {
       document.querySelectorAll('#subunit-list .add-material').forEach((btn) => btn.addEventListener('click', (e) => { e.stopPropagation(); openMatModal(btn.dataset.addSub); }));
