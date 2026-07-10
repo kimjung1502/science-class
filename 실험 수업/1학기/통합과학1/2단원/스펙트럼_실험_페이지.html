@@ -507,9 +507,13 @@
     state.name = (site && site.name) || "";
     state.sid = (site && site.sid) || "";
     whochip.textContent = (state.sid||"학번")+" · "+(state.name||"이름");
-    wholine.textContent = site
-      ? "🙋 " + (site.sid||"학번 없음") + " · " + (site.name||"이름 없음") + " 로 로그인되어 있어요"
-      : "⚠️ 로그인 정보를 확인할 수 없어요 — 수업 사이트를 통해 들어와 주세요.";
+    if (!site) {
+      wholine.textContent = "⚠️ 로그인 정보를 확인할 수 없어요 — 수업 사이트를 통해 들어와 주세요.";
+    } else if (site.isAdmin) {
+      wholine.textContent = "🧑‍🏫 교사 미리보기 모드예요. 학생 계정으로 열면 이름·학번이 자동으로 채워져요.";
+    } else {
+      wholine.textContent = "🙋 " + (site.sid||"학번 없음") + " · " + (site.name||"이름 없음") + " 로 로그인되어 있어요";
+    }
   })();
   startBtn.addEventListener("click",()=>{reveal("#s2",2);setTimeout(()=>$("#s2 input[type=text]").focus(),400);});
 
