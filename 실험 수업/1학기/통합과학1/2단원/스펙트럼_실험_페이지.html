@@ -212,8 +212,7 @@
       <div class="stagehead"><div class="num" id="num2">2</div><div><h2>스펙트럼 복습</h2><div class="sub">배운 걸 떠올리며 빈칸을 채워 보자 👇</div></div></div>
       <div class="card">
         <div class="tags"><span class="tag key">핵심</span><span class="tag book">📖 통합과학1 · 물질과 규칙성</span></div>
-        <img class="specimg" id="specimg" alt="(가) 연속, (나) 방출선, (다) 흡수 스펙트럼 비교">
-        <p class="cap">(가) 위: 연속 · (나) 가운데: 밝은 선 · (다) 아래: 무지개 위 검은 선</p>
+        <img class="specimg" id="specimg" alt="(가), (나), (다) 세 가지 스펙트럼 비교">
         <div class="q"><p class="qtext">1. 빛을 프리즘·분광기에 통과시킬 때 나타나는 여러 색의 띠를 <span class="blank"><input type="text" data-a="스펙트럼" placeholder="정답"></span> 이라 한다. <span class="mark" data-m></span></p></div>
         <div class="q"><p class="qtext">2. (가)처럼 색이 끊김 없이 이어지는 것은 <span class="blank"><input type="text" data-a="연속" placeholder="정답"></span> 스펙트럼이다. <span class="mark" data-m></span></p></div>
         <div class="q"><p class="qtext">3. (나)처럼 검은 배경에 밝은 선만 나타나는 것은 <span class="blank"><input type="text" data-a="방출|방출선|선" placeholder="정답"></span> 스펙트럼이다. <span class="mark" data-m></span></p></div>
@@ -516,7 +515,7 @@
 
   // ---- Stage 2 ----
   const norm=v=>v.trim().replace(/\s/g,"").replace(/스펙트럼$/,"");
-  $("#checkBtn").addEventListener("click",()=>{let allok=true;$$("#s2 .q").forEach(q=>{const inp=q.querySelector("input[type=text]"),mark=q.querySelector("[data-m]"),acc=inp.dataset.a.split("|").map(norm),ok=acc.includes(norm(inp.value));if(!inp.value.trim()){mark.textContent="";allok=false;return;}mark.textContent=ok?"✔":"✗";mark.className="mark "+(ok?"ok":"no");inp.style.borderColor=ok?"var(--good)":"var(--bad)";if(!ok)allok=false;});const res=$("#reviewResult");res.classList.add("show");if(allok){res.textContent="✅ 모두 정답! 아래 '다음으로 계속'이 열렸어요.";res.className="result show good";$("#next2").disabled=false;$("#lock2").style.display="none";$("#num2").classList.add("done");}else{res.textContent="아직 빈칸이 있거나 틀린 게 있어요. 힌트를 써 봐도 좋아요 💡";res.className="result show bad";}});
+  $("#checkBtn").addEventListener("click",()=>{let allok=true;$$("#s2 .q").forEach(q=>{const inp=q.querySelector("input[type=text]"),mark=q.querySelector("[data-m]"),acc=inp.dataset.a.split("|").map(norm),ok=acc.includes(norm(inp.value));if(!inp.value.trim()){mark.textContent="";allok=false;return;}mark.textContent=ok?"✔":"✗";mark.className="mark "+(ok?"ok":"no");inp.style.borderColor=ok?"var(--good)":"var(--bad)";if(!ok)allok=false;});const res=$("#reviewResult");res.classList.add("show");if(allok){res.textContent="✅ 모두 정답! 아래 '다음으로 계속'이 열렸어요.";res.className="result show good";$("#next2").disabled=false;$("#lock2").style.display="none";$("#num2").classList.add("done");}else{res.textContent="아직 빈칸이 있거나 틀린 게 있어요. 다시 한번 생각해 봐요 🤔";res.className="result show bad";}});
   $("#next2").addEventListener("click",()=>reveal("#s3",3));
 
   // ---- Stage 3 ----
