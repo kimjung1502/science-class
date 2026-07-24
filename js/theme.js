@@ -277,6 +277,21 @@
   ICONS.functions = '<path d="M17 4H6l6 8-6 8h11"/>';
   ICONS.monitoring = '<path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/><path d="M18 8h3v3"/>';
 
+  // 마인드맵 에디터용 아이콘
+  ICONS.save = '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>';
+  ICONS.zoom_in = '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/>';
+  ICONS.zoom_out = '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/>';
+  ICONS.fit_screen = '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/>';
+  ICONS.add_road = '<path d="M4 19V5M20 19v-6M12 19v-2M12 13v-2M12 7V5"/><path d="M16 8h6M19 5v6"/>';
+
+  // PDF 판서 페이지용 아이콘
+  ICONS.chevron_left = '<path d="m15 18-6-6 6-6"/>';
+  ICONS.undo = '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H9"/>';
+  ICONS.redo = '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H15"/>';
+  ICONS.ink_eraser = '<path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l9.6-9.6a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>';
+  ICONS.pan_tool = '<path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>';
+  ICONS.draw = '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/><path d="m15 5 3 3"/>';
+
   var FALLBACK = '<circle cx="12" cy="12" r="8"/>';
   var SPIN = { progress_activity: 1, hourglass_top: 1 };
 

@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
+<title>PDF 판서 · 정환쌤과 함께하는 과학 수업</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="js/theme.js?v=20260724c"></script>
+<!-- PDF 렌더링(PDF.js) · 수업자료 불러오기(Supabase) -->
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<style>
+  html, body { height: 100%; }
+  /* 판서 무대: 자체 스크롤. 배경은 종이빛(모눈 없이 차분하게) */
+  #stage { background:#EDEAE0; }
+  #stage::-webkit-scrollbar { width:12px; height:12px; }
+  #stage::-webkit-scrollbar-thumb { background:#C9C6B6; border-radius:8px; border:3px solid #EDEAE0; }
+  /* 캔버스 겹치기 */
+  .canvas-wrap { position:relative; box-shadow:0 10px 40px -18px rgba(22,33,62,.55); }
+  #pdf-canvas { display:block; background:#fff; }
+  #ink-canvas { position:absolute; inset:0; touch-action:none; cursor:crosshair; }
+  #ink-canvas.tool-pan { cursor:grab; }
+  #ink-canvas.tool-pan.grabbing { cursor:grabbing; }
+  #ink-canvas.tool-eraser { cursor:cell; }
+  /* 툴바 버튼 */
+  .tbtn { display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:10px;
+          font-size:13px; font-weight:700; color:#2C3A5E; background:#fff; border:1px solid #E7E4D6;
+          transition:background .15s, color .15s, border-color .15s, transform .1s; white-space:nowrap; }
+  .tbtn:hover { background:#F4F2E9; }
+  .tbtn:active { transform:translateY(1px); }
+  .tbtn.on { background:#16213E; color:#fff; border-color:#16213E; }
+  .tbtn.on .lab-ic { color:#C4E000; }
+  .tbtn:disabled { opacity:.4; cursor:not-allowed; }
+  .swatch { width:26px; height:26px; border-radius:50%; border:2px solid #fff;
+            box-shadow:0 0 0 1px rgba(22,33,62,.2); cursor:pointer; transition:transform .12s; }
+  .swatch:hover { transform:scale(1.12); }
+  .swatch.on { box-shadow:0 0 0 2px #16213E, 0 0 0 4px #C4E000; }
+  .divider { width:1px; align-self:stretch; background:#E0DCCC; margin:2px 2px; }
+  /* 드롭존/빈 상태 */
+  #dropzone.dragover { outline:3px dashed #C4E000; outline-offset:-14px; background:#F4F7E4; }
+  /* 전체화면일 때 무대가 화면을 꽉 채우도록 */
+  #app:fullscreen { background:#EDEAE0; }
+  #app:fullscreen #stage { height:100vh; }
+</style>
+</head>
+<body class="font-sans text-ink antialiased">
+
+<div id="app" class="flex flex-col h-full">
+
+  <!-- ================= 툴바 ================= -->
+  <header class="shrink-0 border-b border-ink/15 bg-paper/95 backdrop-blur-md">
+    <!-- 상단: 제목 + 파일/자료/전체화면 -->
+    <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-ink/10">
+      <div class="flex items-center gap-3 min-w-0">
+        <a href="과목-선택.html" title="과목 선택으로" class="shrink-0 flex items-center gap-1 text-[13px] text-ink3 hover:text-signal">
+          <span class="material-symbols-outlined text-[18px]">arrow_back</span><span class="hidden sm:inline">나가기</span>
+        </a>
+        <span class="text-ink/20 hidden sm:inline">|</span>
+        <div class="min-w-0">
+          <span class="font-mono text-[10px] uppercase tracking-[0.18em] text-signal">Live Annotate</span>
+          <h1 id="doc-title" class="text-[15px] font-extrabold text-ink truncate leading-tight">PDF 판서</h1>
+        </div>
+        <span class="hidden md:inline-flex items-center gap-1 font-mono text-[10px] font-bold text-ink3 bg-paper2 border border-ink/10 px-2 py-1 rounded-full">
+          S펜 전용 · 저장 안 됨
+        </span>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btn-open-file" class="tbtn"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="hidden sm:inline">파일 열기</span></button>
+        <button id="btn-open-material" class="tbtn"><span class="material-symbols-outlined text-[18px]">folder</span><span class="hidden sm:inline">수업자료</span></button>
+        <button id="btn-fullscreen" class="tbtn" title="전체화면 (F11 대체)"><span class="material-symbols-outlined text-[18px]">fit_screen</span></button>
+      </div>
+    </div>
+
+    <!-- 하단: 도구 · 색 · 굵기 · 페이지 · 확대 -->
+    <div id="toolrow" class="flex items-center gap-2 px-4 py-2 overflow-x-auto">
+      <!-- 도구 -->
+      <div class="flex items-center gap-1.5">
+        <button data-tool="pen"       class="tbtn tool on"><span class="material-symbols-outlined text-[18px]">edit</span>펜</button>
+        <button data-tool="highlight" class="tbtn tool"><span class="material-symbols-outlined text-[18px]">edit_note</span>형광펜</button>
+        <button data-tool="eraser"    class="tbtn tool"><span class="material-symbols-outlined text-[18px]">ink_eraser</span>지우개</button>
+        <button data-tool="pan"       class="tbtn tool" title="화면 이동 (S펜으로 끌기)"><span class="material-symbols-outlined text-[18px]">pan_tool</span>이동</button>
+      </div>
+      <div class="divider"></div>
+      <!-- 색상 -->
+      <div id="palette" class="flex items-center gap-1.5"></div>
+      <div class="divider"></div>
+      <!-- 굵기 -->
+      <div class="flex items-center gap-1.5">
+        <button data-width="3"  class="tbtn wbtn">얇게</button>
+        <button data-width="6"  class="tbtn wbtn on">보통</button>
+        <button data-width="11" class="tbtn wbtn">굵게</button>
+      </div>
+      <div class="divider"></div>
+      <!-- 편집 -->
+      <div class="flex items-center gap-1.5">
+        <button id="btn-undo" class="tbtn"><span class="material-symbols-outlined text-[18px]">undo</span><span class="hidden lg:inline">실행취소</span></button>
+        <button id="btn-clear" class="tbtn"><span class="material-symbols-outlined text-[18px]">delete</span><span class="hidden lg:inline">페이지 지우기</span></button>
+      </div>
+      <div class="divider"></div>
+      <!-- 페이지 -->
+      <div class="flex items-center gap-1">
+        <button id="btn-prev" class="tbtn" title="이전 페이지 (←)"><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
+        <span class="font-mono text-[12px] font-bold text-ink px-1 whitespace-nowrap"><span id="page-cur">–</span> / <span id="page-total">–</span></span>
+        <button id="btn-next" class="tbtn" title="다음 페이지 (→)"><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
+      </div>
+      <div class="divider"></div>
+      <!-- 확대 -->
+      <div class="flex items-center gap-1">
+        <button id="btn-zoom-out" class="tbtn"><span class="material-symbols-outlined text-[18px]">zoom_out</span></button>
+        <button id="btn-zoom-fit" class="tbtn font-mono text-[12px]"><span id="zoom-label">맞춤</span></button>
+        <button id="btn-zoom-in" class="tbtn"><span class="material-symbols-outlined text-[18px]">zoom_in</span></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= 무대 ================= -->
+  <main id="stage" class="flex-1 overflow-auto relative">
+    <!-- 빈 상태 / 드롭존 -->
+    <div id="dropzone" class="absolute inset-0 flex items-center justify-center p-6">
+      <div class="text-center max-w-md">
+        <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-ink text-lime flex items-center justify-center shadow-note">
+          <span class="material-symbols-outlined text-[34px]">draw</span>
+        </div>
+        <h2 class="text-2xl font-extrabold text-ink mb-2">PDF를 열어 바로 판서하세요</h2>
+        <p class="text-[14px] text-ink3 leading-relaxed mb-6">
+          여기로 <b class="text-ink">PDF 파일을 끌어다 놓거나</b>, 아래 버튼으로 불러오면<br>
+          화면 위에 S펜·마우스로 바로 필기할 수 있어요. <span class="text-ink3/80">(저장은 안 되는 실시간 판서용)</span>
+        </p>
+        <div class="flex items-center justify-center gap-3">
+          <button id="empty-open-file" class="lift-hover px-5 py-3 bg-ink text-paper rounded-lg font-extrabold text-[14px] flex items-center gap-2 shadow-note hover:shadow-lift">
+            <span class="material-symbols-outlined text-[19px]">upload_file</span>내 파일 열기
+          </button>
+          <button id="empty-open-material" class="lift-hover px-5 py-3 bg-white text-ink border border-ink/15 rounded-lg font-extrabold text-[14px] flex items-center gap-2 shadow-note hover:shadow-lift">
+            <span class="material-symbols-outlined text-[19px]">folder</span>수업자료에서
+          </button>
+        </div>
+        <p class="mt-6 font-mono text-[11px] text-ink3/70">
+          S펜 전용 · 손가락·손바닥은 인식 안 함 &nbsp;·&nbsp; ←/→ 페이지 &nbsp;·&nbsp; Ctrl+Z 실행취소 &nbsp;·&nbsp; 이동은 '이동' 도구
+        </p>
+      </div>
+    </div>
+
+    <!-- 로딩 -->
+    <div id="loading" class="hidden absolute inset-0 flex items-center justify-center bg-paper/70 backdrop-blur-sm z-20">
+      <div class="flex items-center gap-3 text-ink font-bold">
+        <span class="material-symbols-outlined text-[24px] lab-ic spin">progress_activity</span> 불러오는 중…
+      </div>
+    </div>
+
+    <!-- 캔버스 무대(가운데 정렬) -->
+    <div id="canvas-holder" class="hidden min-h-full w-full flex items-start justify-center p-6">
+      <div id="canvas-wrap" class="canvas-wrap rounded-sm">
+        <canvas id="pdf-canvas"></canvas>
+        <canvas id="ink-canvas" class="tool-pen"></canvas>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 숨은 파일 입력 -->
+<input id="file-input" type="file" accept="application/pdf,.pdf" class="hidden">
+
+<!-- ================= 수업자료 선택 모달 ================= -->
+<div id="material-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" data-close="1"></div>
+  <div class="relative w-full max-w-lg max-h-[80vh] flex flex-col bg-paper rounded-2xl border border-ink/15 shadow-lift overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-ink/10">
+      <div>
+        <span class="font-mono text-[10px] uppercase tracking-[0.18em] text-signal">Materials</span>
+        <h3 class="text-[17px] font-extrabold text-ink">수업자료에서 PDF 불러오기</h3>
+      </div>
+      <button class="p-1.5 text-ink3 hover:text-signal rounded-full" data-close="1"><span class="material-symbols-outlined text-[22px]">close</span></button>
+    </div>
+    <div class="px-5 py-4 border-b border-ink/10">
+      <label class="block font-mono text-[11px] font-bold uppercase tracking-wide text-ink3 mb-1.5">과목</label>
+      <select id="material-subject" class="w-full px-3 py-2.5 bg-white border-faint rounded-lg text-[14px] text-ink focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none">
+        <option value="">불러오는 중…</option>
+      </select>
+    </div>
+    <div id="material-list" class="flex-1 overflow-y-auto p-3 space-y-1.5">
+      <p class="text-ink3 py-8 text-center text-[14px]">과목을 선택하면 PDF 자료가 나타납니다.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var pdfjsLib = window.pdfjsLib;
+  if (!pdfjsLib) {
+    alert('PDF 뷰어(PDF.js)를 불러오지 못했습니다. 네트워크를 확인한 뒤 새로고침해 주세요.');
+    return;
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+  // ---------- 색/굵기 정의 ----------
+  var PEN_COLORS = [
+    ['잉크', '#16213E'], ['빨강', '#E5484D'], ['파랑', '#2563EB'],
+    ['초록', '#16A34A'], ['주황', '#FF5B24']
+  ];
+  var HL_COLORS = [
+    ['라임', '#C4E000'], ['노랑', '#FFE14D'], ['분홍', '#FF5B9E'], ['하늘', '#38BDF8']
+  ];
+
+  // ---------- 상태 ----------
+  var S = {
+    pdf: null,
+    page: 1,
+    total: 0,
+    tool: 'pen',           // pen | highlight | eraser | pan
+    penColor: '#16213E',
+    hlColor: '#C4E000',
+    width: 6,              // 기준 두께(px, 맞춤배율 기준)
+    fitScale: 1,           // 페이지 폭을 무대에 맞춘 배율
+    zoom: 1,               // 사용자 확대 배율 (fitScale에 곱)
+    dpr: Math.min(window.devicePixelRatio || 1, 2.5),
+    cssW: 0, cssH: 0,      // 현재 렌더된 페이지의 CSS 픽셀 크기
+    strokes: {},           // { pageNum: [stroke, ...] }  (메모리 전용, 저장 안 함)
+    rendering: false,
+    renderToken: 0
+  };
+  // stroke = { tool, color, baseW(정규화=px/cssW), points:[{x:0..1,y:0..1,p:0..1}] }
+
+  // ---------- DOM ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var stage = $('stage');
+  var holder = $('canvas-holder');
+  var wrap = $('canvas-wrap');
+  var pdfCanvas = $('pdf-canvas');
+  var inkCanvas = $('ink-canvas');
+  var dropzone = $('dropzone');
+  var loading = $('loading');
+  var pdfCtx = pdfCanvas.getContext('2d');
+  var inkCtx = inkCanvas.getContext('2d');
+  var commit = document.createElement('canvas'); // 확정된 필기 보관(오프스크린)
+  var commitCtx = commit.getContext('2d');
+
+  // ============================================================
+  //  PDF 로드 / 렌더
+  // ============================================================
+  function showLoading(on) { loading.classList.toggle('hidden', !on); }
+
+  async function loadPdf(source, title) {
+    showLoading(true);
+    try {
+      var task;
+      if (source instanceof ArrayBuffer || source instanceof Uint8Array) {
+        task = pdfjsLib.getDocument({ data: source });
+      } else {
+        // URL → 전체를 받아서 로드(범위요청·CORS 이슈 회피)
+        var buf = await fetch(source).then(function (r) {
+          if (!r.ok) throw new Error('파일을 받지 못했습니다 (' + r.status + ')');
+          return r.arrayBuffer();
+        });
+        task = pdfjsLib.getDocument({ data: buf });
+      }
+      var pdf = await task.promise;
+      S.pdf = pdf;
+      S.total = pdf.numPages;
+      S.page = 1;
+      S.strokes = {};
+      S.zoom = 1;
+      $('doc-title').textContent = title || '문서';
+      $('page-total').textContent = S.total;
+      dropzone.classList.add('hidden');
+      holder.classList.remove('hidden');
+      await renderPage(1);
+    } catch (e) {
+      console.error(e);
+      alert('PDF를 여는 데 실패했습니다.\n' + (e && e.message ? e.message : e));
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function computeFitScale(page) {
+    // 무대 폭(패딩 48px 감안)에 페이지 폭을 맞춤. 단, 과도한 확대는 제한.
+    var vp1 = page.getViewport({ scale: 1 });
+    var avail = stage.clientWidth - 48;
+    var scale = avail / vp1.width;
+    return Math.max(0.2, Math.min(scale, 3));
+  }
+
+  function sizeCanvas(canvas, ctx, cssW, cssH) {
+    var dpr = S.dpr;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = cssH + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  async function renderPage(num) {
+    if (!S.pdf) return;
+    S.page = num;
+    $('page-cur').textContent = num;
+    $('btn-prev').disabled = (num <= 1);
+    $('btn-next').disabled = (num >= S.total);
+
+    var token = ++S.renderToken;
+    var page = await S.pdf.getPage(num);
+    if (token !== S.renderToken) return; // 그 사이 페이지가 또 바뀜
+
+    S.fitScale = computeFitScale(page);
+    var scale = S.fitScale * S.zoom;
+    var vp = page.getViewport({ scale: scale });
+    S.cssW = vp.width;
+    S.cssH = vp.height;
+    $('zoom-label').textContent = Math.round(S.zoom * 100) + '%';
+
+    // PDF 캔버스: 선명하게 dpr 배율 뷰포트로 직접 렌더(변환 없이 1:1)
+    wrap.style.width = S.cssW + 'px';
+    wrap.style.height = S.cssH + 'px';
+    pdfCanvas.width = Math.round(S.cssW * S.dpr);
+    pdfCanvas.height = Math.round(S.cssH * S.dpr);
+    pdfCanvas.style.width = S.cssW + 'px';
+    pdfCanvas.style.height = S.cssH + 'px';
+    pdfCtx.setTransform(1, 0, 0, 1, 0, 0);
+    await page.render({
+      canvasContext: pdfCtx,
+      viewport: page.getViewport({ scale: scale * S.dpr })
+    }).promise.catch(function () {});
+    if (token !== S.renderToken) return;
+
+    // 잉크 캔버스 + 확정 캔버스 (CSS px 좌표계 = dpr 변환)
+    sizeCanvas(inkCanvas, inkCtx, S.cssW, S.cssH);
+    sizeCanvas(commit, commitCtx, S.cssW, S.cssH);
+    renderInkFromStrokes();
+    updateCursorClass();
+  }
+
+  // ============================================================
+  //  필기 그리기
+  // ============================================================
+  function strokesForPage() {
+    if (!S.strokes[S.page]) S.strokes[S.page] = [];
+    return S.strokes[S.page];
+  }
+
+  function drawStroke(ctx, s) {
+    var pts = s.points;
+    if (!pts.length) return;
+    var W = S.cssW, H = S.cssH;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (s.tool === 'highlight') {
+      ctx.globalAlpha = 0.32;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = Math.max(6, s.baseW * W);
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x * W, pts[0].y * H);
+      for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x * W, pts[i].y * H);
+      if (pts.length === 1) ctx.lineTo(pts[0].x * W + 0.1, pts[0].y * H + 0.1);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else {
+      // 펜: 필압에 따라 굵기 변화 → 세그먼트별로
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = s.color;
+      if (pts.length === 1) {
+        var r = Math.max(0.6, s.baseW * W * (0.35 + 1.3 * (pts[0].p || 0.5))) / 2;
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(pts[0].x * W, pts[0].y * H, r, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+      }
+      for (var j = 1; j < pts.length; j++) {
+        var a = pts[j - 1], b = pts[j];
+        var pr = ((a.p || 0.5) + (b.p || 0.5)) / 2;
+        ctx.lineWidth = Math.max(0.6, s.baseW * W * (0.35 + 1.3 * pr));
+        ctx.beginPath();
+        ctx.moveTo(a.x * W, a.y * H);
+        ctx.lineTo(b.x * W, b.y * H);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function renderInkFromStrokes() {
+    commitCtx.clearRect(0, 0, S.cssW, S.cssH);
+    var arr = S.strokes[S.page] || [];
+    for (var i = 0; i < arr.length; i++) drawStroke(commitCtx, arr[i]);
+    blitCommit();
+  }
+
+  function blitCommit() {
+    inkCtx.clearRect(0, 0, S.cssW, S.cssH);
+    inkCtx.drawImage(commit, 0, 0, S.cssW, S.cssH);
+  }
+
+  // ---------- 라이브 입력 ----------
+  var active = null;      // 그리는 중인 stroke
+  var rafPending = false;
+  var pan = null;         // { x, y, sl, st }
+
+  function toLocal(e) {
+    var rect = inkCanvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left),
+      y: (e.clientY - rect.top),
+      p: (e.pressure && e.pressure > 0) ? e.pressure : 0.5
+    };
+  }
+
+  function pushPoint(lp) {
+    active.points.push({ x: lp.x / S.cssW, y: lp.y / S.cssH, p: lp.p });
+  }
+
+  function paintActive() {
+    rafPending = false;
+    blitCommit();
+    if (active) drawStroke(inkCtx, active);
+  }
+  function scheduleActive() {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(paintActive);
+  }
+
+  function eraseAt(lx, ly) {
+    var arr = S.strokes[S.page];
+    if (!arr || !arr.length) return;
+    var r = 14, W = S.cssW, H = S.cssH, changed = false;
+    var keep = [];
+    for (var i = 0; i < arr.length; i++) {
+      var hit = false, pts = arr[i].points;
+      for (var k = 0; k < pts.length; k++) {
+        var dx = pts[k].x * W - lx, dy = pts[k].y * H - ly;
+        if (dx * dx + dy * dy < r * r) { hit = true; break; }
+      }
+      if (hit) changed = true; else keep.push(arr[i]);
+    }
+    if (changed) { S.strokes[S.page] = keep; renderInkFromStrokes(); }
+  }
+
+  function onPointerDown(e) {
+    if (!S.pdf) return;
+    // 손가락·손바닥(터치)은 완전히 무시 — 필기는 오직 S펜(pen)으로만.
+    if (e.pointerType === 'touch') return;
+
+    var lp = toLocal(e);
+
+    // '이동' 도구이거나 마우스(마우스로는 필기하지 않음)일 땐 화면 이동만.
+    if (S.tool === 'pan' || e.pointerType === 'mouse') {
+      pan = { x: e.clientX, y: e.clientY, sl: stage.scrollLeft, st: stage.scrollTop };
+      inkCanvas.classList.add('grabbing');
+      try { inkCanvas.setPointerCapture(e.pointerId); } catch (_e) {}
+      e.preventDefault();
+      return;
+    }
+
+    // 이하 S펜 전용 (필기/지우개)
+    try { inkCanvas.setPointerCapture(e.pointerId); } catch (_e) {}
+    e.preventDefault();
+
+    if (S.tool === 'eraser') {
+      eraseAt(lp.x, lp.y);
+      active = { erasing: true };
+      return;
+    }
+
+    // 펜 / 형광펜
+    var color = (S.tool === 'highlight') ? S.hlColor : S.penColor;
+    var px = (S.tool === 'highlight') ? S.width * 2.6 : S.width;
+    active = {
+      tool: S.tool,
+      color: color,
+      baseW: px / S.cssW,   // 정규화 두께(확대/리사이즈에도 비율 유지)
+      points: []
+    };
+    pushPoint(lp);
+    scheduleActive();
+  }
+
+  function onPointerMove(e) {
+    if (pan) {
+      stage.scrollLeft = pan.sl - (e.clientX - pan.x);
+      stage.scrollTop = pan.st - (e.clientY - pan.y);
+      e.preventDefault();
+      return;
+    }
+    if (!active) return;
+    e.preventDefault();
+
+    // 지우개: 이동하며 계속 지움
+    if (active.erasing) {
+      var elp = toLocal(e);
+      eraseAt(elp.x, elp.y);
+      return;
+    }
+
+    // 필기: 병합된 이벤트로 매끄럽게
+    var evs = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+    for (var i = 0; i < evs.length; i++) pushPoint(toLocal(evs[i]));
+    scheduleActive();
+  }
+
+  function onPointerUp(e) {
+    if (pan) {
+      pan = null;
+      inkCanvas.classList.remove('grabbing');
+      return;
+    }
+    if (!active) return;
+    if (!active.erasing) {
+      drawStroke(commitCtx, active);   // 확정 캔버스에 굽기
+      strokesForPage().push(active);
+      blitCommit();
+    }
+    active = null;
+  }
+
+  inkCanvas.addEventListener('pointerdown', onPointerDown);
+  inkCanvas.addEventListener('pointermove', onPointerMove);
+  inkCanvas.addEventListener('pointerup', onPointerUp);
+  inkCanvas.addEventListener('pointercancel', onPointerUp);
+  inkCanvas.addEventListener('pointerleave', function (e) { if (pan || (active && active.erasing)) onPointerUp(e); });
+
+  // ============================================================
+  //  도구 / 색 / 굵기 UI
+  // ============================================================
+  function updateCursorClass() {
+    inkCanvas.className = 'tool-' + (S.tool === 'highlight' ? 'pen' : S.tool);
+  }
+
+  function renderPalette() {
+    var host = $('palette');
+    host.innerHTML = '';
+    var list = (S.tool === 'highlight') ? HL_COLORS : PEN_COLORS;
+    var current = (S.tool === 'highlight') ? S.hlColor : S.penColor;
+    var eraseMode = (S.tool === 'eraser' || S.tool === 'pan');
+    list.forEach(function (c) {
+      var b = document.createElement('button');
+      b.className = 'swatch' + (!eraseMode && c[1] === current ? ' on' : '');
+      b.style.background = c[1];
+      b.title = c[0];
+      b.disabled = eraseMode;
+      b.style.opacity = eraseMode ? '0.35' : '1';
+      b.addEventListener('click', function () {
+        if (S.tool === 'highlight') S.hlColor = c[1]; else S.penColor = c[1];
+        renderPalette();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function setTool(t) {
+    S.tool = t;
+    document.querySelectorAll('.tool').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.tool === t);
+    });
+    updateCursorClass();
+    renderPalette();
+  }
+
+  document.querySelectorAll('.tool').forEach(function (b) {
+    b.addEventListener('click', function () { setTool(b.dataset.tool); });
+  });
+  document.querySelectorAll('.wbtn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      S.width = parseInt(b.dataset.width, 10);
+      document.querySelectorAll('.wbtn').forEach(function (x) { x.classList.toggle('on', x === b); });
+    });
+  });
+
+  // 편집
+  $('btn-undo').addEventListener('click', function () {
+    var arr = S.strokes[S.page];
+    if (arr && arr.length) { arr.pop(); renderInkFromStrokes(); }
+  });
+  $('btn-clear').addEventListener('click', function () {
+    if (S.strokes[S.page] && S.strokes[S.page].length) {
+      S.strokes[S.page] = [];
+      renderInkFromStrokes();
+    }
+  });
+
+  // 페이지
+  $('btn-prev').addEventListener('click', function () { if (S.page > 1) renderPage(S.page - 1); });
+  $('btn-next').addEventListener('click', function () { if (S.page < S.total) renderPage(S.page + 1); });
+
+  // 확대
+  function setZoom(z) {
+    S.zoom = Math.max(0.3, Math.min(z, 4));
+    renderPage(S.page);
+  }
+  $('btn-zoom-in').addEventListener('click', function () { setZoom(S.zoom * 1.2); });
+  $('btn-zoom-out').addEventListener('click', function () { setZoom(S.zoom / 1.2); });
+  $('btn-zoom-fit').addEventListener('click', function () { setZoom(1); });
+
+  // 전체화면
+  $('btn-fullscreen').addEventListener('click', function () {
+    var app = $('app');
+    if (!document.fullscreenElement) {
+      (app.requestFullscreen ? app.requestFullscreen() : Promise.reject()).catch(function () {});
+    } else {
+      document.exitFullscreen && document.exitFullscreen();
+    }
+  });
+  document.addEventListener('fullscreenchange', function () {
+    if (S.pdf) setTimeout(function () { renderPage(S.page); }, 60);
+  });
+
+  // 키보드 단축키
+  document.addEventListener('keydown', function (e) {
+    if (!S.pdf) return;
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { if (S.page < S.total) renderPage(S.page + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { if (S.page > 1) renderPage(S.page - 1); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); $('btn-undo').click(); }
+    else if (e.key === 'p' || e.key === 'ㅔ') setTool('pen');
+    else if (e.key === 'h' || e.key === 'ㅗ') setTool('highlight');
+    else if (e.key === 'e' || e.key === 'ㄷ') setTool('eraser');
+  });
+
+  // 무대 리사이즈 → 맞춤 재계산(디바운스)
+  var rzTimer = null;
+  window.addEventListener('resize', function () {
+    if (!S.pdf) return;
+    clearTimeout(rzTimer);
+    rzTimer = setTimeout(function () { renderPage(S.page); }, 180);
+  });
+
+  // ============================================================
+  //  파일 열기 / 드래그드롭
+  // ============================================================
+  var fileInput = $('file-input');
+  function openFileDialog() { fileInput.value = ''; fileInput.click(); }
+  fileInput.addEventListener('change', function () {
+    var f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    f.arrayBuffer().then(function (buf) { loadPdf(buf, f.name.replace(/\.pdf$/i, '')); });
+  });
+  $('btn-open-file').addEventListener('click', openFileDialog);
+  $('empty-open-file').addEventListener('click', openFileDialog);
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    stage.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    stage.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.remove('dragover'); });
+  });
+  stage.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f && /pdf$/i.test(f.type + f.name)) {
+      f.arrayBuffer().then(function (buf) { loadPdf(buf, f.name.replace(/\.pdf$/i, '')); });
+    }
+  });
+
+  // ============================================================
+  //  수업자료(Supabase) 불러오기
+  // ============================================================
+  var modal = $('material-modal');
+  function openMaterialModal() {
+    modal.classList.remove('hidden');
+    initMaterialModal();
+  }
+  function closeMaterialModal() { modal.classList.add('hidden'); }
+  modal.addEventListener('click', function (e) { if (e.target.dataset && e.target.dataset.close) closeMaterialModal(); });
+  $('btn-open-material').addEventListener('click', openMaterialModal);
+  $('empty-open-material').addEventListener('click', openMaterialModal);
+
+  var subjectsLoaded = false;
+  async function initMaterialModal() {
+    var DB = window.DB;
+    var sel = $('material-subject');
+    var listEl = $('material-list');
+    if (!DB || !DB.supabase) {
+      listEl.innerHTML = '<p class="text-error py-8 text-center text-[14px]">데이터 연결을 불러오지 못했습니다.</p>';
+      return;
+    }
+    // 로그인 확인 (자료 열람은 로그인 필요)
+    var session = (await DB.supabase.auth.getSession()).data.session;
+    if (!session) {
+      listEl.innerHTML =
+        '<div class="py-8 text-center">' +
+        '<p class="text-ink3 text-[14px] mb-3">수업자료를 보려면 로그인이 필요해요.</p>' +
+        '<a href="학생-로그인.html" class="inline-flex items-center gap-2 px-4 py-2.5 bg-ink text-paper rounded-lg font-bold text-[13px]">' +
+        '<span class="material-symbols-outlined text-[18px]">logout</span>로그인 하러 가기</a>' +
+        '<p class="text-ink3/70 text-[12px] mt-3">(로그인 후 이 페이지로 다시 오면 됩니다.)</p></div>';
+      return;
+    }
+    if (subjectsLoaded) return;
+    try {
+      var subjects = await DB.fetchSubjects();
+      sel.innerHTML = '<option value="">과목을 선택하세요</option>' +
+        subjects.map(function (s) { return '<option value="' + s.id + '">' + DB.esc(s.name) + '</option>'; }).join('');
+      subjectsLoaded = true;
+      sel.addEventListener('change', function () { if (sel.value) loadMaterials(sel.value); else listEl.innerHTML = ''; });
+    } catch (e) {
+      listEl.innerHTML = '<p class="text-error py-8 text-center text-[14px]">과목을 불러오지 못했습니다.</p>';
+    }
+  }
+
+  function collectPdfs(subject) {
+    var out = [];
+    (subject.units || []).forEach(function (u) {
+      (u.mid_units || []).forEach(function (m) {
+        (m.subunits || []).forEach(function (su) {
+          (su.materials || []).forEach(function (mat) {
+            var url = mat.url || '';
+            var isPdf = (mat.type === 'print') ||
+              /\.pdf(\?|$)/i.test(url) ||
+              /\.pdf$/i.test(mat.original_filename || '');
+            if (isPdf && url) {
+              out.push({
+                name: mat.name || mat.original_filename || 'PDF',
+                url: url,
+                path: [u.name, m.name, su.name].filter(Boolean).join(' › ')
+              });
+            }
+          });
+        });
+      });
+    });
+    return out;
+  }
+
+  async function loadMaterials(subjectId) {
+    var DB = window.DB;
+    var listEl = $('material-list');
+    listEl.innerHTML = '<p class="text-ink3 py-8 text-center text-[14px]"><span class="material-symbols-outlined text-[20px] lab-ic spin align-middle">progress_activity</span> 자료를 불러오는 중…</p>';
+    try {
+      var tree = await DB.fetchSubjectTree(subjectId);
+      var pdfs = collectPdfs(tree);
+      if (!pdfs.length) {
+        listEl.innerHTML = '<p class="text-ink3 py-8 text-center text-[14px]">이 과목에는 PDF 자료가 없습니다.<br><span class="text-ink3/70 text-[12px]">(프린트 유형 또는 .pdf 파일만 표시)</span></p>';
+        return;
+      }
+      listEl.innerHTML = '';
+      pdfs.forEach(function (p) {
+        var btn = document.createElement('button');
+        btn.className = 'w-full text-left px-4 py-3 rounded-xl bg-white border border-ink/10 hover:border-ink hover:bg-paper2 transition-colors flex items-center gap-3';
+        btn.innerHTML =
+          '<span class="shrink-0 w-9 h-9 rounded-lg bg-signal-soft text-signal flex items-center justify-center">' +
+          '<span class="material-symbols-outlined text-[20px]">picture_as_pdf</span></span>' +
+          '<span class="min-w-0"><span class="block text-[14px] font-bold text-ink truncate">' + DB.esc(p.name) + '</span>' +
+          (p.path ? '<span class="block text-[12px] text-ink3 truncate">' + DB.esc(p.path) + '</span>' : '') + '</span>';
+        btn.addEventListener('click', function () {
+          closeMaterialModal();
+          loadPdf(p.url, p.name);
+        });
+        listEl.appendChild(btn);
+      });
+    } catch (e) {
+      console.error(e);
+      listEl.innerHTML = '<p class="text-error py-8 text-center text-[14px]">자료를 불러오지 못했습니다.</p>';
+    }
+  }
+
+  // 초기 팔레트
+  renderPalette();
+
+  // URL 파라미터로 바로 열기: PDF-판서.html?src=<PDF주소>&title=<제목>
+  // (다른 페이지에서 "이 자료 판서로 열기" 링크로 연결할 때 사용)
+  try {
+    var qp = new URLSearchParams(location.search);
+    var src = qp.get('src');
+    if (src) loadPdf(src, qp.get('title') || decodeURIComponent(src.split('/').pop() || '').replace(/\.pdf$/i, ''));
+  } catch (_e) {}
+})();
+</script>
+</body>
+</html>
