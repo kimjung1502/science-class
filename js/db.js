@@ -364,7 +364,12 @@
     return data || [];
   }
   async function saveSubmissionAssignment(id, a) {
-    const payload = { subject_id: a.subjectId, title: a.title, description: a.description || '', due_date: a.dueDate || null, is_active: a.isActive !== false };
+    const payload = {
+      subject_id: a.subjectId, title: a.title, description: a.description || '',
+      due_date: a.dueDate || null, due_at: a.dueAt || null,
+      fields: Array.isArray(a.fields) ? a.fields : [],
+      is_active: a.isActive !== false,
+    };
     if (id) { const { error } = await supabase.from('submission_assignments').update(payload).eq('id', id); if (error) throw error; return { id }; }
     const { data, error } = await supabase.from('submission_assignments').insert(payload).select('id').single();
     if (error) throw error; return data;
@@ -382,22 +387,51 @@
       .order('class_name', { ascending: true }).order('student_name', { ascending: true });
     if (error) throw error; return data || [];
   }
-  // payload: { file } (파일 업로드) 또는 { text } (글 작성 → 서버에서 docx 생성)
-  async function submitWork(assignmentId, payload) {
+  // 구글폼형 응답 제출/수정 (마감 전까지). answers: { [fieldId]: 값 }
+  async function submitForm(assignmentId, answers) {
     const { data: { session } } = await supabase.auth.getSession();
-    const auth = { 'Authorization': `Bearer ${(session && session.access_token) || ''}`, 'apikey': SUPABASE_KEY };
-    let qs, body, contentType;
-    if (payload && payload.text != null) {
-      qs = `op=submit&assignment_id=${encodeURIComponent(assignmentId)}&mode=text`;
-      body = payload.text; contentType = 'text/plain; charset=utf-8';
-    } else {
-      const file = payload.file;
-      qs = `op=submit&assignment_id=${encodeURIComponent(assignmentId)}&mode=file&filename=${encodeURIComponent(file.name)}`;
-      body = file; contentType = file.type || 'application/octet-stream';
-    }
-    const res = await fetch(`${FUNCTIONS_URL}/submit-work?${qs}`, { method: 'POST', headers: { ...auth, 'Content-Type': contentType }, body });
+    const res = await fetch(`${FUNCTIONS_URL}/submit-work?op=submit`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${(session && session.access_token) || ''}`, 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignment_id: assignmentId, answers: answers || {} }),
+    });
     const out = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(out.error || `제출 실패 (${res.status})`);
+    return out;
+  }
+  // 파일 항목 업로드 → { file_name, storage_path, size } 반환 (answers에 참조로 넣어 제출)
+  async function uploadSubmissionFile(assignmentId, fieldId, file) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const qs = `op=upload-file&assignment_id=${encodeURIComponent(assignmentId)}&field_id=${encodeURIComponent(fieldId)}&filename=${encodeURIComponent(file.name)}`;
+    const res = await fetch(`${FUNCTIONS_URL}/submit-work?${qs}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${(session && session.access_token) || ''}`, 'apikey': SUPABASE_KEY, 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || `업로드 실패 (${res.status})`);
+    return out.file;
+  }
+  // 교사: 응답 명부(분반별 수강생 전원 + 제출여부)
+  async function fetchSubmissionRoster(assignmentId) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${FUNCTIONS_URL}/submit-work?op=roster&assignment_id=${encodeURIComponent(assignmentId)}`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${(session && session.access_token) || ''}`, 'apikey': SUPABASE_KEY },
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || '명부 조회 실패');
+    return out.classes || [];
+  }
+  // 교사: 분반별 엑셀 생성 → 드라이브 저장 (수동 내보내기)
+  async function exportSubmissions(assignmentId) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${FUNCTIONS_URL}/export-submissions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${(session && session.access_token) || ''}`, 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignment_id: assignmentId }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || `내보내기 실패 (${res.status})`);
     return out;
   }
   // ---------- 구글 드라이브 연결 (교사) ----------
@@ -427,9 +461,14 @@
     return true;
   }
 
-  async function getSubmissionSignedUrl(submissionId) {
+  // 제출 파일 다운로드 서명 URL (storage_path 기준). 관리자 또는 본인만.
+  async function signSubmissionFile(path, opts) {
+    const { assignmentId = '', name = '' } = opts || {};
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${FUNCTIONS_URL}/submit-work?op=sign&submission_id=${encodeURIComponent(submissionId)}`, {
+    const qs = `op=sign&path=${encodeURIComponent(path)}`
+      + (assignmentId ? `&assignment_id=${encodeURIComponent(assignmentId)}` : '')
+      + (name ? `&name=${encodeURIComponent(name)}` : '');
+    const res = await fetch(`${FUNCTIONS_URL}/submit-work?${qs}`, {
       method: 'POST', headers: { 'Authorization': `Bearer ${(session && session.access_token) || ''}`, 'apikey': SUPABASE_KEY },
     });
     const out = await res.json().catch(() => ({}));
@@ -462,7 +501,8 @@
     fetchAssessments, createAssessment, updateAssessment, deleteAssessment,
     fetchAnnouncements, saveAnnouncement, deleteAnnouncement,
     fetchSubmissionAssignments, saveSubmissionAssignment, deleteSubmissionAssignment,
-    fetchSubmissionsByAssignments, fetchSubmissionsForAssignment, submitWork, getSubmissionSignedUrl,
+    fetchSubmissionsByAssignments, fetchSubmissionsForAssignment,
+    submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
     extractAssessmentFromPdf,
     driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveAccessToken, driveShareAnyone,
   };
