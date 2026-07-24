@@ -9,25 +9,25 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-<script src="js/theme.js?v=20260724b"></script>
+<script src="js/theme.js?v=20260724c"></script>
 </head>
 <body class="font-sans text-ink antialiased min-h-screen flex flex-col">
 
 <!-- TopNavBar (학생 페이지 공통) -->
 <header class="sticky top-0 z-50 border-b border-ink/15 bg-paper/85 backdrop-blur-md">
-  <div class="mx-auto flex h-16 max-w-max-width items-center justify-between px-5 w-full">
-    <a href="과목-선택.html" class="flex items-center gap-3">
-      <span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lime font-mono text-sm font-bold">LAB</span>
-      <div class="leading-tight">
+  <div class="mx-auto flex h-16 max-w-max-width items-center justify-between gap-2 px-4 sm:px-5 w-full">
+    <a href="과목-선택.html" class="flex items-center gap-2.5 min-w-0 flex-1">
+      <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink text-lime font-mono text-sm font-bold">LAB</span>
+      <div class="leading-tight min-w-0">
         <div class="font-mono text-[10px] uppercase tracking-[0.2em] text-signal">Science Class</div>
-        <h1 class="font-bold tracking-tightest text-[15px]">정환쌤과 함께하는 과학 수업</h1>
+        <h1 class="font-bold tracking-tightest text-[15px] truncate">정환쌤과 함께하는 과학 수업</h1>
       </div>
     </a>
-    <div class="flex items-center gap-2 sm:gap-3">
-      <span id="teacher-badge" class="hidden font-mono text-[11px] font-bold text-lime bg-ink px-2.5 py-1 rounded-full">교사 시점</span>
-      <span id="who" class="hidden sm:inline text-[13px] text-ink3"></span>
-      <a id="admin-link" href="관리자.html" class="hidden text-[13px] text-ink3 hover:text-signal items-center gap-1"><span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>관리</a>
-      <button id="logout-btn" class="text-[13px] text-ink3 hover:text-signal flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">logout</span>로그아웃</button>
+    <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
+      <span id="teacher-badge" class="hidden font-mono text-[11px] font-bold text-lime bg-ink px-2.5 py-1 rounded-full whitespace-nowrap shrink-0">교사 시점</span>
+      <span id="who" class="hidden sm:inline text-[13px] text-ink3 whitespace-nowrap"></span>
+      <a id="admin-link" href="관리자.html" title="관리" class="hidden text-[13px] text-ink3 hover:text-signal items-center gap-1 shrink-0"><span class="material-symbols-outlined text-[20px] sm:text-[18px]">admin_panel_settings</span><span class="hidden sm:inline">관리</span></a>
+      <button id="logout-btn" title="로그아웃" class="text-[13px] text-ink3 hover:text-signal flex items-center gap-1 shrink-0"><span class="material-symbols-outlined text-[20px] sm:text-[18px]">logout</span><span class="hidden sm:inline">로그아웃</span></button>
     </div>
   </div>
 </header>

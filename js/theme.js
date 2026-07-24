@@ -119,7 +119,9 @@
     'body{ font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif !important;',
     '  background-color:#FBFAF6;',
     '  background-image:linear-gradient(to right,var(--lab-grid) 1px,transparent 1px),linear-gradient(to bottom,var(--lab-grid) 1px,transparent 1px);',
-    '  background-size:26px 26px; -webkit-font-smoothing:antialiased; }',
+    '  background-size:26px 26px; -webkit-font-smoothing:antialiased;',
+    // 한글 줄바꿈: 어절(띄어쓰기) 단위로만 끊어 "다" 한 글자가 다음 줄로 떨어지는 현상 방지.
+    '  word-break:keep-all; overflow-wrap:break-word; }',
     '.font-mono,.pin-label{ font-family:"Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }',
     // 형광펜
     '.hl{ background:linear-gradient(120deg,transparent 0 8%,#C4E000 8% 92%,transparent 92%); box-decoration-break:clone; -webkit-box-decoration-break:clone; padding:.02em .12em; border-radius:2px; }',
