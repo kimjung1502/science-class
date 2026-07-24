@@ -76,6 +76,8 @@
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) { await supabase.auth.signOut(); location.replace('학생-로그인.html'); return null; }
     const student = await currentStudent();
+    // 자퇴/비활성 처리된 학생은 로그인 유지 불가 (로그인 자체는 RPC에서 이미 차단됨)
+    if (student && student.is_active === false) { await supabase.auth.signOut(); location.replace('학생-로그인.html'); return null; }
     if (student && student.must_change_password && !allowPasswordChangePage) {
       location.replace('비밀번호-변경.html'); return null;
     }

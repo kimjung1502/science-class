@@ -108,7 +108,8 @@
     <div id="students-view" class="hidden space-y-md">
       <div class="flex items-center justify-between gap-md flex-wrap">
         <h2 class="text-title-lg text-on-surface">학생 계정</h2>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <label class="inline-flex items-center gap-1.5 text-label-md text-on-surface-variant cursor-pointer mr-1"><input type="checkbox" id="stu-hide-inactive" class="rounded border-outline-variant text-primary focus:ring-primary">비활성 숨기기</label>
           <button id="bulk-student-btn" class="border border-primary text-primary px-md py-2 rounded-lg text-label-md font-bold flex items-center gap-1 hover:bg-primary/5 transition-colors"><span class="material-symbols-outlined text-[20px]">upload_file</span>엑셀로 일괄 등록</button>
           <button id="add-student-btn" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"><span class="material-symbols-outlined text-[20px]">person_add</span>학생 추가</button>
         </div>
@@ -199,7 +200,7 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260724d"></script>
+<script src="js/db.js?v=20260724e"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, removeFromBucket } = window.DB;
@@ -743,17 +744,20 @@
     const addSel = remaining.length
       ? `<select data-add-sid="${s.id}" class="add-class text-caption border border-outline-variant rounded-lg px-1.5 py-1 bg-surface-container-lowest"><option value="">+ 분반 추가</option>${remaining.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>`
       : '';
-    return `<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3">
+    const off = s.is_active === false;
+    return `<div class="border border-outline-variant rounded-xl p-3 ${off ? 'bg-surface-container/40 opacity-70' : 'bg-surface-container-lowest'}">
       <div class="flex items-center gap-3">
         <input type="checkbox" data-sid="${s.id}" class="stu-check rounded border-outline-variant text-primary focus:ring-primary shrink-0" title="선택">
         <div class="p-2 rounded-lg bg-surface-container text-primary shrink-0"><span class="material-symbols-outlined">person</span></div>
         <div class="flex-1 min-w-0">
-          <p class="text-label-md font-bold text-on-surface truncate">${esc(s.name)}</p>
+          <p class="text-label-md font-bold text-on-surface truncate flex items-center gap-1.5">${esc(s.name)}${off ? '<span class="text-caption text-error bg-error/10 px-2 py-0.5 rounded-full font-bold shrink-0">비활성</span>' : ''}</p>
           <p class="text-caption text-on-surface-variant">학번 ${esc(s.student_number)}</p>
         </div>
         ${s.must_change_password
           ? '<span class="text-caption text-secondary bg-secondary-container px-2 py-0.5 rounded-full font-semibold shrink-0 hidden sm:inline">초기 비번</span>'
           : '<span class="text-caption text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full shrink-0 hidden sm:inline">변경 완료</span>'}
+        <button data-act="toggle-active" data-id="${s.id}" data-name="${esc(s.name)}" title="${off ? '비활성(자퇴) — 누르면 다시 활성화' : '활성 — 누르면 비활성(자퇴) 처리'}" class="shrink-0 flex items-center px-1">
+          <span class="relative inline-block w-10 h-6 rounded-full transition-colors ${off ? 'bg-outline-variant' : 'bg-primary'}"><span class="absolute top-0.5 ${off ? 'left-0.5' : 'left-[18px]'} w-5 h-5 bg-white rounded-full shadow transition-all"></span></span></button>
         <button data-act="rename" data-id="${s.id}" data-name="${esc(s.name)}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="이름 수정"><span class="material-symbols-outlined text-[20px]">edit</span></button>
         <button data-act="reset" data-id="${s.id}" data-name="${esc(s.name)}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="비밀번호 초기화(학번으로)"><span class="material-symbols-outlined text-[20px]">lock_reset</span></button>
         <button data-act="del" data-id="${s.id}" data-name="${esc(s.name)}" class="p-2 text-on-surface-variant hover:text-error rounded-lg" title="삭제"><span class="material-symbols-outlined text-[20px]">delete</span></button>
@@ -768,10 +772,12 @@
 
   function renderStudents(items) {
     studentsCache = items;
-    if (!items.length) { $('students-list').innerHTML = `<div class="text-center text-on-surface-variant py-lg border border-dashed border-outline-variant rounded-xl">아직 등록된 학생이 없습니다. "학생 추가"로 만들어 보세요.</div>`; $('student-toolbar').classList.add('hidden'); return; }
+    const hideInactive = $('stu-hide-inactive') && $('stu-hide-inactive').checked;
+    const shown = hideInactive ? items.filter((s) => s.is_active !== false) : items;
+    if (!shown.length) { $('students-list').innerHTML = `<div class="text-center text-on-surface-variant py-lg border border-dashed border-outline-variant rounded-xl">${items.length ? '표시할 활성 학생이 없습니다. (상단 “비활성 숨기기” 해제)' : '아직 등록된 학생이 없습니다. "학생 추가"로 만들어 보세요.'}</div>`; $('student-toolbar').classList.add('hidden'); return; }
     // 학년 > 반 폴더로 그룹핑 (학번 파싱), 반 안에서는 학번 순 정렬
     const groups = new Map(); // grade -> Map(cls -> [students])
-    items.forEach((s) => {
+    shown.forEach((s) => {
       const p = parseSid(s.student_number);
       const g = p.ok ? p.grade : '기타', c = p.ok ? p.cls : '기타';
       if (!groups.has(g)) groups.set(g, new Map());
@@ -883,6 +889,15 @@
 
   async function studentAction(act, id, name) {
     if (act === 'rename') { openRename(id, name); return; }
+    if (act === 'toggle-active') {
+      const s = studentsCache.find((x) => x.id === id);
+      const cur = s ? s.is_active !== false : true;
+      const to = !cur;
+      if (to === false && !confirm(`"${name}" 학생을 비활성(자퇴) 처리할까요?\n로그인이 차단되고 제출 명단·집계에서 제외됩니다.\n(계정·기록은 유지되며 나중에 다시 활성화할 수 있어요)`)) return;
+      try { const { error } = await supabase.from('students').update({ is_active: to }).eq('id', id); if (error) throw error; toast(to ? '다시 활성화했습니다.' : '비활성(자퇴) 처리했습니다.'); loadStudents(); }
+      catch (e) { alert('처리 실패: ' + e.message); }
+      return;
+    }
     if (act === 'reset') {
       if (!confirm(`"${name}"의 비밀번호를 학번으로 초기화할까요? 다음 로그인 때 다시 변경하게 됩니다.`)) return;
       try { await callManageStudents({ action: 'reset', id }); toast('비밀번호를 초기화했습니다.'); loadStudents(); }
@@ -893,6 +908,8 @@
       catch (e) { alert('실패: ' + e.message); }
     }
   }
+
+  $('stu-hide-inactive')?.addEventListener('change', () => renderStudents(studentsCache));
 
   $('add-student-btn').addEventListener('click', async () => {
     await refreshClassesCache();
