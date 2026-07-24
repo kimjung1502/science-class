@@ -71,15 +71,21 @@
   <div class="flex-1 flex flex-col h-full overflow-y-auto">
     <!-- TopNavBar -->
     <header class="sticky top-0 z-10 bg-paper/85 backdrop-blur-md border-b border-ink/15 w-full">
-      <div class="flex justify-between items-center h-16 px-5 w-full gap-3">
-        <div class="flex items-center gap-3 min-w-0">
+      <div class="flex justify-between items-center h-16 px-4 sm:px-5 w-full gap-2 sm:gap-3">
+        <div class="flex items-center gap-2 md:gap-3 min-w-0">
+          <button id="menu-btn" class="md:hidden p-2 -ml-1 text-ink3 hover:text-signal hover:bg-paper2 rounded-full transition-all shrink-0" aria-label="단원 메뉴 열기"><span class="material-symbols-outlined text-[22px]">menu</span></button>
           <a href="과목-선택.html" title="과목 선택으로 돌아가기" class="shrink-0 flex items-center gap-1 font-mono text-[12px] text-ink3 hover:text-signal transition-colors">
             <span class="material-symbols-outlined lab-ic text-[20px]">arrow_back</span><span class="hidden sm:inline">과목 선택</span>
           </a>
           <span class="text-ink/20 hidden sm:inline">|</span>
           <nav id="breadcrumb" class="flex items-center gap-2 text-[15px] flex-wrap min-w-0"></nav>
         </div>
-        <button id="menu-btn" class="md:hidden p-2 text-ink3 hover:text-signal hover:bg-paper2 rounded-full transition-all shrink-0" aria-label="단원 메뉴 열기"><span class="material-symbols-outlined text-[22px]">menu</span></button>
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span id="teacher-badge" class="hidden font-mono text-[11px] font-bold text-lime bg-ink px-2.5 py-1 rounded-full whitespace-nowrap">교사 시점</span>
+          <span id="who" class="text-[13px] text-ink3 hidden sm:inline whitespace-nowrap"></span>
+          <a id="admin-link" href="관리자.html" title="관리자" class="hidden text-[13px] text-ink3 hover:text-signal items-center gap-1 shrink-0"><span class="material-symbols-outlined lab-ic text-[20px] sm:text-[18px]">admin_panel_settings</span><span class="hidden sm:inline">관리자</span></a>
+          <button id="logout-btn" title="로그아웃" class="text-[13px] text-ink3 hover:text-signal flex items-center gap-1 shrink-0"><span class="material-symbols-outlined lab-ic text-[20px] sm:text-[18px]">logout</span><span class="hidden sm:inline">로그아웃</span></button>
+        </div>
       </div>
     </header>
 
@@ -117,7 +123,7 @@
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
-  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, uploadToBucket, removeFromBucket, driveAccessToken, driveShareAnyone } = window.DB;
+  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeFromBucket, driveAccessToken, driveShareAnyone } = window.DB;
 
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
@@ -234,13 +240,31 @@
     }
   }
 
+  // 판서로 열 수 있는 PDF인지: 우리 스토리지(공개 URL)에 있는 print/‧pdf 파일만.
+  // (외부 구글드라이브 링크는 CORS로 fetch가 막혀 판서 뷰어가 못 읽음 → 제외)
+  function isPdfMaterial(m) {
+    if (!m) return false;
+    const direct = m.storage_path && m.url && m.url !== '#';
+    const pdfish = m.type === 'print' || /\.pdf(\?|$)/i.test(m.url || '') || /\.pdf$/i.test(m.original_filename || '');
+    return !!(direct && pdfish);
+  }
+  function drawHref(m) {
+    const t = MATERIAL_TYPES[m.type];
+    const name = m.name || (t && t.label) || 'PDF';
+    return `PDF-판서.html?src=${encodeURIComponent(m.url)}&title=${encodeURIComponent(name)}`;
+  }
+
   function matCardWrap(m) {
     const card = materialCard(m);
     if (!state.isAdmin) return card;
     const wrapClass = m.type === 'html' ? 'relative group/mat col-span-full' : 'relative group/mat';
-    return `<div class="${wrapClass}">${card}
-      <button data-del-mat="${m.id}" data-del-path="${esc(m.storage_path || '')}" title="자료 삭제" class="del-material absolute top-1.5 right-1.5 p-1 rounded-md bg-white/95 border border-faint text-ink3 hover:text-error shadow-sm opacity-0 group-hover/mat:opacity-100 transition-opacity">
-        <span class="material-symbols-outlined lab-ic text-[16px]">delete</span></button>
+    // 교사 화면: PDF 자료엔 항상 보이는 '판서' 버튼(S펜 판서 뷰어로 바로 열기)
+    const drawBtn = isPdfMaterial(m)
+      ? `<a href="${esc(drawHref(m))}" target="_blank" rel="noopener" title="판서로 열기 (S펜 필기)" class="draw-material absolute bottom-1.5 right-1.5 z-[1] inline-flex items-center gap-1 font-mono text-[10px] font-bold px-2 py-1 rounded-md bg-ink text-lime shadow-sm hover:bg-ink2 transition-colors"><span class="material-symbols-outlined lab-ic text-[14px]">draw</span>판서</a>`
+      : '';
+    return `<div class="${wrapClass}">${card}${drawBtn}
+      <button data-edit-mat="${m.id}" title="자료 수정" class="edit-material absolute top-1.5 right-1.5 p-1 rounded-md bg-white/95 border border-faint text-ink3 hover:text-ink shadow-sm opacity-0 group-hover/mat:opacity-100 transition-opacity">
+        <span class="material-symbols-outlined lab-ic text-[16px]">edit</span></button>
     </div>`;
   }
   function materialsBlock(sub) {
@@ -427,7 +451,7 @@
     }));
     if (state.isAdmin) {
       document.querySelectorAll('#subunit-list .add-material').forEach((btn) => btn.addEventListener('click', (e) => { e.stopPropagation(); openMatModal(btn.dataset.addSub); }));
-      document.querySelectorAll('#subunit-list .del-material').forEach((btn) => btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); deleteMaterial(btn.dataset.delMat, btn.dataset.delPath); }));
+      document.querySelectorAll('#subunit-list .edit-material').forEach((btn) => btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openMatEdit(btn.dataset.editMat); }));
     }
   }
 
@@ -455,7 +479,7 @@
     el.id = 'mat-modal';
     el.className = 'hidden fixed inset-0 z-[70] bg-ink/40 flex items-center justify-center p-4';
     el.innerHTML = `<div class="card rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 shadow-lift">
-      <div class="flex items-center justify-between mb-5"><h3 class="text-lg font-extrabold tracking-tightest text-ink">자료 추가</h3>
+      <div class="flex items-center justify-between mb-5"><h3 id="mat-title" class="text-lg font-extrabold tracking-tightest text-ink">자료 추가</h3>
         <button id="mat-close" class="p-1 text-ink3 hover:text-signal"><span class="material-symbols-outlined lab-ic">close</span></button></div>
       <form id="mat-form" class="space-y-sm"></form></div>`;
     document.body.appendChild(el);
@@ -464,40 +488,62 @@
     matModalEl = el;
     return el;
   }
-  function matFormHtml() {
-    const typeOpts = Object.entries(MATERIAL_TYPES).map(([k, t]) => `<option value="${k}">${esc(t.label)}</option>`).join('');
+  function matFormHtml(mat) {
+    const isEdit = !!mat;
+    const isFile = mat ? !!MATERIAL_TYPES[mat.type].file : false;
+    const typeOpts = Object.entries(MATERIAL_TYPES).map(([k, t]) => `<option value="${k}" ${mat && mat.type === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('');
+    const curNote = isEdit
+      ? (mat.storage_path
+          ? `<p class="text-caption text-on-surface-variant mt-1">현재 파일: <b>${esc(mat.original_filename || '업로드됨')}</b> <span class="text-outline">— 바꾸려면 새로 선택(선택)</span></p>`
+          : (isFile && mat.url ? `<p class="text-caption text-on-surface-variant mt-1">현재: 드라이브/링크 자료 <span class="text-outline">— 바꾸려면 새로 선택(선택)</span></p>` : ''))
+      : '';
+    const publicChecked = mat ? (mat.teacher_only ? '' : 'checked') : 'checked';
+    const urlVal = (mat && !isFile) ? (mat.url || '') : '';
     return `
       <div><label class="text-label-md text-on-surface-variant">자료 유형</label>
         <select name="type" id="m2-type" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">${typeOpts}</select></div>
       <div><label class="text-label-md text-on-surface-variant">이름 <span class="text-outline">(비우면 유형 기본)</span></label>
-        <input name="name" id="m2-name" type="text" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 1강 학습지"></div>
+        <input name="name" id="m2-name" type="text" value="${esc(mat ? (mat.name || '') : '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 1강 학습지"></div>
       <div id="m2-file-field"><label class="text-label-md text-on-surface-variant">파일 업로드 <span class="text-outline">(Supabase)</span></label>
         <input name="file" id="m2-file" type="file" class="w-full mt-1 text-caption">
+        ${curNote}
         <div class="mt-2 flex items-center gap-2"><span class="text-caption text-on-surface-variant">또는</span>
           <button type="button" id="m2-drive" class="inline-flex items-center gap-1 text-caption px-2.5 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[16px] text-primary">add_to_drive</span>구글 드라이브에서 선택 <span class="text-outline">(용량 0)</span></button></div>
         <p id="m2-picked" class="text-caption text-primary mt-1 hidden"></p>
         <input type="hidden" name="drive_url" id="m2-drive-url"><input type="hidden" name="drive_name" id="m2-drive-name"></div>
       <div id="m2-url-field" class="hidden"><label class="text-label-md text-on-surface-variant">링크 주소 (URL)</label>
-        <input name="url" id="m2-url" type="url" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="https://..."></div>
+        <input name="url" id="m2-url" type="url" value="${esc(urlVal)}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="https://..."></div>
       <div><label class="text-label-md text-on-surface-variant">부가 설명 <span class="text-outline">(선택)</span></label>
-        <input name="meta" id="m2-meta" type="text" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 12쪽"></div>
-      <label class="flex items-center gap-2 p-1 cursor-pointer"><input type="checkbox" name="teacher_only" id="m2-teacher" class="rounded text-primary focus:ring-primary"><span class="text-body-md">교사만 보기 <span class="text-caption text-on-surface-variant">(학생 화면에 안 보임)</span></span></label>
-      <div class="flex gap-2 pt-1"><button type="button" id="m2-cancel" class="flex-1 border border-faint py-2.5 rounded-lg text-[14px] font-bold text-ink3 hover:bg-paper2 transition-colors">취소</button><button type="submit" id="m2-save" class="flex-1 bg-ink text-paper py-2.5 rounded-lg text-[14px] font-bold hover:bg-ink2 transition-colors">저장</button></div>`;
+        <input name="meta" id="m2-meta" type="text" value="${esc(mat ? (mat.meta || '') : '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 12쪽"></div>
+      <label class="flex items-center gap-2 p-1 cursor-pointer"><input type="checkbox" name="is_public" id="m2-public" ${publicChecked} class="rounded text-primary focus:ring-primary"><span class="text-body-md">학생에게 공개 <span class="text-caption text-on-surface-variant">(체크 해제 시 교사만 보기)</span></span></label>
+      <div class="flex gap-2 pt-1">
+        ${isEdit ? `<button type="button" id="m2-delete" class="flex items-center gap-1 border border-error/50 text-error py-2.5 px-3.5 rounded-lg text-[14px] font-bold hover:bg-error hover:text-white transition-colors"><span class="material-symbols-outlined lab-ic text-[18px]">delete</span>삭제</button>` : ''}
+        <button type="button" id="m2-cancel" class="flex-1 border border-faint py-2.5 rounded-lg text-[14px] font-bold text-ink3 hover:bg-paper2 transition-colors">취소</button>
+        <button type="submit" id="m2-save" class="flex-1 bg-ink text-paper py-2.5 rounded-lg text-[14px] font-bold hover:bg-ink2 transition-colors">저장</button></div>`;
   }
-  function openMatModal(subId) {
+  function findMaterial(id) {
+    for (const u of state.tree.units || []) for (const m of u.mid_units || []) for (const s of m.subunits || []) for (const mat of s.materials || []) { if (mat.id === id) return { mat, subId: s.id }; }
+    return null;
+  }
+  function openMatEdit(id) { const f = findMaterial(id); if (f) openMatModal(f.subId, f.mat); }
+  function openMatModal(subId, mat) {
     state.addingSubId = subId;
+    state.editingMat = mat || null;
     ensureMatModal();
+    matModalEl.querySelector('#mat-title').textContent = mat ? '자료 수정' : '자료 추가';
     const form = matModalEl.querySelector('#mat-form');
-    form.innerHTML = matFormHtml();
+    form.innerHTML = matFormHtml(mat);
     const sel = form.querySelector('#m2-type');
     const sync = () => { const t = MATERIAL_TYPES[sel.value]; form.querySelector('#m2-file-field').classList.toggle('hidden', !t.file); form.querySelector('#m2-url-field').classList.toggle('hidden', t.file); };
     sel.addEventListener('change', sync); sync();
     form.querySelector('#m2-drive').addEventListener('click', () => openDrivePicker(form));
     form.querySelector('#m2-cancel').addEventListener('click', closeMatModal);
+    const delBtn = form.querySelector('#m2-delete');
+    if (delBtn && mat) delBtn.addEventListener('click', () => deleteMaterial(mat.id, mat.storage_path, true));
     form.onsubmit = onMatSubmit;
     matModalEl.classList.remove('hidden');
   }
-  function closeMatModal() { if (matModalEl) { matModalEl.classList.add('hidden'); matModalEl.querySelector('#mat-form').innerHTML = ''; } state.addingSubId = null; }
+  function closeMatModal() { if (matModalEl) { matModalEl.classList.add('hidden'); matModalEl.querySelector('#mat-form').innerHTML = ''; } state.addingSubId = null; state.editingMat = null; }
 
   function loadPickerApi() {
     return new Promise((resolve, reject) => {
@@ -539,37 +585,49 @@
     const form = e.target;
     const saveBtn = form.querySelector('#m2-save'); saveBtn.disabled = true; saveBtn.textContent = '저장 중…';
     try {
+      const editing = state.editingMat;
       const fd = new FormData(form);
       const type = fd.get('type'); const t = MATERIAL_TYPES[type];
-      const payload = { type, name: (fd.get('name') || '').trim(), meta: (fd.get('meta') || '').trim(), teacher_only: fd.get('teacher_only') === 'on', subunit_id: state.addingSubId, sort_order: Date.now() % 100000 };
+      const payload = { type, name: (fd.get('name') || '').trim(), meta: (fd.get('meta') || '').trim(), teacher_only: fd.get('is_public') !== 'on' };
+      if (!editing) { payload.subunit_id = state.addingSubId; payload.sort_order = Date.now() % 100000; }
       if (t.file) {
         const driveUrl = (fd.get('drive_url') || '').trim();
-        if (driveUrl) { payload.url = driveUrl; payload.storage_path = ''; payload.original_filename = (fd.get('drive_name') || '').trim(); }
-        else {
-          const file = fd.get('file');
-          if (file && file.size) {
-            const path2 = `${state.addingSubId}/${Date.now()}-${safeStorageName(file.name)}`;
-            await uploadToBucket('materials', path2, file);
-            payload.storage_path = path2; payload.original_filename = file.name;
-            payload.url = window.DB.supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
-          } else throw new Error('파일을 업로드하거나 드라이브에서 고르세요.');
-        }
+        const file = fd.get('file');
+        if (driveUrl) {
+          payload.url = driveUrl; payload.storage_path = ''; payload.original_filename = (fd.get('drive_name') || '').trim();
+          if (editing && editing.storage_path) await removeFromBucket('materials', [editing.storage_path]);
+        } else if (file && file.size) {
+          const path2 = `${(editing ? editing.subunit_id : state.addingSubId)}/${Date.now()}-${safeStorageName(file.name)}`;
+          await uploadToBucket('materials', path2, file);
+          payload.storage_path = path2; payload.original_filename = file.name;
+          payload.url = window.DB.supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
+          if (editing && editing.storage_path && editing.storage_path !== path2) await removeFromBucket('materials', [editing.storage_path]);
+        } else if (editing) {
+          // 새 파일을 안 고르면 기존 파일 유지
+          payload.url = editing.url; payload.storage_path = editing.storage_path || ''; payload.original_filename = editing.original_filename || '';
+        } else throw new Error('파일을 업로드하거나 드라이브에서 고르세요.');
       } else {
         payload.url = (fd.get('url') || '').trim(); payload.storage_path = '';
         if (!payload.url) throw new Error('링크 주소를 입력하세요.');
       }
-      const { error } = await window.DB.supabase.from('materials').insert(payload);
-      if (error) throw error;
+      if (editing) {
+        const { error } = await window.DB.supabase.from('materials').update(payload).eq('id', editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await window.DB.supabase.from('materials').insert(payload);
+        if (error) throw error;
+      }
       closeMatModal();
       await reloadTree();
     } catch (err) { alert('저장 실패: ' + err.message); } finally { if (form.querySelector('#m2-save')) { saveBtn.disabled = false; saveBtn.textContent = '저장'; } }
   }
-  async function deleteMaterial(id, storagePath) {
+  async function deleteMaterial(id, storagePath, fromModal) {
     if (!confirm('이 자료를 삭제할까요?')) return;
     try {
       if (storagePath) await removeFromBucket('materials', [storagePath]);
       const { error } = await window.DB.supabase.from('materials').delete().eq('id', id);
       if (error) throw error;
+      if (fromModal) closeMatModal();
       await reloadTree();
     } catch (e) { alert('삭제 실패: ' + e.message); }
   }
@@ -580,6 +638,10 @@
     if (!auth) return;
     state.isAdmin = !auth.student; // 학생이 아니면 교사(관리자)
     state.student = auth.student || null;
+    // 헤더: 교사 시점 배지·관리자·로그아웃
+    $('who').textContent = auth.student ? auth.student.name : '';
+    if (state.isAdmin) { $('teacher-badge').classList.remove('hidden'); $('admin-link').classList.replace('hidden', 'flex'); }
+    $('logout-btn').addEventListener('click', async () => { await signOut(); location.replace('학생-로그인.html'); });
     if (!subjectId) { location.replace('과목-선택.html'); return; }
     try {
       state.tree = await fetchSubjectTree(subjectId);
