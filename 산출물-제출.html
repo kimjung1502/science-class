@@ -4,38 +4,13 @@
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>산출물 제출 · 정환쌤과 함께하는 과학 수업</title>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">try{
-  tailwind.config = {
-    darkMode: "class",
-    theme: { extend: {
-      colors: {
-        "surface-container-low": "#eff4ff", "secondary": "#006b5f", "error": "#ba1a1a",
-        "on-surface-variant": "#414754", "secondary-container": "#c9e9e2", "on-surface": "#0d1c2e",
-        "surface-container-lowest": "#ffffff", "on-secondary-container": "#00504a", "background": "#f8f9ff",
-        "surface-bright": "#f8f9ff", "primary": "#005bbf", "on-primary": "#ffffff", "surface-container": "#e6eeff",
-        "outline-variant": "#c1c6d6", "surface-variant": "#d5e3fc", "primary-container": "#1a73e8",
-        "primary-fixed": "#d8e2ff", "on-primary-fixed": "#001a41", "outline": "#727785", "surface": "#f8f9ff",
-        "surface-container-highest": "#d5e3fc", "on-background": "#0d1c2e", "error-container": "#ffdad6", "on-error-container": "#93000a"
-      },
-      borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
-      spacing: { "gutter": "24px", "base": "4px", "md": "24px", "sm": "16px", "xl": "64px", "lg": "40px", "xs": "8px", "max-width": "1280px" },
-      fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
-      fontSize: {
-        "title-lg": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}], "body-lg": ["18px", {"lineHeight": "1.6"}],
-        "caption": ["13px", {"lineHeight": "1.35"}], "body-md": ["16px", {"lineHeight": "1.6"}],
-        "headline-lg": ["32px", {"lineHeight": "1.25", "fontWeight": "700"}],
-        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "500"}],
-        "headline-md": ["24px", {"lineHeight": "1.35", "fontWeight": "600"}]
-      }
-    } }
-  }
-}catch(_e){}</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="js/theme.js?v=20260724a"></script>
 <style>
-  body { font-family: "Be Vietnam Pro", sans-serif; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
   @media (max-width: 767px) {
     #sidebar { left: -288px; transition: left .3s cubic-bezier(.4,0,.2,1); }
     #sidebar.drawer-open { left: 0; }
@@ -46,92 +21,98 @@
   @media (prefers-reduced-motion: reduce) { .swap-in { animation: none; } .arrow { transition: none; } }
 </style>
 </head>
-<body class="bg-background text-on-background">
+<body class="font-sans text-ink antialiased">
 
 <div class="flex h-screen overflow-hidden">
-  <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/40 z-40 md:hidden"></div>
+  <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-ink/40 z-40 md:hidden"></div>
 
-  <aside id="sidebar" class="fixed md:static inset-y-0 md:left-auto z-50 md:z-auto w-72 shrink-0 flex flex-col h-full py-md px-sm bg-surface-container-low border-r border-outline-variant">
+  <aside id="sidebar" class="fixed md:static inset-y-0 md:left-auto z-50 md:z-auto w-72 shrink-0 flex flex-col h-full py-md px-sm bg-paper2 border-r border-ink/15">
     <div class="mb-md px-xs flex items-start justify-between gap-2">
-      <div class="min-w-0">
-        <h1 id="subject-title" class="text-title-lg font-semibold text-on-surface truncate">불러오는 중…</h1>
-        <p class="text-caption text-on-surface-variant mt-0.5">정환쌤과 함께하는 과학 수업</p>
-      </div>
-      <button id="sidebar-close" class="md:hidden p-1 text-on-surface-variant hover:text-on-surface rounded-full shrink-0" aria-label="닫기"><span class="material-symbols-outlined">close</span></button>
+      <a href="과목-선택.html" class="flex items-center gap-2.5 min-w-0">
+        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink text-lime font-mono text-sm font-bold">LAB</span>
+        <div class="min-w-0 leading-tight">
+          <div class="font-mono text-[10px] uppercase tracking-[0.2em] text-signal">Science Class</div>
+          <h1 id="subject-title" class="font-bold tracking-tightest text-[15px] text-ink truncate">불러오는 중…</h1>
+        </div>
+      </a>
+      <button id="sidebar-close" class="md:hidden p-1 text-ink3 hover:text-ink rounded-full shrink-0" aria-label="닫기"><span class="material-symbols-outlined">close</span></button>
     </div>
-    <nav class="flex-1 space-y-2 overflow-y-auto">
+    <nav class="flex-1 space-y-1.5 overflow-y-auto">
       <!-- 1. 과목 홈 -->
-      <a id="home-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">home</span><span class="text-label-md font-bold">과목 홈 (공지)</span></a>
+      <a id="home-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="lab-ic-wrap text-ink3 text-[20px]"><span class="material-symbols-outlined">home</span></span><span class="text-[14px] font-bold">과목 홈 (공지)</span></a>
       <!-- 2. 단원 선택 -->
-      <div class="pt-md mt-md border-t border-outline-variant">
-        <p class="px-3 mb-1 text-caption font-bold text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">menu_book</span>단원 바로가기</p>
-        <div id="sidebar-nav" class="space-y-2"></div>
+      <div class="pt-md mt-md border-t border-faint">
+        <p class="px-3 mb-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3 flex items-center gap-1.5"><span class="text-[16px]"><span class="material-symbols-outlined">menu_book</span></span>단원 바로가기</p>
+        <div id="sidebar-nav" class="space-y-1.5"></div>
       </div>
       <!-- 3~6. 수행평가·산출물·질의응답·안전 -->
-      <div class="pt-md mt-md border-t border-outline-variant space-y-1">
-        <a id="assess-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">assignment</span><span class="text-label-md font-bold">수행평가 공지</span></a>
-        <div class="flex items-center gap-3 p-3 rounded-lg bg-secondary-container text-on-secondary-container"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">upload_file</span><span class="text-label-md font-bold">산출물 제출</span></div>
-        <a id="qna-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">forum</span><span class="text-label-md font-bold">질의응답 (Q&amp;A)</span></a>
-        <a href="#" class="fixed-link flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">health_and_safety</span><span class="text-label-md font-bold">실험실 안전 수칙</span></a>
+      <div class="pt-md mt-md border-t border-faint space-y-1">
+        <a id="assess-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="text-ink3 text-[20px]"><span class="material-symbols-outlined">assignment</span></span><span class="text-[14px] font-bold">수행평가 공지</span></a>
+        <div class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg"><span class="nav-ic text-[20px]"><span class="material-symbols-outlined">upload_file</span></span><span class="text-[14px] font-bold">산출물 제출</span></div>
+        <a id="qna-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="text-ink3 text-[20px]"><span class="material-symbols-outlined">forum</span></span><span class="text-[14px] font-bold">질의응답 (Q&amp;A)</span></a>
+        <a href="#" class="fixed-link nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="text-ink3 text-[20px]"><span class="material-symbols-outlined">health_and_safety</span></span><span class="text-[14px] font-bold">실험실 안전 수칙</span></a>
       </div>
     </nav>
   </aside>
 
   <div class="flex-1 flex flex-col h-full overflow-y-auto">
-    <header class="sticky top-0 z-10 bg-surface/80 backdrop-blur-md border-b border-outline-variant w-full">
+    <header class="sticky top-0 z-10 bg-paper/85 backdrop-blur-md border-b border-ink/15 w-full">
       <div class="flex justify-between items-center h-16 px-md w-full gap-3">
         <div class="flex items-center gap-2 md:gap-3 min-w-0">
-          <button id="menu-btn" class="md:hidden p-2 -ml-1 text-on-surface-variant hover:bg-surface-container rounded-full shrink-0" aria-label="단원 메뉴 열기"><span class="material-symbols-outlined">menu</span></button>
-          <a href="과목-선택.html" title="과목 선택으로 돌아가기" class="shrink-0 flex items-center gap-1 text-label-md text-on-surface-variant hover:text-primary transition-colors">
+          <button id="menu-btn" class="md:hidden p-2 -ml-1 text-ink3 hover:bg-paper2 rounded-full shrink-0" aria-label="단원 메뉴 열기"><span class="material-symbols-outlined">menu</span></button>
+          <a href="과목-선택.html" title="과목 선택으로 돌아가기" class="shrink-0 flex items-center gap-1 text-[13px] font-semibold text-ink3 hover:text-signal transition-colors">
             <span class="material-symbols-outlined text-[20px]">arrow_back</span><span class="hidden sm:inline">과목 선택</span>
           </a>
-          <span class="text-outline-variant hidden sm:inline">|</span>
-          <nav class="flex items-center gap-2 text-body-md flex-wrap min-w-0">
-            <a id="crumb-subject" href="#" class="text-on-surface-variant hover:text-primary truncate">과목</a>
-            <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
-            <span class="text-primary font-bold">산출물 제출</span>
+          <span class="text-faint hidden sm:inline">|</span>
+          <nav class="flex items-center gap-2 text-[14px] flex-wrap min-w-0">
+            <a id="crumb-subject" href="#" class="text-ink3 hover:text-signal truncate">과목</a>
+            <span class="material-symbols-outlined text-ink3/60 text-[16px]">chevron_right</span>
+            <span class="font-mono text-[12px] font-bold text-signal uppercase tracking-wider">산출물 제출</span>
           </nav>
         </div>
-        <div class="flex items-center gap-3 shrink-0">
-          <span id="teacher-badge" class="hidden text-caption text-white bg-primary px-2 py-0.5 rounded-full font-semibold">교사 시점</span>
-          <span id="who" class="text-caption text-on-surface-variant hidden sm:inline"></span>
-          <button id="logout-btn" class="text-caption text-on-surface-variant hover:text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[20px]">logout</span><span class="hidden sm:inline">로그아웃</span></button>
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span id="teacher-badge" class="hidden font-mono text-[11px] font-bold text-lime bg-ink px-2.5 py-1 rounded-full">교사 시점</span>
+          <span id="who" class="text-[13px] text-ink3 hidden sm:inline"></span>
+          <button id="logout-btn" class="text-[13px] text-ink3 hover:text-signal flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">logout</span><span class="hidden sm:inline">로그아웃</span></button>
         </div>
       </div>
     </header>
 
     <main class="flex-1 w-full max-w-5xl mx-auto p-md md:p-lg">
-      <header class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-md">
+      <header class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-6">
         <div class="min-w-0">
-          <h2 class="text-headline-lg text-on-surface mb-1">산출물 제출</h2>
-          <p id="list-subtitle" class="text-body-md text-on-surface-variant">과제별로 산출물을 제출하세요.</p>
+          <div class="pin-label inline-flex items-center gap-2 rounded-full bg-ink px-3.5 py-1.5 text-[12px] font-bold text-lime shadow-note mb-4">
+            <span class="text-signal">●</span> 산출물 제출
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tightest text-ink mb-1">산출물 제출</h2>
+          <p id="list-subtitle" class="text-[14px] text-ink3 leading-relaxed">과제별로 산출물을 제출하세요.</p>
         </div>
-        <button id="new-btn" class="hidden px-md py-3 bg-primary text-on-primary rounded-xl font-bold items-center justify-center gap-2 shadow-sm hover:bg-primary-container transition-all active:scale-95 shrink-0">
-          <span class="material-symbols-outlined">add</span>제출 과제 만들기
+        <button id="new-btn" class="hidden px-5 py-3 bg-ink text-paper rounded-lg font-extrabold items-center justify-center gap-2 shadow-note hover:shadow-lift transition-all active:translate-y-0 shrink-0 lift-hover">
+          <span class="material-symbols-outlined text-[20px]">add</span>제출 과제 만들기
         </button>
       </header>
 
       <!-- 교사: 구글드라이브 연결 상태 + 폴더 설정 -->
-      <div id="drive-bar" class="hidden mb-md p-sm rounded-xl border border-outline-variant bg-surface-container-lowest">
+      <div id="drive-bar" class="hidden mb-6 p-4 sm:p-5 card rounded-xl shadow-note">
         <div class="flex items-center gap-3 flex-wrap">
-          <span class="material-symbols-outlined text-primary">cloud</span>
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-lime-soft text-ink text-[20px]"><span class="material-symbols-outlined">cloud</span></span>
           <div class="flex-1 min-w-0">
-            <p class="text-label-md font-bold text-on-surface">구글 드라이브 <span id="drive-status" class="text-on-surface-variant font-normal">확인 중…</span></p>
-            <p class="text-caption text-on-surface-variant">저장 경로: <b id="drive-path" class="text-on-surface">학교 › 년도 › 학기 › 과목 › 분반 › 학번.확장자</b></p>
+            <p class="text-[14px] font-bold text-ink">구글 드라이브 <span id="drive-status" class="text-ink3 font-normal">확인 중…</span></p>
+            <p class="text-[12.5px] text-ink3">저장 경로: <b id="drive-path" class="font-mono text-[11.5px] text-ink">학교 › 년도 › 학기 › 과목 › 분반 › 학번.확장자</b></p>
           </div>
-          <button id="drive-settings-btn" class="px-3 py-2 rounded-lg border border-outline-variant text-on-surface-variant font-bold text-label-md hover:bg-surface-container transition-colors">폴더 설정</button>
-          <button id="drive-connect" class="px-md py-2 rounded-lg border border-primary text-primary font-bold text-label-md hover:bg-primary/5 transition-colors">연결</button>
+          <button id="drive-settings-btn" class="px-3 py-2 rounded-lg border border-faint text-ink3 font-bold text-[13px] hover:bg-paper2 hover:text-ink transition-colors">폴더 설정</button>
+          <button id="drive-connect" class="px-4 py-2 rounded-lg border border-ink text-ink font-bold text-[13px] hover:bg-ink hover:text-paper transition-colors">연결</button>
         </div>
-        <div id="drive-settings" class="hidden mt-sm pt-sm border-t border-outline-variant flex flex-wrap items-end gap-3">
-          <div class="flex flex-col gap-1"><span class="text-caption text-outline">학교</span><input id="set-school" type="text" class="rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-label-md py-1.5"></div>
-          <div class="flex flex-col gap-1"><span class="text-caption text-outline">년도</span><input id="set-year" type="text" class="w-24 rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-label-md py-1.5"></div>
-          <div class="flex flex-col gap-1"><span class="text-caption text-outline">학기</span><select id="set-semester" class="rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-label-md py-1.5"><option>1학기</option><option>2학기</option></select></div>
-          <button id="set-save" class="px-4 py-2 rounded-lg bg-primary text-on-primary font-bold text-label-md">저장</button>
+        <div id="drive-settings" class="hidden mt-4 pt-4 dashed flex flex-wrap items-end gap-3">
+          <div class="flex flex-col gap-1"><span class="font-mono text-[11px] uppercase tracking-wider text-ink3">학교</span><input id="set-school" type="text" class="rounded-lg border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 text-[14px] py-1.5"></div>
+          <div class="flex flex-col gap-1"><span class="font-mono text-[11px] uppercase tracking-wider text-ink3">년도</span><input id="set-year" type="text" class="w-24 rounded-lg border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 text-[14px] py-1.5"></div>
+          <div class="flex flex-col gap-1"><span class="font-mono text-[11px] uppercase tracking-wider text-ink3">학기</span><select id="set-semester" class="rounded-lg border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 text-[14px] py-1.5"><option>1학기</option><option>2학기</option></select></div>
+          <button id="set-save" class="px-4 py-2 rounded-lg bg-lime text-ink font-extrabold text-[13px] shadow-note hover:shadow-lift transition-all">저장</button>
         </div>
       </div>
 
       <div id="list" class="space-y-3">
-        <p class="text-on-surface-variant py-lg text-center">불러오는 중…</p>
+        <p class="text-ink3 py-lg text-center">불러오는 중…</p>
       </div>
     </main>
   </div>
@@ -139,32 +120,32 @@
 
 <!-- 학생 제출 모달 (파일 / 직접 작성) -->
 <div id="submit-modal" class="hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-md">
-  <div id="submit-backdrop" class="absolute inset-0 bg-black/40"></div>
-  <div class="relative bg-surface-container-lowest w-full md:max-w-lg rounded-t-xl md:rounded-xl border border-outline-variant shadow-xl max-h-[92vh] overflow-y-auto swap-in">
-    <div class="flex items-center justify-between p-md border-b border-outline-variant sticky top-0 bg-surface-container-lowest z-10">
-      <h3 id="submit-title" class="text-title-lg font-semibold text-on-surface truncate">산출물 제출</h3>
-      <button id="submit-close" class="p-1 text-on-surface-variant hover:text-on-surface rounded-full shrink-0"><span class="material-symbols-outlined">close</span></button>
+  <div id="submit-backdrop" class="absolute inset-0 bg-ink/40"></div>
+  <div class="relative card w-full md:max-w-lg rounded-t-2xl md:rounded-2xl shadow-lift max-h-[92vh] overflow-y-auto swap-in">
+    <div class="flex items-center justify-between p-md border-b border-faint sticky top-0 bg-white z-10">
+      <h3 id="submit-title" class="text-lg font-extrabold tracking-tightest text-ink truncate">산출물 제출</h3>
+      <button id="submit-close" class="p-1 text-ink3 hover:text-ink rounded-full shrink-0"><span class="material-symbols-outlined">close</span></button>
     </div>
     <div class="p-md">
       <div class="flex gap-2 mb-md">
-        <button id="tab-file" class="submit-tab flex-1 py-2 rounded-lg border text-label-md font-bold transition-colors">파일 업로드</button>
-        <button id="tab-text" class="submit-tab flex-1 py-2 rounded-lg border text-label-md font-bold transition-colors">직접 작성</button>
+        <button id="tab-file" class="submit-tab flex-1 py-2 rounded-lg border font-mono text-[13px] font-bold transition-colors">파일 업로드</button>
+        <button id="tab-text" class="submit-tab flex-1 py-2 rounded-lg border font-mono text-[13px] font-bold transition-colors">직접 작성</button>
       </div>
       <div id="pane-file">
-        <label for="s-file" class="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-outline-variant rounded-xl py-lg cursor-pointer hover:border-primary hover:bg-surface-container-low transition-colors">
-          <span class="material-symbols-outlined text-[32px] text-primary">file_upload</span>
-          <span id="s-file-label" class="text-label-md font-bold text-on-surface">파일 선택</span>
-          <span class="text-caption text-on-surface-variant">제출한 파일은 원본 형식 그대로 저장됩니다</span>
+        <label for="s-file" class="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-faint rounded-xl py-lg bg-paper2/60 cursor-pointer hover:border-ink hover:bg-lime-soft/40 transition-colors">
+          <span class="flex h-12 w-12 items-center justify-center rounded-full bg-ink text-lime text-[26px]"><span class="material-symbols-outlined">file_upload</span></span>
+          <span id="s-file-label" class="text-[14px] font-bold text-ink">파일 선택</span>
+          <span class="text-[12px] text-ink3">제출한 파일은 원본 형식 그대로 저장됩니다</span>
           <input id="s-file" type="file" class="hidden">
         </label>
       </div>
       <div id="pane-text" class="hidden">
-        <textarea id="s-text" rows="10" placeholder="여기에 산출물 내용을 작성하세요. 제출하면 학번.docx 파일로 저장됩니다." class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md resize-y"></textarea>
+        <textarea id="s-text" rows="10" placeholder="여기에 산출물 내용을 작성하세요. 제출하면 학번.docx 파일로 저장됩니다." class="w-full px-4 py-3 rounded-lg border border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none text-[15px] resize-y"></textarea>
       </div>
-      <p id="submit-error" class="text-caption text-error hidden mt-2"></p>
+      <p id="submit-error" class="font-mono text-[12px] text-error hidden mt-2"></p>
       <div class="flex gap-3 justify-end mt-md">
-        <button id="submit-cancel" class="px-5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-colors">취소</button>
-        <button id="submit-go" class="px-5 py-2.5 rounded-lg bg-primary text-on-primary font-bold hover:bg-primary-container transition-colors disabled:opacity-60">제출</button>
+        <button id="submit-cancel" class="px-5 py-2.5 rounded-lg border border-faint text-ink3 font-bold hover:bg-paper2 hover:text-ink transition-colors">취소</button>
+        <button id="submit-go" class="px-5 py-2.5 rounded-lg bg-lime text-ink font-extrabold shadow-note hover:shadow-lift transition-all disabled:opacity-60">제출</button>
       </div>
     </div>
   </div>
@@ -172,35 +153,35 @@
 
 <!-- 제출 과제 작성/수정 모달 (교사) -->
 <div id="edit-modal" class="hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-md">
-  <div id="edit-backdrop" class="absolute inset-0 bg-black/40"></div>
-  <div class="relative bg-surface-container-lowest w-full md:max-w-lg rounded-t-xl md:rounded-xl border border-outline-variant shadow-xl max-h-[92vh] overflow-y-auto swap-in">
-    <div class="flex items-center justify-between p-md border-b border-outline-variant sticky top-0 bg-surface-container-lowest z-10">
-      <h3 id="edit-title" class="text-title-lg font-semibold text-on-surface">제출 과제 만들기</h3>
-      <button id="edit-close" class="p-1 text-on-surface-variant hover:text-on-surface rounded-full"><span class="material-symbols-outlined">close</span></button>
+  <div id="edit-backdrop" class="absolute inset-0 bg-ink/40"></div>
+  <div class="relative card w-full md:max-w-lg rounded-t-2xl md:rounded-2xl shadow-lift max-h-[92vh] overflow-y-auto swap-in">
+    <div class="flex items-center justify-between p-md border-b border-faint sticky top-0 bg-white z-10">
+      <h3 id="edit-title" class="text-lg font-extrabold tracking-tightest text-ink">제출 과제 만들기</h3>
+      <button id="edit-close" class="p-1 text-ink3 hover:text-ink rounded-full"><span class="material-symbols-outlined">close</span></button>
     </div>
     <form id="edit-form" class="p-md flex flex-col gap-md">
       <div class="flex flex-col gap-base">
-        <label for="f-title" class="text-label-md text-on-surface-variant">과제 제목 <span class="text-error">*</span></label>
-        <input id="f-title" type="text" required maxlength="150" placeholder="예: 원소의 기원 조사 보고서" class="w-full px-4 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md">
+        <label for="f-title" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">과제 제목 <span class="text-signal">*</span></label>
+        <input id="f-title" type="text" required maxlength="150" placeholder="예: 원소의 기원 조사 보고서" class="w-full px-4 py-2.5 rounded-lg border border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none text-[15px]">
       </div>
       <div class="flex flex-col gap-base">
-        <label for="f-desc" class="text-label-md text-on-surface-variant">설명 <span class="text-outline">(선택)</span></label>
-        <textarea id="f-desc" rows="3" placeholder="제출 방법·형식·유의사항 등" class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md resize-y"></textarea>
+        <label for="f-desc" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">설명 <span class="text-ink3/70 normal-case">(선택)</span></label>
+        <textarea id="f-desc" rows="3" placeholder="제출 방법·형식·유의사항 등" class="w-full px-4 py-3 rounded-lg border border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none text-[15px] resize-y"></textarea>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div class="flex flex-col gap-base">
-          <label for="f-due" class="text-label-md text-on-surface-variant">마감일</label>
-          <input id="f-due" type="date" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md">
+          <label for="f-due" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">마감일</label>
+          <input id="f-due" type="date" class="w-full px-3 py-2.5 rounded-lg border border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none text-[15px]">
         </div>
         <label class="flex items-end gap-2 pb-2.5 cursor-pointer">
-          <input id="f-active" type="checkbox" checked class="rounded border-outline-variant text-primary focus:ring-primary">
-          <span class="text-label-md text-on-surface">학생에게 공개(제출 받기)</span>
+          <input id="f-active" type="checkbox" checked class="lab rounded border-faint text-ink focus:ring-lime">
+          <span class="text-[14px] text-ink">학생에게 공개(제출 받기)</span>
         </label>
       </div>
-      <p id="edit-error" class="text-caption text-error hidden"></p>
+      <p id="edit-error" class="font-mono text-[12px] text-error hidden"></p>
       <div class="flex gap-3 justify-end">
-        <button type="button" id="edit-cancel" class="px-5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-colors">취소</button>
-        <button type="submit" id="edit-submit" class="px-5 py-2.5 rounded-lg bg-primary text-on-primary font-bold hover:bg-primary-container transition-colors disabled:opacity-60"><span id="edit-submit-label">등록</span></button>
+        <button type="button" id="edit-cancel" class="px-5 py-2.5 rounded-lg border border-faint text-ink3 font-bold hover:bg-paper2 hover:text-ink transition-colors">취소</button>
+        <button type="submit" id="edit-submit" class="px-5 py-2.5 rounded-lg bg-ink text-paper font-extrabold shadow-note hover:shadow-lift transition-all disabled:opacity-60"><span id="edit-submit-label">등록</span></button>
       </div>
     </form>
   </div>
@@ -228,7 +209,7 @@
 
   // ---------- 사이드바 단원 트리 ----------
   function subLink(s) {
-    return `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 p-2 rounded-lg text-caption text-on-surface hover:bg-surface-container-highest transition-all"><span class="material-symbols-outlined text-[18px] text-outline">radio_button_unchecked</span><span>${esc(s.name)}</span></a>`;
+    return `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 p-2 rounded-lg text-[13px] text-ink hover:bg-paper3 transition-all"><span class="text-[18px] text-ink3/70"><span class="material-symbols-outlined">radio_button_unchecked</span></span><span>${esc(s.name)}</span></a>`;
   }
   function renderSidebarNav() {
     const nav = $('sidebar-nav');
@@ -236,10 +217,10 @@
       const unitOpen = u.id === sb.openUnit;
       const midsHtml = unitOpen ? (u.mid_units || []).map((m) => {
         const on = m.id === sb.openMid;
-        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-caption text-on-surface-variant p-2">소단원이 없습니다.</p>';
-        return `<div><button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between p-3 rounded-lg text-left transition-all ${on ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'}"><span class="text-label-md">${esc(m.name)}</span><span class="material-symbols-outlined text-[18px] arrow ${on ? 'rotate-180' : ''}">expand_more</span></button>${on ? `<div class="mt-1 ml-4 space-y-0.5 swap-in">${subs}</div>` : ''}</div>`;
+        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-[13px] text-ink3 p-2">소단원이 없습니다.</p>';
+        return `<div><button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between p-3 rounded-lg text-left transition-all ${on ? 'bg-ink text-lime font-bold' : 'text-ink3 hover:bg-paper3'}"><span class="text-[14px]">${esc(m.name)}</span><span class="text-[18px] arrow ${on ? 'rotate-180' : ''}"><span class="material-symbols-outlined">expand_more</span></span></button>${on ? `<div class="mt-1 ml-4 space-y-0.5 swap-in">${subs}</div>` : ''}</div>`;
       }).join('') : '';
-      return `<div><button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between p-3 rounded-lg hover:bg-surface-container-highest text-left transition-all"><span class="text-label-md font-bold ${unitOpen ? 'text-primary' : 'text-on-surface-variant'}">${esc(u.name)}</span><span class="material-symbols-outlined arrow text-outline ${unitOpen ? 'rotate-180' : ''}">expand_more</span></button>${unitOpen ? `<div class="mt-1 space-y-1 swap-in">${midsHtml}</div>` : ''}</div>`;
+      return `<div><button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between p-3 rounded-lg hover:bg-paper3 text-left transition-all"><span class="text-[14px] font-bold ${unitOpen ? 'text-signal' : 'text-ink'}">${esc(u.name)}</span><span class="arrow text-ink3 text-[20px] ${unitOpen ? 'rotate-180' : ''}"><span class="material-symbols-outlined">expand_more</span></span></button>${unitOpen ? `<div class="mt-1 space-y-1 swap-in">${midsHtml}</div>` : ''}</div>`;
     }).join('');
     nav.querySelectorAll('.sb-unit').forEach((btn) => btn.addEventListener('click', () => { const id = btn.dataset.unit; if (sb.openUnit === id) { sb.openUnit = null; sb.openMid = null; } else { sb.openUnit = id; sb.openMid = null; } renderSidebarNav(); }));
     nav.querySelectorAll('.sb-mid').forEach((btn) => btn.addEventListener('click', () => { const id = btn.dataset.mid; sb.openMid = (sb.openMid === id) ? null : id; renderSidebarNav(); }));
@@ -247,10 +228,10 @@
 
   // ---------- 목록 ----------
   function statusPill(sub, dueOver) {
-    if (sub) return '<span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-caption font-bold rounded-full">제출 완료</span>';
+    if (sub) return '<span class="px-3 py-1 bg-lime-soft text-ink font-mono text-[11px] font-bold rounded-full">제출 완료</span>';
     return dueOver
-      ? '<span class="px-3 py-1 bg-red-100 text-red-700 text-caption font-bold rounded-full">미제출(마감)</span>'
-      : '<span class="px-3 py-1 bg-amber-100 text-amber-700 text-caption font-bold rounded-full">미제출</span>';
+      ? '<span class="px-3 py-1 bg-signal-soft text-signal font-mono text-[11px] font-bold rounded-full">미제출(마감)</span>'
+      : '<span class="px-3 py-1 bg-paper3 text-ink3 font-mono text-[11px] font-bold rounded-full">미제출</span>';
   }
 
   function assignmentCard(a) {
@@ -259,38 +240,38 @@
     const inactive = !a.is_active;
     const adminCtrls = state.isAdmin ? `
       <div class="flex items-center gap-1 shrink-0">
-        <button data-edit="${a.id}" class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary" title="수정"><span class="material-symbols-outlined text-[20px]">edit</span></button>
-        <button data-del="${a.id}" class="p-2 rounded-lg text-on-surface-variant hover:bg-error/10 hover:text-error" title="삭제"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+        <button data-edit="${a.id}" class="p-2 rounded-lg text-ink3 hover:bg-paper2 hover:text-ink" title="수정"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+        <button data-del="${a.id}" class="p-2 rounded-lg text-ink3 hover:bg-signal-soft hover:text-signal" title="삭제"><span class="material-symbols-outlined text-[20px]">delete</span></button>
       </div>` : '';
     // 학생 제출 영역
     let studentArea = '';
     if (!state.isAdmin) {
       studentArea = mySub
-        ? `<div class="mt-md flex flex-wrap items-center gap-2 text-label-md text-on-surface-variant">
-             <span class="flex items-center gap-1 text-emerald-700"><span class="material-symbols-outlined text-[18px]">check_circle</span>${esc(mySub.file_name || '제출됨')}</span>
-             <span class="text-outline">·</span><span>${fmtDateTime(mySub.submitted_at)}</span>
-             <button data-submit="${a.id}" class="ml-auto px-md py-2 rounded-lg border border-outline-variant text-on-surface font-bold hover:bg-surface-container transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">upload</span>다시 제출</button>
+        ? `<div class="mt-md dashed pt-4 flex flex-wrap items-center gap-2 text-[14px] text-ink3">
+             <span class="flex items-center gap-1 font-bold text-ink"><span class="text-[18px] text-lime bg-ink rounded-full p-0.5"><span class="material-symbols-outlined">check</span></span>${esc(mySub.file_name || '제출됨')}</span>
+             <span class="text-ink3/60">·</span><span class="font-mono text-[12px]">${fmtDateTime(mySub.submitted_at)}</span>
+             <button data-submit="${a.id}" class="ml-auto px-4 py-2 rounded-lg border border-faint text-ink font-bold hover:bg-paper2 transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">upload</span>다시 제출</button>
            </div>`
-        : `<button data-submit="${a.id}" class="mt-md w-full py-2.5 rounded-lg bg-primary text-on-primary font-bold hover:bg-primary-container transition-colors flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">upload</span>제출하기</button>`;
+        : `<button data-submit="${a.id}" class="mt-md w-full py-2.5 rounded-lg bg-lime text-ink font-extrabold shadow-note hover:shadow-lift transition-all flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">upload</span>제출하기</button>`;
     }
     // 교사 제출 현황
     let teacherArea = '';
     if (state.isAdmin) {
-      teacherArea = `<div class="mt-md">
-        <button data-subs="${a.id}" class="text-label-md text-primary font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[18px] arrow ${state.openSubs[a.id] ? 'rotate-180' : ''}">expand_more</span>제출 현황</button>
+      teacherArea = `<div class="mt-md dashed pt-3">
+        <button data-subs="${a.id}" class="font-mono text-[13px] text-ink font-bold flex items-center gap-1 hover:text-signal transition-colors"><span class="text-[18px] arrow ${state.openSubs[a.id] ? 'rotate-180' : ''}"><span class="material-symbols-outlined">expand_more</span></span>제출 현황</button>
         <div id="subs-${a.id}" class="${state.openSubs[a.id] ? '' : 'hidden'} mt-2"></div>
       </div>`;
     }
-    return `<div class="bg-surface-container-lowest border ${dueOver && !mySub && !state.isAdmin ? 'border-l-4 border-l-error border-outline-variant' : 'border-outline-variant'} rounded-xl p-md">
+    return `<div class="card rounded-xl p-md shadow-note ${dueOver && !mySub && !state.isAdmin ? 'border-l-4 border-l-signal' : ''}">
       <div class="flex justify-between items-start gap-3 mb-2">
         <div class="flex flex-wrap items-center gap-2 min-w-0">
-          ${state.isAdmin ? (inactive ? '<span class="px-2 py-1 rounded bg-surface-container text-on-surface-variant text-caption font-bold">비공개</span>' : '<span class="px-2 py-1 rounded bg-secondary-container text-on-secondary-container text-caption font-bold">공개</span>') : statusPill(mySub, dueOver)}
+          ${state.isAdmin ? (inactive ? '<span class="px-2.5 py-1 rounded-full bg-paper3 text-ink3 font-mono text-[11px] font-bold">비공개</span>' : '<span class="px-2.5 py-1 rounded-full bg-lime-soft text-ink font-mono text-[11px] font-bold">공개</span>') : statusPill(mySub, dueOver)}
         </div>
         ${adminCtrls}
       </div>
-      <h3 class="text-title-lg text-on-surface break-words">${esc(a.title)}</h3>
-      ${a.due_date ? `<p class="text-caption ${dueOver ? 'text-error font-bold' : 'text-on-surface-variant'} mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">event</span>마감일 ${fmtDate(a.due_date)}</p>` : ''}
-      ${a.description ? `<p class="text-body-md text-on-surface-variant mt-2 whitespace-pre-wrap break-words">${nl2br(a.description)}</p>` : ''}
+      <h3 class="text-lg font-extrabold tracking-tight text-ink break-words">${esc(a.title)}</h3>
+      ${a.due_date ? `<p class="text-[12.5px] ${dueOver ? 'text-signal font-bold' : 'text-ink3'} mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">event</span>마감일 <span class="font-mono">${fmtDate(a.due_date)}</span></p>` : ''}
+      ${a.description ? `<p class="text-[15px] text-ink2 mt-2 leading-relaxed whitespace-pre-wrap break-words">${nl2br(a.description)}</p>` : ''}
       ${studentArea}${teacherArea}
     </div>`;
   }
@@ -298,11 +279,11 @@
   function renderList() {
     const list = $('list');
     if (!state.assignments.length) {
-      list.innerHTML = `<div class="text-center py-20 px-md bg-surface-container-lowest border border-dashed border-outline-variant rounded-xl">
-        <div class="w-16 h-16 mx-auto rounded-full bg-primary-fixed flex items-center justify-center mb-4"><span class="material-symbols-outlined text-[36px] text-primary">upload_file</span></div>
-        <p class="text-title-lg text-on-surface">아직 제출 과제가 없습니다</p>
-        <p class="text-body-md text-on-surface-variant mt-1 mb-md">${state.isAdmin ? '첫 제출 과제를 만들어 학생들의 산출물을 받아보세요.' : '등록된 제출 과제가 없습니다. 과제가 생기면 여기에 표시됩니다.'}</p>
-        ${state.isAdmin ? '<button id="empty-new" class="px-md py-2.5 bg-primary text-on-primary rounded-lg font-bold inline-flex items-center gap-2 hover:bg-primary-container transition-all active:scale-95"><span class="material-symbols-outlined">add</span>제출 과제 만들기</button>' : ''}
+      list.innerHTML = `<div class="text-center py-20 px-md card border-dashed border-2 border-faint rounded-xl">
+        <div class="w-16 h-16 mx-auto rounded-full bg-ink flex items-center justify-center mb-4"><span class="material-symbols-outlined text-[32px] text-lime">upload_file</span></div>
+        <p class="text-lg font-extrabold tracking-tightest text-ink">아직 제출 과제가 없습니다</p>
+        <p class="text-[14px] text-ink3 mt-1 mb-md">${state.isAdmin ? '첫 제출 과제를 만들어 학생들의 산출물을 받아보세요.' : '등록된 제출 과제가 없습니다. 과제가 생기면 여기에 표시됩니다.'}</p>
+        ${state.isAdmin ? '<button id="empty-new" class="px-5 py-2.5 bg-ink text-paper rounded-lg font-extrabold inline-flex items-center gap-2 shadow-note hover:shadow-lift transition-all"><span class="material-symbols-outlined text-[20px]">add</span>제출 과제 만들기</button>' : ''}
       </div>`;
       $('empty-new')?.addEventListener('click', () => openEdit(null));
       return;
@@ -340,11 +321,11 @@
     $('pane-text').classList.toggle('hidden', mode !== 'text');
     [['tab-file', 'file'], ['tab-text', 'text']].forEach(([id, m]) => {
       const on = m === mode;
-      $(id).classList.toggle('bg-primary-fixed', on);
-      $(id).classList.toggle('border-primary', on);
-      $(id).classList.toggle('text-on-primary-fixed', on);
-      $(id).classList.toggle('border-outline-variant', !on);
-      $(id).classList.toggle('text-on-surface-variant', !on);
+      $(id).classList.toggle('bg-lime', on);
+      $(id).classList.toggle('border-ink', on);
+      $(id).classList.toggle('text-ink', on);
+      $(id).classList.toggle('border-faint', !on);
+      $(id).classList.toggle('text-ink3', !on);
     });
   }
   function startSubmit(assignmentId) {
@@ -387,21 +368,21 @@
   function toggleSubs(aid) { state.openSubs[aid] = !state.openSubs[aid]; renderList(); }
   async function loadSubs(aid) {
     const box = $('subs-' + aid); if (!box) return;
-    box.innerHTML = '<p class="text-caption text-on-surface-variant py-2">불러오는 중…</p>';
+    box.innerHTML = '<p class="text-[13px] text-ink3 py-2">불러오는 중…</p>';
     try {
       const subs = await fetchSubmissionsForAssignment(aid);
-      if (!subs.length) { box.innerHTML = '<p class="text-caption text-on-surface-variant py-2 px-1">아직 제출한 학생이 없습니다.</p>'; return; }
-      box.innerHTML = `<div class="border border-outline-variant rounded-lg divide-y divide-outline-variant overflow-hidden">
-        ${subs.map((s) => `<div class="flex items-center gap-2 p-2 text-label-md">
-          <span class="material-symbols-outlined text-[18px] text-outline">description</span>
-          <span class="font-bold text-on-surface">${esc(s.student_name || '학생')}</span>
-          <span class="text-caption text-on-surface-variant">${esc(s.class_name || '')}</span>
-          <span class="text-caption text-outline truncate flex-1">${esc(s.file_name || '')}</span>
-          <span class="text-caption text-on-surface-variant hidden sm:inline">${fmtDateTime(s.submitted_at)}</span>
-          <button data-dl="${s.id}" class="px-2 py-1 rounded text-primary hover:bg-primary/5 font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">download</span></button>
+      if (!subs.length) { box.innerHTML = '<p class="text-[13px] text-ink3 py-2 px-1">아직 제출한 학생이 없습니다.</p>'; return; }
+      box.innerHTML = `<div class="border border-faint rounded-lg divide-y divide-faint overflow-hidden bg-paper2/40">
+        ${subs.map((s) => `<div class="flex items-center gap-2 p-2 text-[14px]">
+          <span class="text-[18px] text-ink3"><span class="material-symbols-outlined">description</span></span>
+          <span class="font-bold text-ink">${esc(s.student_name || '학생')}</span>
+          <span class="font-mono text-[11px] text-ink3">${esc(s.class_name || '')}</span>
+          <span class="text-[12px] text-ink3/80 truncate flex-1">${esc(s.file_name || '')}</span>
+          <span class="font-mono text-[11px] text-ink3 hidden sm:inline">${fmtDateTime(s.submitted_at)}</span>
+          <button data-dl="${s.id}" class="px-2 py-1 rounded text-ink hover:bg-lime-soft font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">download</span></button>
         </div>`).join('')}
       </div>
-      <p class="text-caption text-on-surface-variant mt-1 px-1">총 ${subs.length}명 제출</p>`;
+      <p class="font-mono text-[11px] text-ink3 mt-1 px-1">총 ${subs.length}명 제출</p>`;
       box.querySelectorAll('[data-dl]').forEach((b) => b.addEventListener('click', async () => {
         b.disabled = true;
         try { const url = await getSubmissionSignedUrl(b.dataset.dl); window.open(url, '_blank'); }
@@ -440,11 +421,11 @@
       driveConnected = !!s.connected;
       if (s.connected) {
         $('drive-status').innerHTML = `연결됨${s.email ? ' · <b>' + esc(s.email) + '</b>' : ''}`;
-        $('drive-status').className = 'text-secondary font-normal';
+        $('drive-status').className = 'text-ink font-semibold';
         $('drive-connect').textContent = '연결 해제';
       } else {
         $('drive-status').textContent = s.hasClient ? '미연결' : '미설정';
-        $('drive-status').className = 'text-error font-normal';
+        $('drive-status').className = 'text-signal font-normal';
         $('drive-connect').textContent = '연결';
       }
       const school = s.school || '학교', year = s.year || '년도', sem = s.semester || '학기';
@@ -452,7 +433,7 @@
       $('set-school').value = s.school || ''; $('set-year').value = s.year || ''; $('set-semester').value = s.semester || '1학기';
     } catch (e) {
       $('drive-status').textContent = '상태 확인 실패';
-      $('drive-status').className = 'text-error font-normal';
+      $('drive-status').className = 'text-signal font-normal';
     }
   }
   async function driveConnect() {

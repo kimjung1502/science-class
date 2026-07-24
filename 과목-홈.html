@@ -1,63 +1,16 @@
 <!DOCTYPE html>
-<html class="light" lang="ko">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>과목 홈 · 정환쌤과 함께하는 과학 수업</title>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">try{
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        colors: {
-          "surface-container-low": "#eff4ff",
-          "secondary": "#006b5f",
-          "error": "#ba1a1a",
-          "on-surface-variant": "#414754",
-          "secondary-container": "#c9e9e2",
-          "on-surface": "#0d1c2e",
-          "surface-container-lowest": "#ffffff",
-          "on-secondary-container": "#00504a",
-          "background": "#f8f9ff",
-          "surface-bright": "#f8f9ff",
-          "primary": "#005bbf",
-          "on-primary": "#ffffff",
-          "surface-container": "#e6eeff",
-          "on-tertiary-container": "#341100",
-          "outline-variant": "#c1c6d6",
-          "tertiary": "#9e4300",
-          "on-tertiary": "#ffffff",
-          "surface-variant": "#d5e3fc",
-          "primary-container": "#1a73e8",
-          "primary-fixed": "#d8e2ff",
-          "on-primary-fixed": "#001a41",
-          "outline": "#727785",
-          "surface": "#f8f9ff",
-          "surface-container-highest": "#d5e3fc",
-          "on-background": "#0d1c2e"
-        },
-        borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
-        spacing: { "gutter": "24px", "base": "4px", "md": "24px", "sm": "16px", "xl": "64px", "lg": "40px", "xs": "8px", "max-width": "1280px" },
-        fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
-        fontSize: {
-          "title-lg": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
-          "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
-          "caption": ["13px", {"lineHeight": "1.35", "fontWeight": "400"}],
-          "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
-          "headline-lg": ["32px", {"lineHeight": "1.25", "fontWeight": "700"}],
-          "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "500"}],
-          "headline-md": ["24px", {"lineHeight": "1.35", "fontWeight": "600"}]
-        }
-      }
-    }
-  }
-}catch(_e){}</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="js/theme.js?v=20260724a"></script>
 <style>
-  body { font-family: "Be Vietnam Pro", sans-serif; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
   @media (max-width: 767px) {
     #sidebar { left: -288px; transition: left .3s cubic-bezier(.4,0,.2,1); }
     #sidebar.drawer-open { left: 0; }
@@ -68,118 +21,147 @@
   @media (prefers-reduced-motion: reduce) { .swap-in { animation: none; } .arrow { transition: none; } }
 </style>
 </head>
-<body class="bg-background text-on-background">
+<body class="font-sans text-ink antialiased h-screen flex flex-col overflow-hidden">
 
-<div class="flex h-screen overflow-hidden">
+<!-- TopNavBar (학생 페이지 공통) -->
+<header class="sticky top-0 z-50 border-b border-ink/15 bg-paper/85 backdrop-blur-md shrink-0">
+  <div class="mx-auto flex h-16 max-w-max-width items-center justify-between px-5 w-full gap-3">
+    <div class="flex items-center gap-2 md:gap-3 min-w-0">
+      <button id="menu-btn" class="md:hidden p-2 -ml-1 text-ink3 hover:text-ink rounded-md shrink-0" aria-label="메뉴 열기"><span class="material-symbols-outlined text-[22px]">menu</span></button>
+      <a href="과목-선택.html" class="flex items-center gap-3 shrink-0">
+        <span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lime font-mono text-sm font-bold">LAB</span>
+        <div class="leading-tight hidden xs:block sm:block">
+          <div class="font-mono text-[10px] uppercase tracking-[0.2em] text-signal">Science Class</div>
+          <h1 class="font-bold tracking-tightest text-[15px]">정환쌤과 함께하는 과학 수업</h1>
+        </div>
+      </a>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+      <a href="과목-선택.html" class="hidden sm:flex text-[13px] text-ink3 hover:text-signal items-center gap-1"><span class="material-symbols-outlined text-[18px]">arrow_back</span>과목 선택</a>
+      <span id="teacher-badge" class="hidden font-mono text-[11px] font-bold text-lime bg-ink px-2.5 py-1 rounded-full">교사 시점</span>
+      <span id="who" class="hidden sm:inline text-[13px] text-ink3"></span>
+      <button id="logout-btn" class="text-[13px] text-ink3 hover:text-signal flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">logout</span><span class="hidden sm:inline">로그아웃</span></button>
+    </div>
+  </div>
+</header>
+
+<!-- App shell: 사이드바 + 본문 -->
+<div class="flex flex-1 min-h-0 w-full">
 
   <!-- 모바일 사이드바 배경 -->
-  <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/40 z-40 md:hidden"></div>
+  <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-ink/40 z-40 md:hidden"></div>
 
   <!-- SideNavBar (모바일: 슬라이드 서랍) -->
-  <aside id="sidebar" class="fixed md:static inset-y-0 md:left-auto z-50 md:z-auto w-72 shrink-0 flex flex-col h-full py-md px-sm bg-surface-container-low border-r border-outline-variant">
-    <div class="mb-md px-xs flex items-start justify-between gap-2">
-      <div class="min-w-0">
-        <h1 id="subject-title" class="text-title-lg font-semibold text-on-surface truncate">불러오는 중…</h1>
-        <p class="text-caption text-on-surface-variant mt-0.5">정환쌤과 함께하는 과학 수업</p>
+  <aside id="sidebar" class="fixed md:static inset-y-0 md:left-auto z-50 md:z-auto w-72 shrink-0 flex flex-col h-full py-5 px-3 bg-paper2/70 border-r border-ink/10">
+    <!-- 과목 배지 -->
+    <div class="mb-4 px-2 flex items-start justify-between gap-2">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink text-lime"><span class="material-symbols-outlined text-[22px]">science</span></span>
+        <div class="min-w-0">
+          <h1 id="subject-title" class="text-[16px] font-extrabold tracking-tightest text-ink truncate">불러오는 중…</h1>
+          <p class="font-mono text-[10px] uppercase tracking-[0.15em] text-ink3 mt-0.5">Science Class</p>
+        </div>
       </div>
-      <button id="sidebar-close" class="md:hidden p-1 text-on-surface-variant hover:text-on-surface rounded-full shrink-0" aria-label="닫기"><span class="material-symbols-outlined">close</span></button>
+      <button id="sidebar-close" class="md:hidden p-1 text-ink3 hover:text-ink rounded-full shrink-0" aria-label="닫기"><span class="material-symbols-outlined">close</span></button>
     </div>
 
-    <nav class="flex-1 space-y-2 overflow-y-auto">
+    <nav class="flex-1 space-y-1 overflow-y-auto -mx-1 px-1">
       <!-- 1. 과목 홈 (현재 페이지) -->
-      <div class="flex items-center gap-3 p-3 rounded-lg bg-secondary-container text-on-secondary-container"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">home</span><span class="text-label-md font-bold">과목 홈 (공지)</span></div>
+      <div class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg"><span class="material-symbols-outlined text-[20px]">home</span><span class="text-[14px] font-bold">과목 홈</span></div>
       <!-- 2. 단원 선택 -->
-      <div class="pt-md mt-md border-t border-outline-variant">
-        <p class="px-3 mb-1 text-caption font-bold text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">menu_book</span>단원 바로가기</p>
-        <div id="sidebar-nav" class="space-y-2"></div>
+      <div class="pt-4 mt-3 dashed">
+        <p class="px-3 mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-ink3">단원 바로가기</p>
+        <div id="sidebar-nav" class="space-y-1"></div>
       </div>
       <!-- 3~6. 수행평가·산출물·질의응답·안전 -->
-      <div class="pt-md mt-md border-t border-outline-variant space-y-1">
-        <a id="assess-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">assignment</span><span class="text-label-md font-bold">수행평가 공지</span></a>
-        <a id="submit-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">upload_file</span><span class="text-label-md font-bold">산출물 제출</span></a>
-        <a id="qna-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">forum</span><span class="text-label-md font-bold">질의응답 (Q&amp;A)</span></a>
-        <a href="#" class="fixed-link flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">health_and_safety</span><span class="text-label-md font-bold">실험실 안전 수칙</span></a>
+      <div class="pt-4 mt-3 dashed space-y-1">
+        <a id="assess-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="material-symbols-outlined text-[20px] text-signal">assignment</span><span class="text-[14px] font-semibold">수행평가 공지</span></a>
+        <a id="submit-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="material-symbols-outlined text-[20px] text-signal">upload_file</span><span class="text-[14px] font-semibold">산출물 제출</span></a>
+        <a id="qna-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="material-symbols-outlined text-[20px] text-signal">forum</span><span class="text-[14px] font-semibold">질의응답 (Q&amp;A)</span></a>
+        <a href="#" class="fixed-link nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="material-symbols-outlined text-[20px] text-signal">health_and_safety</span><span class="text-[14px] font-semibold">실험실 안전 수칙</span></a>
       </div>
     </nav>
   </aside>
 
-  <div class="flex-1 flex flex-col h-full overflow-y-auto">
-    <!-- TopNavBar -->
-    <header class="sticky top-0 z-10 bg-surface/80 backdrop-blur-md border-b border-outline-variant w-full">
-      <div class="flex justify-between items-center h-16 px-md w-full gap-3">
-        <div class="flex items-center gap-2 md:gap-3 min-w-0">
-          <button id="menu-btn" class="md:hidden p-2 -ml-1 text-on-surface-variant hover:bg-surface-container rounded-full shrink-0" aria-label="메뉴 열기"><span class="material-symbols-outlined">menu</span></button>
-          <a href="과목-선택.html" title="과목 선택으로 돌아가기" class="shrink-0 flex items-center gap-1 text-label-md text-on-surface-variant hover:text-primary transition-colors">
-            <span class="material-symbols-outlined text-[20px]">arrow_back</span><span class="hidden sm:inline">과목 선택</span>
-          </a>
-          <span class="text-outline-variant hidden sm:inline">|</span>
-          <nav class="flex items-center gap-2 text-body-md flex-wrap min-w-0">
-            <span id="crumb-subject" class="text-on-surface font-bold truncate">과목</span>
-            <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
-            <span class="text-primary font-bold">홈</span>
-          </nav>
-        </div>
-        <div class="flex items-center gap-3 shrink-0">
-          <span id="teacher-badge" class="hidden text-caption text-white bg-primary px-2 py-0.5 rounded-full font-semibold">교사 시점</span>
-          <span id="who" class="text-caption text-on-surface-variant hidden sm:inline"></span>
-          <button id="logout-btn" class="text-caption text-on-surface-variant hover:text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[20px]">logout</span><span class="hidden sm:inline">로그아웃</span></button>
-        </div>
-      </div>
-    </header>
+  <!-- 본문 스크롤 컨테이너 -->
+  <div class="flex-1 min-w-0 overflow-y-auto">
+    <main class="mx-auto w-full max-w-5xl px-5 py-8 md:py-10 space-y-10">
 
-    <!-- Main Content -->
-    <main class="flex-1 w-full max-w-5xl mx-auto p-md md:p-lg space-y-lg">
+      <!-- Breadcrumb -->
+      <nav class="flex items-center gap-1.5 font-mono text-[11px] text-ink3 -mb-3">
+        <span id="crumb-subject" class="font-bold text-ink truncate max-w-[45vw]">과목</span>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span class="text-signal font-bold">HOME</span>
+      </nav>
 
       <!-- Hero -->
-      <section class="relative overflow-hidden rounded-xl bg-primary-container text-white p-md md:p-lg shadow-sm">
+      <section class="relative overflow-hidden rounded-xl bg-ink text-paper p-6 md:p-8 shadow-note">
+        <!-- 흰 모눈 오버레이 -->
+        <div class="pointer-events-none absolute inset-0 opacity-[0.14]"
+             style="background-image:linear-gradient(to right,#fff 1px,transparent 1px),linear-gradient(to bottom,#fff 1px,transparent 1px);background-size:28px 28px;"></div>
+        <!-- 우상단 원자 라인 데코 -->
+        <svg class="pointer-events-none absolute -right-6 -top-6 w-[210px] opacity-90 select-none" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <g stroke="#C4E000" stroke-width="1.4" opacity="0.85">
+            <ellipse cx="100" cy="100" rx="64" ry="24"/>
+            <ellipse cx="100" cy="100" rx="64" ry="24" transform="rotate(60 100 100)"/>
+            <ellipse cx="100" cy="100" rx="64" ry="24" transform="rotate(120 100 100)"/>
+          </g>
+          <circle cx="100" cy="100" r="6" fill="#FF5B24"/>
+          <circle cx="164" cy="100" r="3.5" fill="#C4E000"/>
+          <circle cx="68" cy="72" r="3.5" fill="#C4E000"/>
+          <circle cx="68" cy="128" r="3.5" fill="#C4E000"/>
+        </svg>
         <div class="relative z-10">
-          <h1 class="text-headline-lg mb-1"><span id="hero-name">안녕하세요</span>님, 반가워요! 👋</h1>
-          <p class="text-body-lg opacity-90"><span id="hero-subject">과목</span>의 공지사항과 다가오는 평가·제출 과제를 확인하세요.</p>
+          <div class="font-mono text-[11px] uppercase tracking-[0.25em] text-lime"><span id="hero-subject">과목</span> · HOME</div>
+          <h1 class="mt-2 text-2xl md:text-3xl font-extrabold tracking-tightest leading-[1.15]"><span id="hero-name">안녕하세요</span>님, 반가워요 👋</h1>
+          <p class="mt-2 text-[14px] leading-relaxed text-paper/75 max-w-xl">공지사항과 다가오는 평가·제출 과제를 이 노트 한 장에서 확인하세요.</p>
+          <div id="hero-chips" class="mt-5 flex flex-wrap gap-2 font-mono text-[11px]">
+            <span class="rounded border border-paper/25 px-2 py-1 text-paper/70">오늘도 좋은 하루 ✨</span>
+          </div>
         </div>
-        <span class="material-symbols-outlined absolute -right-4 -bottom-6 text-[160px] opacity-10 select-none pointer-events-none">science</span>
       </section>
 
       <!-- ===================== 공지사항 ===================== -->
       <section>
-        <div class="flex items-center justify-between gap-3 mb-sm">
-          <div class="flex items-center gap-2 min-w-0">
-            <span class="material-symbols-outlined text-primary">campaign</span>
-            <h2 class="text-title-lg text-on-surface">공지사항</h2>
-          </div>
-          <button id="new-announce-btn" class="hidden shrink-0 px-4 py-2 bg-primary text-on-primary rounded-lg font-bold flex items-center gap-1.5 shadow-sm hover:bg-primary-container transition-all active:scale-95">
-            <span class="material-symbols-outlined text-[20px]">add</span>새 공지
+        <div class="flex items-center gap-3 mb-4">
+          <span class="material-symbols-outlined text-[20px] text-signal">campaign</span>
+          <h2 class="text-[17px] font-extrabold tracking-tightest text-ink shrink-0">공지사항</h2>
+          <div class="dashed flex-1"></div>
+          <span class="font-mono text-[11px] uppercase tracking-[0.2em] text-ink3 shrink-0 hidden sm:inline">NOTICE</span>
+          <button id="new-announce-btn" class="hidden shrink-0 flex items-center gap-1.5 rounded-lg bg-ink px-3.5 py-2 text-[13px] font-bold text-paper hover:bg-ink2 transition active:scale-95">
+            <span class="material-symbols-outlined text-[18px]">add</span>새 공지
           </button>
         </div>
-        <div id="announce-list" class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden divide-y divide-outline-variant">
-          <p class="text-on-surface-variant py-lg text-center">불러오는 중…</p>
+        <div id="announce-list" class="card rounded-xl shadow-note overflow-hidden divide-y divide-ink/8">
+          <p class="text-ink3 py-lg text-center">불러오는 중…</p>
         </div>
       </section>
 
       <!-- ===================== 수행평가 공지 ===================== -->
       <section>
-        <div class="flex items-center justify-between gap-3 mb-sm">
-          <div class="flex items-center gap-2 min-w-0">
-            <span class="material-symbols-outlined text-secondary">assignment</span>
-            <h2 class="text-title-lg text-on-surface">수행평가 공지</h2>
-          </div>
-          <a id="assess-all" href="#" class="shrink-0 text-label-md text-primary font-bold hover:underline flex items-center gap-0.5">전체 보기<span class="material-symbols-outlined text-[18px]">chevron_right</span></a>
+        <div class="flex items-center gap-3 mb-4">
+          <span class="material-symbols-outlined text-[20px] text-signal">assignment</span>
+          <h2 class="text-[17px] font-extrabold tracking-tightest text-ink shrink-0">수행평가 공지</h2>
+          <div class="dashed flex-1"></div>
+          <span class="font-mono text-[11px] uppercase tracking-[0.2em] text-ink3 shrink-0 hidden sm:inline">ASSESSMENT</span>
+          <a id="assess-all" href="#" class="shrink-0 font-mono text-[11px] font-bold text-ink3 hover:text-signal flex items-center gap-0.5">전체 보기<span class="material-symbols-outlined text-[16px]">chevron_right</span></a>
         </div>
-        <div id="assess-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <p class="text-on-surface-variant py-lg text-center col-span-full">불러오는 중…</p>
+        <div id="assess-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <p class="text-ink3 py-lg text-center col-span-full">불러오는 중…</p>
         </div>
       </section>
 
       <!-- ===================== 산출물 제출 ===================== -->
-      <section class="pb-lg">
-        <div class="flex items-center justify-between gap-3 mb-sm">
-          <div class="flex items-center gap-2 min-w-0">
-            <span class="material-symbols-outlined text-tertiary">drive_file_move</span>
-            <h2 class="text-title-lg text-on-surface">산출물 제출</h2>
-          </div>
-          <a id="submit-all" href="#" class="shrink-0 text-label-md text-primary font-bold hover:underline flex items-center gap-0.5">전체 보기<span class="material-symbols-outlined text-[18px]">chevron_right</span></a>
+      <section class="pb-4">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="material-symbols-outlined text-[20px] text-signal">drive_file_move</span>
+          <h2 class="text-[17px] font-extrabold tracking-tightest text-ink shrink-0">산출물 제출</h2>
+          <div class="dashed flex-1"></div>
+          <span class="font-mono text-[11px] uppercase tracking-[0.2em] text-ink3 shrink-0 hidden sm:inline">SUBMISSION</span>
+          <a id="submit-all" href="#" class="shrink-0 font-mono text-[11px] font-bold text-ink3 hover:text-signal flex items-center gap-0.5">전체 보기<span class="material-symbols-outlined text-[16px]">chevron_right</span></a>
         </div>
-        <div id="submit-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <p class="text-on-surface-variant py-lg text-center col-span-full">불러오는 중…</p>
+        <div id="submit-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <p class="text-ink3 py-lg text-center col-span-full">불러오는 중…</p>
         </div>
       </section>
 
@@ -189,33 +171,33 @@
 
 <!-- ===================== 공지 작성/수정 모달 (교사) ===================== -->
 <div id="announce-modal" class="hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-md">
-  <div id="announce-backdrop" class="absolute inset-0 bg-black/40"></div>
-  <div class="relative bg-surface-container-lowest w-full md:max-w-lg rounded-t-xl md:rounded-xl border border-outline-variant shadow-xl max-h-[92vh] overflow-y-auto swap-in">
-    <div class="flex items-center justify-between p-md border-b border-outline-variant sticky top-0 bg-surface-container-lowest">
-      <h3 id="announce-modal-title" class="text-title-lg font-semibold text-on-surface">새 공지</h3>
-      <button id="announce-close" class="p-1 text-on-surface-variant hover:text-on-surface rounded-full"><span class="material-symbols-outlined">close</span></button>
+  <div id="announce-backdrop" class="absolute inset-0 bg-ink/40"></div>
+  <div class="relative card w-full md:max-w-lg rounded-t-2xl md:rounded-2xl shadow-lift max-h-[92vh] overflow-y-auto swap-in">
+    <div class="flex items-center justify-between p-md border-b border-faint sticky top-0 bg-white z-10">
+      <h3 id="announce-modal-title" class="text-[17px] font-extrabold tracking-tightest text-ink">새 공지</h3>
+      <button id="announce-close" class="p-1 text-ink3 hover:text-ink rounded-full"><span class="material-symbols-outlined">close</span></button>
     </div>
     <form id="announce-form" class="p-md flex flex-col gap-md">
-      <div class="flex flex-col gap-base">
-        <label for="an-title" class="text-label-md text-on-surface-variant">제목</label>
-        <input id="an-title" type="text" required maxlength="120" placeholder="공지 제목" class="w-full px-4 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md">
+      <div class="flex flex-col gap-1.5">
+        <label for="an-title" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">제목</label>
+        <input id="an-title" type="text" required maxlength="120" placeholder="공지 제목" class="w-full rounded-lg border-faint bg-paper/60 px-4 py-2.5 text-[15px] text-ink placeholder:text-ink3/50 focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none">
       </div>
-      <div class="flex flex-col gap-base">
-        <label for="an-level" class="text-label-md text-on-surface-variant">중요도</label>
-        <select id="an-level" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md">
+      <div class="flex flex-col gap-1.5">
+        <label for="an-level" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">중요도</label>
+        <select id="an-level" class="w-full rounded-lg border-faint bg-paper/60 px-3 py-2.5 text-[15px] text-ink focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none">
           <option value="general">일반</option>
           <option value="info">안내</option>
           <option value="urgent">긴급</option>
         </select>
       </div>
-      <div class="flex flex-col gap-base">
-        <label for="an-body" class="text-label-md text-on-surface-variant">내용</label>
-        <textarea id="an-body" rows="6" placeholder="공지 내용을 입력하세요." class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary bg-surface outline-none text-body-md resize-y"></textarea>
+      <div class="flex flex-col gap-1.5">
+        <label for="an-body" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">내용</label>
+        <textarea id="an-body" rows="6" placeholder="공지 내용을 입력하세요." class="w-full rounded-lg border-faint bg-paper/60 px-4 py-3 text-[15px] text-ink placeholder:text-ink3/50 focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none resize-y"></textarea>
       </div>
-      <p id="announce-error" class="text-caption text-error hidden"></p>
-      <div class="flex gap-3 justify-end">
-        <button type="button" id="announce-cancel" class="px-5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-colors">취소</button>
-        <button type="submit" id="announce-submit" class="px-5 py-2.5 rounded-lg bg-primary text-on-primary font-bold hover:bg-primary-container transition-colors disabled:opacity-60">
+      <p id="announce-error" class="font-mono text-[12px] text-error hidden"></p>
+      <div class="dashed pt-4 flex gap-3 justify-end">
+        <button type="button" id="announce-cancel" class="px-5 py-2.5 rounded-lg border border-faint text-ink3 font-bold hover:bg-paper2 transition-colors">취소</button>
+        <button type="submit" id="announce-submit" class="px-5 py-2.5 rounded-lg bg-ink text-paper font-bold hover:bg-ink2 transition-colors disabled:opacity-60">
           <span id="announce-submit-label">등록</span>
         </button>
       </div>
@@ -237,7 +219,7 @@
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
 
-  const state = { subject: null, isAdmin: false, editingId: null };
+  const state = { subject: null, isAdmin: false, editingId: null, counts: { announce: 0, assessOngoing: 0, submitDday: null } };
   const sb = { openUnit: null, openMid: null };
 
   // ---------- 날짜 ----------
@@ -260,39 +242,59 @@
   function ddayLabel(iso) {
     const n = dday(iso);
     if (n === null) return null;
-    if (n < 0) return { text: '마감', cls: 'bg-surface-variant text-on-surface-variant' };
-    if (n === 0) return { text: 'D-DAY', cls: 'bg-red-100 text-red-700' };
-    if (n <= 3) return { text: 'D-' + n, cls: 'bg-red-100 text-red-700' };
-    return { text: 'D-' + n, cls: 'bg-emerald-100 text-emerald-700' };
+    if (n < 0) return { text: '마감', cls: 'bg-paper3 text-ink3' };
+    if (n === 0) return { text: 'D-DAY', cls: 'bg-signal text-white' };
+    if (n <= 3) return { text: 'D-' + n, cls: 'bg-signal text-white' };
+    return { text: 'D-' + n, cls: 'bg-lime text-ink' };
+  }
+
+  // ---------- 히어로 상태 칩 ----------
+  function renderHeroChips() {
+    const box = $('hero-chips');
+    if (!box) return;
+    const chips = [];
+    if (state.counts.announce > 0)
+      chips.push(`<span class="rounded border border-lime/40 px-2 py-1 text-lime">새 공지 ${state.counts.announce}</span>`);
+    if (state.counts.assessOngoing > 0)
+      chips.push(`<span class="rounded border border-paper/25 px-2 py-1 text-paper/80">수행평가 진행 ${state.counts.assessOngoing}</span>`);
+    if (state.counts.submitDday !== null)
+      chips.push(`<span class="rounded border border-signal/50 px-2 py-1 text-signal">제출 D-${state.counts.submitDday === 0 ? 'DAY' : state.counts.submitDday}</span>`);
+    if (!chips.length)
+      chips.push(`<span class="rounded border border-paper/25 px-2 py-1 text-paper/70">오늘도 좋은 하루 ✨</span>`);
+    box.innerHTML = chips.join('');
   }
 
   // ---------- 사이드바 단원 트리 (질의응답과 동일 패턴) ----------
   function subLink(s) {
-    return `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 p-2 rounded-lg text-caption text-on-surface hover:bg-surface-container-highest transition-all">
-      <span class="material-symbols-outlined text-[18px] text-outline">radio_button_unchecked</span><span>${esc(s.name)}</span>
+    return `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 py-1.5 pl-3 pr-2 rounded-md text-[13px] text-ink2 hover:bg-paper3 hover:text-ink transition">
+      <span class="h-1.5 w-1.5 rounded-full bg-ink/25 shrink-0"></span><span class="truncate">${esc(s.name)}</span>
     </a>`;
   }
   function renderSidebarNav() {
     const nav = $('sidebar-nav');
     const units = state.subject.units || [];
-    if (!units.length) { nav.innerHTML = '<p class="text-caption text-on-surface-variant px-3 py-2">등록된 단원이 없습니다.</p>'; return; }
-    nav.innerHTML = units.map((u) => {
+    if (!units.length) { nav.innerHTML = '<p class="text-[12px] text-ink3 px-3 py-2">등록된 단원이 없습니다.</p>'; return; }
+    nav.innerHTML = units.map((u, ui) => {
+      const num = String(ui + 1).padStart(2, '0');
       const unitOpen = u.id === sb.openUnit;
       const midsHtml = unitOpen ? (u.mid_units || []).map((m) => {
         const on = m.id === sb.openMid;
-        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-caption text-on-surface-variant p-2">소단원이 없습니다.</p>';
+        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-[12px] text-ink3 p-2">소단원이 없습니다.</p>';
         return `<div>
-          <button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between p-3 rounded-lg text-left transition-all ${on ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'}">
-            <span class="text-label-md">${esc(m.name)}</span>
-            <span class="material-symbols-outlined text-[18px] arrow ${on ? 'rotate-180' : ''}">expand_more</span>
+          <button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between gap-2 pl-4 pr-3 py-2 rounded-md text-left transition ${on ? 'bg-ink text-paper font-bold' : 'text-ink2 hover:bg-paper3'}">
+            <span class="text-[13px] truncate">${esc(m.name)}</span>
+            <span class="material-symbols-outlined arrow text-[16px] ${on ? 'rotate-180 text-lime' : 'text-ink3'}">expand_more</span>
           </button>
-          ${on ? `<div class="mt-1 ml-4 space-y-0.5 swap-in">${subs}</div>` : ''}
+          ${on ? `<div class="mt-1 ml-3 pl-2 border-l border-ink/10 space-y-0.5 swap-in">${subs}</div>` : ''}
         </div>`;
       }).join('') : '';
       return `<div>
-        <button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between p-3 rounded-lg hover:bg-surface-container-highest text-left transition-all">
-          <span class="text-label-md font-bold ${unitOpen ? 'text-primary' : 'text-on-surface-variant'}">${esc(u.name)}</span>
-          <span class="material-symbols-outlined arrow text-outline ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
+        <button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg hover:bg-paper3 text-left transition">
+          <span class="flex items-center gap-2 min-w-0">
+            <span class="font-mono text-[11px] font-bold text-signal shrink-0">${num}</span>
+            <span class="text-[13.5px] font-bold truncate ${unitOpen ? 'text-ink' : 'text-ink2'}">${esc(u.name)}</span>
+          </span>
+          <span class="material-symbols-outlined arrow text-[18px] text-ink3 shrink-0 ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
         </button>
         ${unitOpen ? `<div class="mt-1 space-y-1 swap-in">${midsHtml}</div>` : ''}
       </div>`;
@@ -312,32 +314,32 @@
 
   // ---------- 공지사항 ----------
   const LEVELS = {
-    urgent:  { label: '긴급', badge: 'bg-red-100 text-red-700', icon: 'priority_high' },
-    info:    { label: '안내', badge: 'bg-emerald-100 text-emerald-700', icon: 'info' },
-    general: { label: '일반', badge: 'bg-slate-100 text-slate-600', icon: 'campaign' },
+    urgent:  { label: '긴급', badge: 'bg-signal text-white', icon: 'campaign' },
+    info:    { label: '안내', badge: 'bg-lime text-ink', icon: 'info' },
+    general: { label: '일반', badge: 'bg-ink/10 text-ink2', icon: 'campaign' },
   };
   function announceRow(a) {
     const lv = LEVELS[a.level] || LEVELS.general;
     const admin = state.isAdmin ? `<div class="flex items-center gap-1 shrink-0">
-        <button data-edit="${a.id}" class="an-edit p-1.5 text-on-surface-variant hover:text-primary rounded-md hover:bg-surface-container" title="수정"><span class="material-symbols-outlined text-[18px]">edit</span></button>
-        <button data-del="${a.id}" class="an-del p-1.5 text-on-surface-variant hover:text-error rounded-md hover:bg-surface-container" title="삭제"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+        <button data-edit="${a.id}" class="an-edit p-1.5 text-ink3 hover:text-signal rounded-md hover:bg-paper2" title="수정"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+        <button data-del="${a.id}" class="an-del p-1.5 text-ink3 hover:text-error rounded-md hover:bg-paper2" title="삭제"><span class="material-symbols-outlined text-[18px]">delete</span></button>
       </div>` : '';
     const inactive = state.isAdmin && a.is_active === false
-      ? '<span class="px-2 py-0.5 bg-surface-variant text-on-surface-variant text-caption font-bold rounded-full">숨김</span>' : '';
+      ? '<span class="px-2 py-0.5 bg-paper3 text-ink3 font-mono text-[10px] font-bold rounded-full">숨김</span>' : '';
     const body = (a.body || '').trim();
-    return `<div class="p-md hover:bg-surface-container-low transition-colors">
+    return `<div class="p-md hover:bg-paper2 transition-colors">
       <div class="flex justify-between items-start gap-3 mb-1">
         <div class="flex items-center gap-2 min-w-0 flex-wrap">
-          <span class="px-2 py-0.5 ${lv.badge} text-caption font-bold rounded-full flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">${lv.icon}</span>${lv.label}</span>
+          <span class="px-2 py-0.5 ${lv.badge} font-mono text-[10px] font-bold rounded-full flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">${lv.icon}</span>${lv.label}</span>
           ${inactive}
-          <h3 class="text-body-md font-bold text-on-surface break-words">${esc(a.title)}</h3>
+          <h3 class="text-[15px] font-bold text-ink break-words">${esc(a.title)}</h3>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <span class="text-caption text-on-surface-variant whitespace-nowrap">${fmtDate(a.created_at)}</span>
+          <span class="font-mono text-[11px] text-ink3 whitespace-nowrap">${fmtDate(a.created_at)}</span>
           ${admin}
         </div>
       </div>
-      ${body ? `<p class="text-body-md text-on-surface-variant whitespace-pre-wrap break-words mt-1">${nl2br(body)}</p>` : ''}
+      ${body ? `<p class="text-[14px] text-ink2 whitespace-pre-wrap break-words mt-1 leading-relaxed">${nl2br(body)}</p>` : ''}
     </div>`;
   }
   async function loadAnnouncements() {
@@ -346,16 +348,18 @@
       const list = await fetchAnnouncements(subjectId, { activeOnly: !state.isAdmin });
       if (!list.length) {
         box.innerHTML = `<div class="text-center py-lg px-md">
-          <span class="material-symbols-outlined text-[40px] text-outline-variant">campaign</span>
-          <p class="text-body-md text-on-surface-variant mt-1">등록된 공지사항이 없습니다.</p>
-          ${state.isAdmin ? '<button id="empty-announce" class="mt-2 text-primary font-bold text-label-md">첫 공지 작성하기</button>' : ''}
+          <span class="material-symbols-outlined text-[40px] text-ink3/50">campaign</span>
+          <p class="text-[14px] text-ink3 mt-1">등록된 공지사항이 없습니다.</p>
+          ${state.isAdmin ? '<button id="empty-announce" class="mt-2 font-mono text-[12px] font-bold text-signal hover:underline">첫 공지 작성하기</button>' : ''}
         </div>`;
         $('empty-announce')?.addEventListener('click', () => openAnnounce(null));
+        state.counts.announce = 0; renderHeroChips();
         return;
       }
       box.innerHTML = list.map(announceRow).join('');
       box.querySelectorAll('.an-edit').forEach((b) => b.addEventListener('click', () => openAnnounce(list.find((x) => x.id === b.dataset.edit))));
       box.querySelectorAll('.an-del').forEach((b) => b.addEventListener('click', () => removeAnnounce(b.dataset.del)));
+      state.counts.announce = list.length; renderHeroChips();
     } catch (e) {
       box.innerHTML = `<p class="text-error py-lg text-center">공지사항을 불러오지 못했습니다. (${esc(e.message)})</p>`;
     }
@@ -380,54 +384,75 @@
   // ---------- 수행평가 공지 ----------
   function assessStatusPill(a) {
     const map = {
-      ongoing:  { t: '진행 중', c: 'bg-emerald-100 text-emerald-700' },
-      upcoming: { t: '예정',    c: 'bg-blue-100 text-blue-700' },
-      ended:    { t: '종료',    c: 'bg-slate-100 text-slate-500' },
+      ongoing:  { t: '진행 중', c: 'bg-lime text-ink' },
+      upcoming: { t: '예정',    c: 'bg-ink text-paper' },
+      ended:    { t: '종료',    c: 'bg-paper3 text-ink3' },
     };
     const s = map[a.status] || map.ongoing;
-    return `<span class="px-2.5 py-0.5 ${s.c} text-caption font-bold rounded-full">${s.t}</span>`;
+    return `<span class="px-2.5 py-0.5 ${s.c} font-mono text-[10px] font-bold rounded-full shrink-0">${s.t}</span>`;
   }
-  function assessCard(a) {
+  function assessCard(a, i) {
     const period = (a.start_date || a.due_date)
       ? `${fmtDate(a.start_date) || '?'} ~ ${fmtDate(a.due_date) || '?'}`
       : '기간 미정';
     const summary = (a.summary || '').trim();
-    return `<a href="수행평가-공지.html?subject=${encodeURIComponent(subjectId)}" class="block bg-surface-container-lowest border-l-4 border-l-secondary border border-outline-variant rounded-lg p-md shadow-sm hover:shadow-md hover:border-secondary transition-all">
-      <div class="flex items-start justify-between gap-2 mb-1">
-        <h3 class="text-body-md font-bold text-on-surface break-words">${esc(a.title)}</h3>
+    const tape = i === 0 ? '<span class="tape rot-1 absolute -top-3 left-5 z-10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest">Pick</span>' : '';
+    return `<a href="수행평가-공지.html?subject=${encodeURIComponent(subjectId)}" class="lift-hover card group relative rounded-xl p-5 shadow-note hover:shadow-lift block">
+      ${tape}
+      <div class="flex items-start justify-between gap-2 mb-1.5 ${i === 0 ? 'mt-2' : ''}">
+        <h3 class="text-[15px] font-extrabold tracking-tight text-ink break-words">${esc(a.title)}</h3>
         ${assessStatusPill(a)}
       </div>
-      <p class="text-caption text-secondary font-medium flex items-center gap-1 mb-1"><span class="material-symbols-outlined text-[16px]">event</span>${esc(period)}</p>
-      ${summary ? `<p class="text-caption text-on-surface-variant line-clamp-2">${esc(summary)}</p>` : ''}
+      <p class="font-mono text-[11px] text-ink3 flex items-center gap-1 mb-1.5"><span class="material-symbols-outlined text-[15px] text-signal">event</span>${esc(period)}</p>
+      ${summary ? `<p class="text-[13px] text-ink3 line-clamp-2">${esc(summary)}</p>` : ''}
+      <div class="dashed mt-4 pt-2.5 flex items-center justify-between">
+        <span class="font-mono text-[11px] font-bold text-ink group-hover:text-signal transition">자세히 보기</span>
+        <span class="inline-block transition-transform group-hover:translate-x-1 text-ink">→</span>
+      </div>
     </a>`;
   }
   async function loadAssessments() {
     const box = $('assess-list');
     try {
       const list = await fetchAssessments(subjectId);
-      if (!list.length) { box.innerHTML = '<p class="text-on-surface-variant py-md text-center col-span-full bg-surface-container-lowest border border-dashed border-outline-variant rounded-lg">등록된 수행평가 공지가 없습니다.</p>'; return; }
-      box.innerHTML = list.slice(0, 4).map(assessCard).join('');
+      if (!list.length) { box.innerHTML = '<p class="text-ink3 py-md text-center col-span-full card rounded-xl border-dashed py-lg">등록된 수행평가 공지가 없습니다.</p>'; return; }
+      box.innerHTML = list.slice(0, 4).map((a, i) => assessCard(a, i)).join('');
+      state.counts.assessOngoing = list.filter((x) => x.status === 'ongoing').length; renderHeroChips();
     } catch (e) {
       box.innerHTML = `<p class="text-error py-md text-center col-span-full">수행평가 공지를 불러오지 못했습니다. (${esc(e.message)})</p>`;
     }
   }
 
   // ---------- 산출물 제출 ----------
-  function submitCard(a) {
+  function ddayGauge(iso) {
+    const n = dday(iso);
+    if (n === null) return '';
+    const clamped = Math.max(0, Math.min(14, n));
+    const pct = n < 0 ? 100 : Math.round((1 - clamped / 14) * 100);
+    const barColor = n < 0 ? 'bg-ink3/40' : (n <= 3 ? 'bg-signal' : 'bg-lime');
+    return `<div class="mt-3 mb-1">
+      <div class="h-1.5 w-full rounded-full bg-ink/10 overflow-hidden">
+        <div class="h-full ${barColor} rounded-full" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }
+  function submitCard(a, i) {
     const dl = ddayLabel(a.due_date);
     const desc = (a.description || '').trim();
     const inactive = state.isAdmin && a.is_active === false
-      ? '<span class="px-2 py-0.5 bg-surface-variant text-on-surface-variant text-caption font-bold rounded-full">비공개</span>' : '';
-    return `<a href="산출물-제출.html?subject=${encodeURIComponent(subjectId)}" class="block bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm hover:shadow-md hover:border-primary transition-all relative overflow-hidden">
-      <div class="absolute top-0 right-0 h-1 w-full bg-tertiary"></div>
-      <div class="flex items-start justify-between gap-2 mb-2">
-        <h3 class="text-body-md font-bold text-on-surface break-words mt-1">${esc(a.title)}</h3>
-        <div class="flex items-center gap-1.5 shrink-0">${inactive}${dl ? `<span class="px-2.5 py-0.5 ${dl.cls} text-caption font-bold rounded-full">${dl.text}</span>` : ''}</div>
+      ? '<span class="px-2 py-0.5 bg-paper3 text-ink3 font-mono text-[10px] font-bold rounded-full">비공개</span>' : '';
+    const tape = i === 0 ? '<span class="tape rot-2 absolute -top-3 right-5 z-10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest">Todo</span>' : '';
+    return `<a href="산출물-제출.html?subject=${encodeURIComponent(subjectId)}" class="lift-hover card group relative rounded-xl p-5 shadow-note hover:shadow-lift block">
+      ${tape}
+      <div class="flex items-start justify-between gap-2 mb-2 ${i === 0 ? 'mt-2' : ''}">
+        <h3 class="text-[15px] font-extrabold tracking-tight text-ink break-words">${esc(a.title)}</h3>
+        <div class="flex items-center gap-1.5 shrink-0">${inactive}${dl ? `<span class="px-2.5 py-0.5 ${dl.cls} font-mono text-[10px] font-bold rounded-full">${dl.text}</span>` : ''}</div>
       </div>
-      ${desc ? `<p class="text-caption text-on-surface-variant line-clamp-2 mb-2">${esc(desc)}</p>` : ''}
-      <div class="flex items-center justify-between text-caption text-on-surface-variant">
-        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span>${a.due_date ? '마감 ' + fmtDate(a.due_date) : '상시 제출'}</span>
-        <span class="text-primary font-bold flex items-center gap-0.5">제출하러 가기<span class="material-symbols-outlined text-[16px]">arrow_forward</span></span>
+      ${desc ? `<p class="text-[13px] text-ink3 line-clamp-2 mb-1">${esc(desc)}</p>` : ''}
+      ${ddayGauge(a.due_date)}
+      <div class="dashed mt-3 pt-2.5 flex items-center justify-between font-mono text-[11px] text-ink3">
+        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[15px]">schedule</span>${a.due_date ? '마감 ' + fmtDate(a.due_date) : '상시 제출'}</span>
+        <span class="text-ink font-bold flex items-center gap-0.5 group-hover:text-signal transition">제출하러 가기<span class="material-symbols-outlined text-[15px]">arrow_forward</span></span>
       </div>
     </a>`;
   }
@@ -435,8 +460,11 @@
     const box = $('submit-list');
     try {
       const list = await fetchSubmissionAssignments(subjectId, { activeOnly: !state.isAdmin });
-      if (!list.length) { box.innerHTML = '<p class="text-on-surface-variant py-md text-center col-span-full bg-surface-container-lowest border border-dashed border-outline-variant rounded-lg">등록된 제출 과제가 없습니다.</p>'; return; }
-      box.innerHTML = list.slice(0, 4).map(submitCard).join('');
+      if (!list.length) { box.innerHTML = '<p class="text-ink3 py-md text-center col-span-full card rounded-xl border-dashed py-lg">등록된 제출 과제가 없습니다.</p>'; return; }
+      box.innerHTML = list.slice(0, 4).map((a, i) => submitCard(a, i)).join('');
+      const ddays = list.map((x) => dday(x.due_date)).filter((n) => n !== null && n >= 0);
+      state.counts.submitDday = ddays.length ? Math.min.apply(null, ddays) : null;
+      renderHeroChips();
     } catch (e) {
       box.innerHTML = `<p class="text-error py-md text-center col-span-full">제출 과제를 불러오지 못했습니다. (${esc(e.message)})</p>`;
     }
@@ -458,7 +486,7 @@
       state.subject = await fetchSubjectTree(subjectId);
     } catch (_) { state.subject = null; }
     if (!state.subject) {
-      document.querySelector('main').innerHTML = '<p class="text-center text-on-surface-variant py-xl">이 과목에 접근할 권한이 없습니다.</p>';
+      document.querySelector('main').innerHTML = '<p class="text-center text-ink3 py-xl">이 과목에 접근할 권한이 없습니다.</p>';
       return;
     }
 

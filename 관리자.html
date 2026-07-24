@@ -4,76 +4,63 @@
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>교사용 관리자 · 정환쌤과 함께하는 과학 수업</title>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">try{
-  tailwind.config = { darkMode: "class", theme: { extend: {
-    colors: {
-      "surface-container-low": "#eff4ff", "on-surface-variant": "#414754", "on-surface": "#0d1c2e",
-      "surface-container-lowest": "#ffffff", "background": "#f8f9ff", "primary": "#005bbf", "on-primary": "#ffffff",
-      "surface-container": "#e6eeff", "outline-variant": "#c1c6d6", "surface-variant": "#d5e3fc",
-      "outline": "#727785", "surface": "#f8f9ff", "surface-container-highest": "#d5e3fc",
-      "error": "#ba1a1a", "error-container": "#ffdad6", "on-error-container": "#93000a", "secondary-container": "#c9e9e2", "on-secondary-container": "#00504a"
-    },
-    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
-    spacing: { "gutter": "24px", "md": "24px", "sm": "16px", "xl": "64px", "lg": "40px", "xs": "8px", "max-width": "1000px" },
-    fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
-    fontSize: {
-      "title-lg": ["20px", {"lineHeight":"1.4","fontWeight":"600"}], "body-lg": ["18px", {"lineHeight":"1.6"}],
-      "caption": ["13px", {"lineHeight":"1.35"}], "body-md": ["16px", {"lineHeight":"1.6"}],
-      "headline-lg": ["30px", {"lineHeight":"1.25","fontWeight":"700"}],
-      "label-md": ["14px", {"lineHeight":"1.2","fontWeight":"500"}], "headline-md": ["22px", {"lineHeight":"1.35","fontWeight":"600"}]
-    }
-  }}}
-}catch(_e){}</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="js/theme.js?v=20260724a"></script>
 <style>
-  body { font-family: "Be Vietnam Pro", sans-serif; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
   details > summary { list-style: none; }
   details > summary::-webkit-details-marker { display: none; }
   details:not([open]) > summary .arrow { transform: rotate(-90deg); }
   .arrow { transition: transform .15s ease; }
 </style>
 </head>
-<body class="bg-background text-on-background min-h-screen">
+<body class="font-sans text-ink antialiased min-h-screen">
 
 <!-- 로그인 화면 -->
 <div id="login-view" class="hidden min-h-screen flex items-center justify-center p-md">
-  <div class="w-full max-w-sm bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm p-lg">
-    <div class="flex items-center gap-2 mb-md">
-      <span class="material-symbols-outlined text-primary text-[28px]">admin_panel_settings</span>
-      <h1 class="text-headline-md text-on-surface">교사용 관리자</h1>
+  <div class="relative w-full max-w-sm">
+    <span class="tape rot-1 absolute -top-3 left-8 z-10 px-4 py-1 font-mono text-[11px] font-bold uppercase tracking-widest">admin</span>
+    <div class="card rounded-2xl shadow-note p-lg">
+      <div class="flex items-center gap-2.5 mb-md">
+        <span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lime font-mono text-sm font-bold">LAB</span>
+        <h1 class="text-2xl font-extrabold tracking-tightest text-ink">교사용 관리자</h1>
+      </div>
+      <p class="text-[13px] text-ink3 mb-md">관리자 계정으로 로그인하세요.</p>
+      <form id="login-form" class="space-y-sm">
+        <div>
+          <label class="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink3">아이디 또는 이메일</label>
+          <input id="login-email" type="text" required autocomplete="username" class="w-full mt-1.5 rounded-lg border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70" placeholder="admin 또는 이메일">
+        </div>
+        <div>
+          <label class="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink3">비밀번호</label>
+          <input id="login-password" type="password" required autocomplete="current-password" class="w-full mt-1.5 rounded-lg border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70" placeholder="••••••••">
+        </div>
+        <p id="login-error" class="font-mono text-[12px] text-error hidden"></p>
+        <button type="submit" class="lift-hover w-full bg-ink text-paper py-3 rounded-lg text-[15px] font-extrabold shadow-note hover:shadow-lift transition">로그인</button>
+      </form>
     </div>
-    <p class="text-caption text-on-surface-variant mb-md">관리자 계정으로 로그인하세요.</p>
-    <form id="login-form" class="space-y-sm">
-      <div>
-        <label class="text-label-md text-on-surface-variant">아이디 또는 이메일</label>
-        <input id="login-email" type="text" required autocomplete="username" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="admin 또는 이메일">
-      </div>
-      <div>
-        <label class="text-label-md text-on-surface-variant">비밀번호</label>
-        <input id="login-password" type="password" required autocomplete="current-password" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="••••••••">
-      </div>
-      <p id="login-error" class="text-caption text-error hidden"></p>
-      <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg text-label-md font-bold hover:opacity-90 transition-opacity">로그인</button>
-    </form>
   </div>
 </div>
 
 <!-- 관리 화면 -->
 <div id="admin-view" class="hidden">
-  <header class="bg-surface border-b border-outline-variant sticky top-0 z-40">
+  <header class="sticky top-0 z-40 border-b border-ink/15 bg-paper/85 backdrop-blur-md">
     <div class="flex justify-between items-center h-16 px-md max-w-max-width mx-auto w-full">
-      <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-primary text-[26px]">admin_panel_settings</span>
-        <h1 class="text-headline-md text-primary">자료 관리</h1>
-      </div>
       <div class="flex items-center gap-3">
-        <a href="과목-선택.html" target="_blank" class="text-caption text-on-surface-variant hover:text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">open_in_new</span>사이트 보기</a>
-        <span id="who" class="text-caption text-on-surface-variant hidden sm:inline"></span>
-        <button id="change-pw-btn" class="text-caption text-on-surface-variant hover:text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">key</span>비밀번호 변경</button>
-        <button id="logout-btn" class="text-caption text-on-surface-variant hover:text-error flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">logout</span>로그아웃</button>
+        <span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lime font-mono text-sm font-bold">LAB</span>
+        <div class="leading-tight">
+          <div class="font-mono text-[10px] uppercase tracking-[0.2em] text-signal">Admin Console</div>
+          <h1 class="font-bold tracking-tightest text-[15px]">자료 관리</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="과목-선택.html" target="_blank" class="text-[13px] text-ink3 hover:text-signal flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">open_in_new</span><span class="hidden sm:inline">사이트 보기</span></a>
+        <span id="who" class="text-[13px] text-ink3 hidden sm:inline"></span>
+        <button id="change-pw-btn" class="text-[13px] text-ink3 hover:text-signal flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">key</span><span class="hidden sm:inline">비밀번호 변경</span></button>
+        <button id="logout-btn" class="text-[13px] text-ink3 hover:text-signal flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">logout</span>로그아웃</button>
       </div>
     </div>
   </header>
@@ -241,7 +228,7 @@
         { k: 'name', label: '과목명', required: true },
         { k: 'description', label: '설명', type: 'textarea' },
         { k: 'icon', label: '아이콘 (Material Symbols 이름)', placeholder: '예: science, public, experiment, bolt' },
-        { k: 'accent', label: '색상', type: 'select', options: [['blue','파랑'],['emerald','초록'],['orange','주황'],['violet','보라']] },
+        { k: 'accent', label: '색상', type: 'select', options: [['blue','파랑'],['emerald','초록'],['orange','주황'],['violet','보라'],['signal','시그널'],['lime','라임'],['teal','청록']] },
       ] },
     { table: 'units',     parent: 'subject_id',  title: '대단원',   childName: '중단원',
       fields: [{ k: 'name', label: '대단원명', required: true }] },

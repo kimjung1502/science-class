@@ -139,12 +139,19 @@
     html:     { label: '실험 자료(HTML)', icon: 'science',       action: 'expand_more', box: 'bg-violet-50 text-violet-600', file: true, newTab: false },
   };
 
+  // 실험노트(Editorial Lab) 강조색. dot=강조점, iconBg/iconFg=아이콘 박스(인라인 style로 사용).
+  // 레거시 필드(btn/border/ring)는 잉크 기반으로 통일해 하위 호환 유지.
+  const _btn = 'bg-ink hover:bg-ink2', _border = 'hover:border-ink', _ring = 'focus-visible:ring-lime';
   const ACCENTS = {
-    blue:    { strip: 'bg-blue-600',    iconBox: 'bg-blue-50 text-blue-700',       btn: 'bg-blue-600 hover:bg-blue-700',       border: 'hover:border-blue-400',    ring: 'focus-visible:ring-blue-500' },
-    emerald: { strip: 'bg-emerald-600', iconBox: 'bg-emerald-50 text-emerald-700', btn: 'bg-emerald-600 hover:bg-emerald-700', border: 'hover:border-emerald-400', ring: 'focus-visible:ring-emerald-500' },
-    orange:  { strip: 'bg-orange-600',  iconBox: 'bg-orange-50 text-orange-700',   btn: 'bg-orange-600 hover:bg-orange-700',   border: 'hover:border-orange-400',  ring: 'focus-visible:ring-orange-500' },
-    violet:  { strip: 'bg-violet-600',  iconBox: 'bg-violet-50 text-violet-700',   btn: 'bg-violet-600 hover:bg-violet-700',   border: 'hover:border-violet-400',  ring: 'focus-visible:ring-violet-500' },
-    rose:    { strip: 'bg-rose-600',    iconBox: 'bg-rose-50 text-rose-700',       btn: 'bg-rose-600 hover:bg-rose-700',       border: 'hover:border-rose-400',    ring: 'focus-visible:ring-rose-500' },
+    blue:    { dot: '#16213E', iconBg: '#E1E6F2', iconFg: '#16213E', btn: _btn, border: _border, ring: _ring },
+    emerald: { dot: '#7FBF3F', iconBg: '#DAF0C8', iconFg: '#2E6B1E', btn: _btn, border: _border, ring: _ring },
+    orange:  { dot: '#FF9A3C', iconBg: '#FFE9C7', iconFg: '#9A5B00', btn: _btn, border: _border, ring: _ring },
+    violet:  { dot: '#7A5CC0', iconBg: '#E7E1F5', iconFg: '#4A3B7A', btn: _btn, border: _border, ring: _ring },
+    rose:    { dot: '#FF5B24', iconBg: '#FFE1D5', iconFg: '#B23A12', btn: _btn, border: _border, ring: _ring },
+    lime:    { dot: '#C4E000', iconBg: '#EEF7B8', iconFg: '#5E6B00', btn: _btn, border: _border, ring: _ring },
+    signal:  { dot: '#FF5B24', iconBg: '#FFE1D5', iconFg: '#B23A12', btn: _btn, border: _border, ring: _ring },
+    teal:    { dot: '#2A7C8C', iconBg: '#D7E7EA', iconFg: '#155E6B', btn: _btn, border: _border, ring: _ring },
+    ink:     { dot: '#16213E', iconBg: '#E1E6F2', iconFg: '#16213E', btn: _btn, border: _border, ring: _ring },
   };
 
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

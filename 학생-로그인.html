@@ -1,100 +1,131 @@
 <!DOCTYPE html>
-<html class="light" lang="ko">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>학생 로그인 · 정환쌤과 함께하는 과학 수업</title>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">try{
-  tailwind.config = { darkMode: "class", theme: { extend: {
-    colors: {
-      "surface-container": "#e6eeff", "on-surface-variant": "#414754", "surface-variant": "#d5e3fc",
-      "surface-container-low": "#eff4ff", "on-background": "#0d1c2e", "secondary-container": "#c9e9e2",
-      "on-secondary-container": "#00504a", "secondary": "#006b5f", "surface-container-lowest": "#ffffff",
-      "surface": "#f8f9ff", "background": "#f8f9ff", "primary-fixed": "#d8e2ff", "outline": "#727785", "surface-dim": "#ccdbf3",
-      "surface-container-highest": "#d5e3fc", "on-surface": "#0d1c2e", "primary": "#005bbf", "on-primary": "#ffffff",
-      "primary-container": "#1a73e8", "error": "#ba1a1a", "outline-variant": "#c1c6d6", "primary-fixed-dim": "#adc7ff"
-    },
-    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
-    spacing: { "sm": "16px", "xs": "8px", "gutter": "24px", "xl": "64px", "lg": "40px", "base": "4px", "max-width": "1280px", "md": "24px", "margin-desktop": "48px", "margin-mobile": "16px" },
-    fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
-    fontSize: {
-      "title-lg": ["20px", {"lineHeight":"1.4","fontWeight":"600"}], "label-md": ["14px", {"lineHeight":"1.2","fontWeight":"500"}],
-      "headline-md": ["24px", {"lineHeight":"1.35","fontWeight":"600"}], "caption": ["13px", {"lineHeight":"1.35","fontWeight":"400"}],
-      "body-md": ["16px", {"lineHeight":"1.6","fontWeight":"400"}]
-    }
-  }}}
-}catch(_e){}</script>
-<style>
-  body { font-family: 'Be Vietnam Pro', sans-serif; -webkit-font-smoothing: antialiased; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-  .login-card-shadow { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-</style>
-</head>
-<body class="bg-surface text-on-surface min-h-screen flex flex-col">
 
-<header class="bg-surface border-b border-outline-variant fixed top-0 left-0 right-0 z-50">
-  <div class="flex items-center w-full px-margin-mobile md:px-margin-desktop py-md max-w-max-width mx-auto">
-    <div class="flex items-center gap-xs">
-      <span class="material-symbols-outlined text-primary text-3xl">science</span>
-      <h1 class="text-title-lg font-bold text-primary">정환쌤과 함께하는 과학 수업</h1>
+<!-- 실험노트 테마: Pretendard + Space Mono -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="js/theme.js?v=20260724a"></script>
+</head>
+<body class="font-sans text-ink antialiased min-h-screen flex flex-col">
+
+<!-- 상단 헤더 -->
+<header class="sticky top-0 z-50 border-b border-ink/15 bg-paper/85 backdrop-blur-md">
+  <div class="mx-auto max-w-6xl px-5 py-3 flex items-center gap-3">
+    <span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lime font-mono text-sm font-bold">LAB</span>
+    <div class="leading-tight">
+      <div class="font-mono text-[11px] uppercase tracking-[0.2em] text-signal">Science Class</div>
+      <h1 class="font-bold tracking-tightest text-[15px] sm:text-[16px]">정환쌤과 함께하는 과학 수업</h1>
     </div>
   </div>
 </header>
 
-<main class="flex-grow flex items-center justify-center px-margin-mobile md:px-margin-desktop pt-32 pb-xl relative overflow-hidden">
-  <div class="absolute top-0 right-0 -mr-32 -mt-32 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl"></div>
-  <div class="absolute bottom-0 left-0 -ml-32 -mb-32 w-96 h-96 bg-secondary-container/20 rounded-full blur-3xl"></div>
+<main class="flex-grow mx-auto w-full max-w-6xl px-5 py-10 sm:py-14 flex items-center">
+  <div class="w-full grid gap-8 lg:grid-cols-[1.05fr_.95fr] items-stretch">
 
-  <div class="w-full max-w-md relative z-10">
-    <div class="bg-surface-container-lowest rounded-xl border border-outline-variant login-card-shadow overflow-hidden">
-      <div class="h-1.5 w-full bg-primary"></div>
-      <div class="p-lg md:p-xl flex flex-col gap-lg">
-        <div class="text-center">
-          <h2 class="text-headline-md text-on-surface mb-xs">학생 로그인</h2>
-          <p class="text-body-md text-on-surface-variant">과학적 호기심을 깨울 시간입니다.</p>
-        </div>
+    <!-- 좌: 브랜드/일러스트 패널 -->
+    <div class="relative overflow-hidden rounded-2xl bg-ink text-paper p-8 sm:p-10 shadow-lift hidden lg:block">
+      <div class="pointer-events-none absolute inset-0 opacity-[0.16]"
+           style="background-image:linear-gradient(to right,#fff 1px,transparent 1px),linear-gradient(to bottom,#fff 1px,transparent 1px);background-size:30px 30px;"></div>
+      <div class="relative">
+        <div class="font-mono text-[11px] tracking-[0.25em] text-lime uppercase">Science Class · 2026</div>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tightest leading-[1.12]">
+          관찰하고, 기록하고,<br><span class="text-lime">증명한다.</span>
+        </h2>
+        <p class="mt-4 max-w-sm text-[14px] leading-relaxed text-paper/75">
+          우리 반 과학의 모든 흔적이 이 노트 한 권에 담깁니다. 이름과 비밀번호로 나의 과학 노트를 펼쳐보세요.
+        </p>
 
-        <form id="login-form" class="flex flex-col gap-md">
-          <div class="flex flex-col gap-base">
-            <label class="text-label-md text-on-surface-variant px-base" for="student-id">아이디 <span class="text-outline">(이름)</span></label>
-            <div class="relative group">
-              <span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">person</span>
-              <input class="w-full pl-xl pr-sm py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface transition-all text-body-md placeholder:text-outline/60" id="student-id" autocomplete="username" placeholder="이름을 입력하세요 (예: 김능곡)" type="text" required>
-            </div>
-          </div>
+        <!-- 손그림풍 비커 + 원자 라인 일러스트 -->
+        <svg class="relative mt-8 w-full max-w-[360px]" viewBox="0 0 360 180" fill="none" aria-hidden="true">
+          <g stroke="#C4E000" stroke-width="1.6">
+            <ellipse cx="272" cy="70" rx="58" ry="22"/>
+            <ellipse cx="272" cy="70" rx="58" ry="22" transform="rotate(60 272 70)"/>
+            <ellipse cx="272" cy="70" rx="58" ry="22" transform="rotate(120 272 70)"/>
+          </g>
+          <circle cx="272" cy="70" r="6" fill="#FF5B24"/>
+          <circle cx="330" cy="70" r="3.5" fill="#C4E000"/>
+          <circle cx="243" cy="45" r="3.5" fill="#C4E000"/>
+          <circle cx="243" cy="95" r="3.5" fill="#C4E000"/>
+          <g stroke="#FBFAF6" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+            <path d="M60 26 h40 M68 26 v34 L40 132 a14 14 0 0 0 13 20 h54 a14 14 0 0 0 13 -20 L92 60 V26"/>
+          </g>
+          <path d="M48 108 L52 118 a14 14 0 0 0 13 12 h30 a14 14 0 0 0 13 -12 L112 108 a40 12 0 0 1 -64 0 Z" fill="#C4E000" opacity="0.9"/>
+          <circle cx="66" cy="96" r="3" fill="#C4E000"/>
+          <circle cx="90" cy="86" r="2.2" fill="#C4E000"/>
+          <circle cx="78" cy="104" r="2.6" fill="#FF5B24"/>
+          <path d="M140 40 h150" stroke="#fff" stroke-width="1" stroke-dasharray="3 5" opacity="0.35"/>
+        </svg>
 
-          <div class="flex flex-col gap-base">
-            <label class="text-label-md text-on-surface-variant px-base" for="student-password">비밀번호 <span class="text-outline">(처음엔 학번)</span></label>
-            <div class="relative group">
-              <span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock</span>
-              <input class="w-full pl-xl pr-xl py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface transition-all text-body-md placeholder:text-outline/60" id="student-password" autocomplete="current-password" placeholder="비밀번호를 입력하세요" type="password" required>
-              <button class="absolute right-sm top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors" type="button" id="toggle-pw" aria-label="비밀번호 표시">
-                <span class="material-symbols-outlined">visibility</span>
-              </button>
-            </div>
-          </div>
-
-          <p id="login-error" class="text-caption text-error px-base hidden"></p>
-
-          <button class="w-full bg-primary text-on-primary py-sm rounded-lg text-title-lg hover:bg-primary-container transition-all active:scale-[0.98] mt-xs flex items-center justify-center gap-xs shadow-sm disabled:opacity-60" type="submit" id="login-btn">
-            <span id="login-label">로그인</span>
-            <span class="material-symbols-outlined">arrow_forward</span>
-          </button>
-        </form>
-
-        <div class="pt-md border-t border-outline-variant">
-          <div class="bg-surface-container flex items-start gap-sm p-sm rounded-lg">
-            <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">info</span>
-            <p class="text-caption text-on-surface-variant">
-              처음 로그인하는 경우 비밀번호는 <span class="font-bold">학번</span>입니다. 로그인 후 새 비밀번호로 바꿔주세요. 문의는 <span class="font-bold">정환쌤</span>께 해주세요.
-            </p>
-          </div>
+        <div class="mt-8 flex flex-wrap gap-2 font-mono text-[11px]">
+          <span class="rounded border border-lime/40 px-2 py-1 text-lime">#관찰</span>
+          <span class="rounded border border-paper/25 px-2 py-1 text-paper/70">#기록</span>
+          <span class="rounded border border-paper/25 px-2 py-1 text-paper/70">#탐구</span>
         </div>
       </div>
     </div>
+
+    <!-- 우: 로그인 폼 카드 -->
+    <div class="relative w-full max-w-md mx-auto lg:max-w-none">
+      <span class="tape rot-1 absolute -top-3 left-8 z-10 px-4 py-1 font-mono text-[11px] font-bold uppercase tracking-widest">student login</span>
+
+      <div class="card rounded-2xl p-7 sm:p-9 shadow-note h-full">
+        <h2 class="text-2xl font-extrabold tracking-tightest">학생 로그인</h2>
+        <p class="mt-1.5 text-[13.5px] text-ink3">이름과 비밀번호로 나의 과학 노트를 펼쳐보세요.</p>
+
+        <form id="login-form" class="mt-7 space-y-5">
+          <!-- 아이디 -->
+          <label class="block" for="student-id">
+            <span class="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink3">01 · 아이디 <span class="text-signal">(이름)</span></span>
+            <div class="mt-2 relative">
+              <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink3/70">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              <input class="w-full rounded-lg border-faint bg-paper/60 pl-10 pr-3 py-2.5 text-[15px] text-ink placeholder:text-ink3/50 focus:border-ink focus:ring-2 focus:ring-lime/70"
+                     id="student-id" autocomplete="username" placeholder="이름을 입력하세요 (예: 김능곡)" type="text" required>
+            </div>
+          </label>
+
+          <!-- 비밀번호 -->
+          <label class="block" for="student-password">
+            <span class="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink3">02 · 비밀번호 <span class="text-signal">(처음엔 학번)</span></span>
+            <div class="mt-2 relative">
+              <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink3/70">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <input class="w-full rounded-lg border-faint bg-paper/60 pl-10 pr-16 py-2.5 text-[15px] tracking-widest text-ink placeholder:text-ink3/50 focus:border-ink focus:ring-2 focus:ring-lime/70"
+                     id="student-password" autocomplete="current-password" placeholder="비밀번호를 입력하세요" type="password" required>
+              <button class="absolute inset-y-0 right-2 my-1.5 flex items-center gap-1 rounded-md px-2 font-mono text-[11px] text-ink3 hover:bg-paper2 transition" type="button" id="toggle-pw" aria-label="비밀번호 표시">
+                <span id="pw-eye" class="inline-flex"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                <span id="pw-eye-txt">표시</span>
+              </button>
+            </div>
+          </label>
+
+          <p id="login-error" class="font-mono text-[12px] text-error hidden"></p>
+
+          <!-- 로그인 버튼 -->
+          <button class="lift-hover group w-full rounded-lg bg-lime px-4 py-3.5 text-[15px] font-extrabold text-ink shadow-note hover:shadow-lift active:translate-y-0 disabled:opacity-60 flex items-center justify-center gap-1"
+                  type="submit" id="login-btn">
+            <span id="login-label" class="tracking-tight">로그인</span>
+            <span class="inline-block transition-transform group-hover:translate-x-1">→</span>
+          </button>
+
+          <!-- 안내문 -->
+          <div class="dashed pt-4 flex gap-2.5 text-[12.5px] leading-relaxed text-ink3">
+            <svg class="mt-[3px] shrink-0 text-signal" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <p>처음 로그인하는 경우 비밀번호는 <span class="hl font-semibold">학번</span>입니다. 로그인 후 새 비밀번호로 바꿔주세요. 문의는 <span class="font-semibold">정환쌤</span>께 해주세요.</p>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 </main>
 
@@ -117,12 +148,14 @@
   })();
 
   // 비밀번호 표시 토글
+  const EYE = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const EYE_OFF = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M6.61 6.61A18.5 18.5 0 0 0 2 12s3.5 7 10 7a9.1 9.1 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/></svg>';
   $('toggle-pw').addEventListener('click', function () {
     const input = $('student-password');
-    const icon = this.querySelector('.material-symbols-outlined');
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
-    icon.textContent = show ? 'visibility_off' : 'visibility';
+    $('pw-eye').innerHTML = show ? EYE_OFF : EYE;
+    $('pw-eye-txt').textContent = show ? '숨김' : '표시';
   });
 
   $('login-form').addEventListener('submit', async (e) => {

@@ -4,24 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>스펙트럼 관찰 실험</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#fbf7ef; --surface:#ffffff; --surface-2:#f3eddf; --line:#e7ddc9;
-    --ink:#2b2b33; --muted:#6c6c7a; --accent:#3b6fd6; --accent-2:#f2a13c;
+    --bg:#FBFAF6; --surface:#ffffff; --surface-2:#F4F2E9; --line:#E5E0D0;
+    --ink:#16213E; --muted:#5A6379; --accent:#16213E; --accent-2:#FF5B24;
+    --lime:#C4E000;
     --good:#2fa96b; --warn:#e0a020; --bad:#e05a6b;
     --spectrum:linear-gradient(90deg,#7b2ff7,#4257ff,#1fb6e6,#2fd06a,#ffe14d,#ff9a3d,#ff4d4d);
-    --sans:"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,-apple-system,sans-serif;
-    --radius:16px; --shadow:0 6px 22px rgba(60,45,20,.07);
+    --sans:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,system-ui,"Malgun Gothic","맑은 고딕",sans-serif;
+    --mono:"Space Mono","Consolas",ui-monospace,monospace;
+    --radius:16px; --shadow:0 6px 22px rgba(22,33,62,.08);
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-  body{margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); line-height:1.65; -webkit-font-smoothing:antialiased}
+  body{margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg);
+    background-image:linear-gradient(rgba(22,33,62,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(22,33,62,.035) 1px,transparent 1px);
+    background-size:26px 26px; line-height:1.65; -webkit-font-smoothing:antialiased}
   .topbar{position:sticky; top:0; z-index:50; background:rgba(251,247,239,.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--line)}
   .rail{height:6px; width:100%; background:#e9e0cf; overflow:hidden}
   .rail>span{display:block; height:100%; width:0%; background:var(--spectrum); transition:width .5s ease}
   .topmeta{display:flex; align-items:center; gap:10px; padding:8px 16px; max-width:760px; margin:0 auto; font-size:13px; color:var(--muted)}
-  .topmeta .step{font-weight:700; color:var(--ink)}
+  .topmeta .step{font-family:var(--mono); font-weight:700; color:var(--ink); letter-spacing:.02em}
   .chip{margin-left:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:3px 11px; font-size:12px; color:var(--muted)}
   main{max-width:760px; margin:0 auto; padding:22px 16px 120px}
   .stage.hidden{display:none}
@@ -118,7 +126,7 @@
   .tl-card{background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:14px 16px; display:flex; gap:14px; align-items:flex-start}
   .tl.bohr .tl-card{border-color:var(--accent); box-shadow:0 8px 26px rgba(59,111,214,.14)}
   .model-svg{flex:none; width:72px; height:72px; background:#fbfaf6; border:1px solid var(--line); border-radius:10px}
-  .tl-year{font-family:"Consolas",monospace; font-size:12px; color:var(--accent-2); font-weight:700}
+  .tl-year{font-family:var(--mono); font-size:12px; color:var(--accent-2); font-weight:700}
   .tl-name{font-size:16px; font-weight:800; margin:1px 0 4px}
   .tl-idea{font-size:14px; color:#403f49}
   .tl-limit{font-size:13px; color:var(--muted); margin-top:6px}
@@ -136,10 +144,10 @@
   .tbtns{display:flex; flex-wrap:wrap; gap:7px; margin-top:8px}
   .tbtn{font:inherit; font-size:13px; font-weight:700; cursor:pointer; border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:7px 11px}
   .tbtn.on{border-color:var(--accent); background:#eef1fb; color:var(--accent)}
-  .readout{font-family:"Consolas",monospace; font-size:13px; margin-top:10px; padding:8px 10px; background:#fff; border:1px solid var(--line); border-radius:9px; color:#403f49; min-height:20px}
+  .readout{font-family:var(--mono); font-size:13px; margin-top:10px; padding:8px 10px; background:#fff; border:1px solid var(--line); border-radius:9px; color:#403f49; min-height:20px}
   .strip-wrap{margin-top:10px}
   .strip-wrap svg{width:100%; height:46px; border-radius:8px; border:1px solid var(--line); display:block}
-  .cap2{font-size:11px; color:var(--muted); margin-top:4px; font-family:"Consolas",monospace}
+  .cap2{font-size:11px; color:var(--muted); margin-top:4px; font-family:var(--mono)}
   /* accordion timeline */
   .tl-acc{background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden}
   .tl.bohr .tl-acc{border-color:var(--accent); box-shadow:0 8px 26px rgba(59,111,214,.14)}

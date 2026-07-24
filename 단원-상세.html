@@ -4,55 +4,13 @@
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>통합과학 · 원소의 기원 · 정환쌤과 함께하는 과학 수업</title>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">try{
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        colors: {
-          "surface-container-low": "#eff4ff",
-          "secondary": "#006b5f",
-          "on-surface-variant": "#414754",
-          "secondary-container": "#c9e9e2",
-          "on-secondary-container": "#00504a",
-          "on-surface": "#0d1c2e",
-          "surface-container-lowest": "#ffffff",
-          "background": "#f8f9ff",
-          "primary": "#005bbf",
-          "on-primary": "#ffffff",
-          "surface-container": "#e6eeff",
-          "outline-variant": "#c1c6d6",
-          "surface-variant": "#d5e3fc",
-          "primary-fixed": "#d8e2ff",
-          "on-primary-fixed": "#001a41",
-          "outline": "#727785",
-          "surface": "#f8f9ff",
-          "surface-container-highest": "#d5e3fc",
-          "on-background": "#0d1c2e"
-        },
-        borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
-        spacing: { "gutter": "24px", "base": "4px", "md": "24px", "sm": "16px", "xl": "64px", "lg": "40px", "xs": "8px", "max-width": "1280px" },
-        fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
-        fontSize: {
-          "title-lg": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
-          "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
-          "caption": ["13px", {"lineHeight": "1.35", "fontWeight": "400"}],
-          "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
-          "headline-lg": ["32px", {"lineHeight": "1.25", "fontWeight": "700"}],
-          "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "500"}],
-          "headline-md": ["24px", {"lineHeight": "1.35", "fontWeight": "600"}]
-        }
-      }
-    }
-  }
-}catch(_e){}</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="js/theme.js?v=20260724a"></script>
 <style>
-  body { font-family: "Be Vietnam Pro", sans-serif; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-
   /* 모바일 사이드바 서랍 (md 미만에서만 슬라이드) */
   @media (max-width: 767px) {
     #sidebar { left: -288px; transition: left .3s cubic-bezier(.4,0,.2,1); }
@@ -74,70 +32,81 @@
   }
 </style>
 </head>
-<body class="bg-background text-on-background">
+<body class="font-sans text-ink antialiased">
 
 <div class="flex h-screen overflow-hidden">
 
   <!-- 모바일 사이드바 배경 -->
-  <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/40 z-40 md:hidden"></div>
+  <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-ink/40 z-40 md:hidden"></div>
 
   <!-- SideNavBar (모바일: 슬라이드 서랍) -->
-  <aside id="sidebar" class="fixed md:static inset-y-0 md:left-auto z-50 md:z-auto w-72 shrink-0 flex flex-col h-full py-md px-sm bg-surface-container-low border-r border-outline-variant">
-    <div class="mb-md px-xs flex items-center justify-between gap-2">
-      <h1 id="subject-title" class="text-title-lg font-semibold text-on-surface min-w-0 truncate">불러오는 중…</h1>
-      <button id="sidebar-close" class="md:hidden p-1 text-on-surface-variant hover:text-on-surface rounded-full shrink-0" aria-label="닫기"><span class="material-symbols-outlined">close</span></button>
+  <aside id="sidebar" class="fixed md:static inset-y-0 md:left-auto z-50 md:z-auto w-72 shrink-0 flex flex-col h-full py-5 px-4 bg-paper2/95 backdrop-blur md:backdrop-blur-none border-r border-ink/15">
+    <div class="mb-5 flex items-center gap-3">
+      <a href="과목-선택.html" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink text-lime font-mono text-sm font-bold" title="과목 선택으로">LAB</a>
+      <div class="min-w-0 flex-1 leading-tight">
+        <div class="font-mono text-[10px] uppercase tracking-[0.2em] text-signal">Science Class</div>
+        <h1 id="subject-title" class="font-bold tracking-tightest text-[15px] text-ink min-w-0 truncate">불러오는 중…</h1>
+      </div>
+      <button id="sidebar-close" class="md:hidden p-1 text-ink3 hover:text-signal rounded-full shrink-0" aria-label="닫기"><span class="material-symbols-outlined text-[20px]">close</span></button>
     </div>
 
-    <nav class="flex-1 space-y-2 overflow-y-auto">
+    <nav class="flex-1 space-y-1.5 overflow-y-auto -mr-1 pr-1">
       <!-- 1. 과목 홈 -->
-      <a id="home-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">home</span><span class="text-label-md font-bold">과목 홈 (공지)</span></a>
+      <a id="home-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="material-symbols-outlined lab-ic text-[20px] text-signal">home</span><span class="text-[13.5px] font-bold">과목 홈 (공지)</span></a>
       <!-- 2. 단원 선택 -->
-      <div class="pt-md mt-md border-t border-outline-variant">
-        <p class="px-3 mb-1 text-caption font-bold text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">menu_book</span>단원 바로가기</p>
-        <div id="sidebar-nav" class="space-y-2"></div>
+      <div class="pt-4 mt-4 dashed">
+        <p class="px-3 mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-ink3 flex items-center gap-1.5"><span class="material-symbols-outlined lab-ic text-[16px]">menu_book</span>단원 바로가기</p>
+        <div id="sidebar-nav" class="space-y-1.5"></div>
       </div>
       <!-- 3~6. 수행평가·산출물·질의응답·안전 -->
-      <div class="pt-md mt-md border-t border-outline-variant space-y-1">
-        <a id="assess-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">assignment</span><span class="text-label-md font-bold">수행평가 공지</span></a>
-        <a id="submit-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">upload_file</span><span class="text-label-md font-bold">산출물 제출</span></a>
-        <a id="qna-link" href="#" class="flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">forum</span><span class="text-label-md font-bold">질의응답 (Q&amp;A)</span></a>
-        <a href="#" class="fixed-link flex items-center gap-3 p-3 text-on-surface hover:bg-surface-container-highest rounded-lg transition-all"><span class="material-symbols-outlined text-primary">health_and_safety</span><span class="text-label-md font-bold">실험실 안전 수칙</span></a>
+      <div class="pt-4 mt-4 dashed space-y-1">
+        <a id="assess-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="material-symbols-outlined lab-ic text-[20px] text-signal">assignment</span><span class="text-[13.5px] font-bold">수행평가 공지</span></a>
+        <a id="submit-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="material-symbols-outlined lab-ic text-[20px] text-signal">upload_file</span><span class="text-[13.5px] font-bold">산출물 제출</span></a>
+        <a id="qna-link" href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="material-symbols-outlined lab-ic text-[20px] text-signal">forum</span><span class="text-[13.5px] font-bold">질의응답 (Q&amp;A)</span></a>
+        <a href="#" class="fixed-link nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink"><span class="material-symbols-outlined lab-ic text-[20px] text-signal">health_and_safety</span><span class="text-[13.5px] font-bold">실험실 안전 수칙</span></a>
       </div>
     </nav>
   </aside>
 
   <div class="flex-1 flex flex-col h-full overflow-y-auto">
     <!-- TopNavBar -->
-    <header class="sticky top-0 z-10 bg-surface/80 backdrop-blur-md border-b border-outline-variant w-full">
-      <div class="flex justify-between items-center h-16 px-md w-full gap-3">
+    <header class="sticky top-0 z-10 bg-paper/85 backdrop-blur-md border-b border-ink/15 w-full">
+      <div class="flex justify-between items-center h-16 px-5 w-full gap-3">
         <div class="flex items-center gap-3 min-w-0">
-          <a href="과목-선택.html" title="과목 선택으로 돌아가기" class="shrink-0 flex items-center gap-1 text-label-md text-on-surface-variant hover:text-primary transition-colors">
-            <span class="material-symbols-outlined text-[20px]">arrow_back</span><span class="hidden sm:inline">과목 선택</span>
+          <a href="과목-선택.html" title="과목 선택으로 돌아가기" class="shrink-0 flex items-center gap-1 font-mono text-[12px] text-ink3 hover:text-signal transition-colors">
+            <span class="material-symbols-outlined lab-ic text-[20px]">arrow_back</span><span class="hidden sm:inline">과목 선택</span>
           </a>
-          <span class="text-outline-variant hidden sm:inline">|</span>
-          <nav id="breadcrumb" class="flex items-center gap-2 text-body-md flex-wrap min-w-0"></nav>
+          <span class="text-ink/20 hidden sm:inline">|</span>
+          <nav id="breadcrumb" class="flex items-center gap-2 text-[15px] flex-wrap min-w-0"></nav>
         </div>
-        <button id="menu-btn" class="md:hidden p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-all shrink-0" aria-label="단원 메뉴 열기"><span class="material-symbols-outlined">menu</span></button>
+        <button id="menu-btn" class="md:hidden p-2 text-ink3 hover:text-signal hover:bg-paper2 rounded-full transition-all shrink-0" aria-label="단원 메뉴 열기"><span class="material-symbols-outlined text-[22px]">menu</span></button>
       </div>
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 w-full max-w-max-width mx-auto p-md md:p-lg space-y-lg">
+    <main class="flex-1 w-full max-w-max-width mx-auto px-5 py-8 md:py-10 space-y-10">
       <section>
+        <div class="pin-label inline-flex items-center gap-2 rounded-full bg-ink px-3.5 py-1.5 text-[12px] font-bold text-lime shadow-note mb-4">
+          <span class="text-signal">●</span> 학습 자료
+        </div>
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md">
           <div>
-            <h2 id="hero-subject" class="text-headline-lg text-on-surface mb-2">&nbsp;</h2>
-            <p id="hero-path" class="text-body-lg text-on-surface-variant"></p>
+            <h2 id="hero-subject" class="text-3xl sm:text-4xl font-extrabold tracking-tightest text-ink mb-2">&nbsp;</h2>
+            <p id="hero-path" class="font-mono text-[13px] text-ink3"></p>
           </div>
         </div>
       </section>
 
       <!-- 소단원 리스트 -->
-      <section class="space-y-sm">
-        <h3 class="text-title-lg text-on-surface flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary">list_alt</span>소단원 리스트
-        </h3>
-        <div id="subunit-list" class="space-y-sm"></div>
+      <section class="space-y-4">
+        <div class="flex items-center gap-3">
+          <h3 class="text-xl font-extrabold tracking-tightest text-ink flex items-center gap-2">
+            <span class="material-symbols-outlined lab-ic text-[22px] text-signal">list_alt</span>소단원 리스트
+          </h3>
+          <span class="dashed flex-1"></span>
+          <span class="font-mono text-[11px] uppercase tracking-[0.18em] text-ink3">Sub Units</span>
+        </div>
+        <div id="subunit-list" class="space-y-4"></div>
       </section>
     </main>
   </div>
@@ -199,34 +168,34 @@
     if (t.file && !isExternal && m.original_filename && m.type !== 'video' && href !== '#') {
       href += (href.indexOf('?') >= 0 ? '&' : '?') + 'download=' + encodeURIComponent(m.original_filename);
     }
-    const teacherBadge = m.teacher_only ? '<span class="text-caption text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '';
-    return `<a href="${esc(href)}"${tabAttr} class="group p-sm bg-white border border-outline-variant rounded-lg hover:border-primary hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 min-h-[56px]">
-      <div class="p-2 ${t.box} rounded shrink-0"><span class="material-symbols-outlined">${t.icon}</span></div>
-      <div class="flex-1 overflow-hidden"><p class="text-label-md font-bold truncate">${esc(name)}</p><p class="text-caption text-on-surface-variant truncate">${esc(meta)}</p></div>
+    const teacherBadge = m.teacher_only ? '<span class="font-mono text-[10px] font-bold text-signal bg-signal-soft px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '';
+    return `<a href="${esc(href)}"${tabAttr} class="group card lift-hover p-4 rounded-lg shadow-note hover:shadow-lift hover:border-ink/30 transition-all duration-200 flex items-center gap-3 min-h-[56px]">
+      <div class="p-2 ${t.box} rounded-lg shrink-0"><span class="material-symbols-outlined lab-ic">${t.icon}</span></div>
+      <div class="flex-1 overflow-hidden"><p class="text-[14px] font-bold text-ink truncate">${esc(name)}</p><p class="font-mono text-[11px] text-ink3 truncate">${esc(meta)}</p></div>
       ${teacherBadge}
-      <span class="material-symbols-outlined text-outline opacity-0 group-hover:opacity-100 transition-opacity">${t.action}</span>
+      <span class="material-symbols-outlined lab-ic text-ink3 opacity-0 group-hover:opacity-100 transition-opacity">${t.action}</span>
     </a>`;
   }
 
   function materialHtmlCard(m, t, name, href) {
-    const teacherBadge = m.teacher_only ? '<span class="text-caption text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '';
+    const teacherBadge = m.teacher_only ? '<span class="font-mono text-[10px] font-bold text-signal bg-signal-soft px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '';
     const meta = m.meta || '눌러서 펼치기';
     const panelId = 'mat-html-panel-' + m.id;
-    return `<div class="col-span-full bg-white border border-outline-variant rounded-lg overflow-hidden">
-      <button type="button" class="mat-html-toggle w-full group p-sm flex items-center gap-3 min-h-[56px] text-left hover:bg-surface-container-low transition-colors" data-html-src="${esc(href)}" data-panel="${panelId}" aria-expanded="false">
-        <div class="p-2 ${t.box} rounded shrink-0"><span class="material-symbols-outlined">${t.icon}</span></div>
-        <div class="flex-1 overflow-hidden"><p class="text-label-md font-bold truncate">${esc(name)}</p><p class="text-caption text-on-surface-variant truncate">${esc(meta)}</p></div>
+    return `<div class="col-span-full card rounded-lg overflow-hidden shadow-note">
+      <button type="button" class="mat-html-toggle w-full group p-4 flex items-center gap-3 min-h-[56px] text-left hover:bg-paper2/60 transition-colors" data-html-src="${esc(href)}" data-panel="${panelId}" aria-expanded="false">
+        <div class="p-2 ${t.box} rounded-lg shrink-0"><span class="material-symbols-outlined lab-ic">${t.icon}</span></div>
+        <div class="flex-1 overflow-hidden"><p class="text-[14px] font-bold text-ink truncate">${esc(name)}</p><p class="font-mono text-[11px] text-ink3 truncate">${esc(meta)}</p></div>
         ${teacherBadge}
-        <span class="material-symbols-outlined text-outline mat-html-arrow transition-transform">expand_more</span>
+        <span class="material-symbols-outlined lab-ic text-ink3 mat-html-arrow transition-transform">expand_more</span>
       </button>
       <div class="acc-panel" id="${panelId}" style="height:0">
-        <div class="border-t border-outline-variant bg-surface-container-lowest">
-          <div class="flex items-center justify-end p-1.5">
-            <button type="button" class="mat-html-newtab inline-flex items-center gap-1 text-caption text-on-surface-variant hover:text-primary px-2 py-1 rounded" data-html-src="${esc(href)}">
-              <span class="material-symbols-outlined text-[16px]">open_in_new</span>새 탭에서 크게 보기
+        <div class="dashed bg-paper/40">
+          <div class="flex items-center justify-end p-2">
+            <button type="button" class="mat-html-newtab inline-flex items-center gap-1 font-mono text-[11px] text-ink3 hover:text-signal px-2 py-1 rounded" data-html-src="${esc(href)}">
+              <span class="material-symbols-outlined lab-ic text-[16px]">open_in_new</span>새 탭에서 크게 보기
             </button>
           </div>
-          <div style="height:min(80vh,760px)"><iframe class="w-full h-full border-0" title="${esc(name)}"></iframe></div>
+          <div style="height:min(80vh,760px)"><iframe class="w-full h-full border-0 bg-white" title="${esc(name)}"></iframe></div>
         </div>
       </div>
     </div>`;
@@ -270,38 +239,38 @@
     if (!state.isAdmin) return card;
     const wrapClass = m.type === 'html' ? 'relative group/mat col-span-full' : 'relative group/mat';
     return `<div class="${wrapClass}">${card}
-      <button data-del-mat="${m.id}" data-del-path="${esc(m.storage_path || '')}" title="자료 삭제" class="del-material absolute top-1.5 right-1.5 p-1 rounded-md bg-white/95 border border-outline-variant text-on-surface-variant hover:text-error shadow-sm opacity-0 group-hover/mat:opacity-100 transition-opacity">
-        <span class="material-symbols-outlined text-[16px]">delete</span></button>
+      <button data-del-mat="${m.id}" data-del-path="${esc(m.storage_path || '')}" title="자료 삭제" class="del-material absolute top-1.5 right-1.5 p-1 rounded-md bg-white/95 border border-faint text-ink3 hover:text-error shadow-sm opacity-0 group-hover/mat:opacity-100 transition-opacity">
+        <span class="material-symbols-outlined lab-ic text-[16px]">delete</span></button>
     </div>`;
   }
   function materialsBlock(sub) {
     const materials = sub.materials || [];
     const addBtn = state.isAdmin
-      ? `<button data-add-sub="${sub.id}" class="add-material inline-flex items-center gap-1 text-caption font-bold text-primary px-2.5 py-1.5 rounded-lg border border-primary/40 hover:bg-primary/5 transition-colors"><span class="material-symbols-outlined text-[18px]">add</span>자료 추가</button>`
+      ? `<button data-add-sub="${sub.id}" class="add-material inline-flex items-center gap-1 font-mono text-[11px] font-bold text-ink px-2.5 py-1.5 rounded-lg border border-ink/30 hover:bg-ink hover:text-paper transition-colors"><span class="material-symbols-outlined lab-ic text-[16px]">add</span>자료 추가</button>`
       : '';
-    const header = `<div class="flex items-center justify-between mb-sm"><h5 class="text-label-md font-bold text-primary uppercase tracking-wider">학습 자료</h5>${addBtn}</div>`;
+    const header = `<div class="flex items-center gap-3 mb-4"><h5 class="font-mono text-[11px] font-bold text-ink3 uppercase tracking-[0.18em] shrink-0">학습 자료</h5><span class="dashed flex-1"></span>${addBtn}</div>`;
     if (!materials.length) {
-      return `${header}<p class="flex items-center justify-center gap-2 text-on-surface-variant text-label-md py-lg"><span class="material-symbols-outlined text-outline">folder_off</span>등록된 학습 자료가 없습니다.</p>`;
+      return `${header}<p class="flex items-center justify-center gap-2 text-ink3 text-[13.5px] py-8"><span class="material-symbols-outlined lab-ic text-ink3">folder_off</span>등록된 학습 자료가 없습니다.</p>`;
     }
-    return `${header}<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-sm">${materials.map(matCardWrap).join('')}</div>`;
+    return `${header}<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">${materials.map(matCardWrap).join('')}</div>`;
   }
 
   function subunitItem(u, i) {
     const no = String(i + 1).padStart(2, '0');
     const active = u.id === state.subunitId; // 선택한 소단원만 펼침 (중단원만 고르면 모두 접힘)
-    return `<div id="sub-${u.id}" class="sub-card scroll-mt-20 bg-white border ${active ? 'border-primary/40' : 'border-outline-variant'} rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
-      <button class="card-toggle w-full flex items-center justify-between p-md text-left hover:bg-surface-container-low transition-colors" aria-expanded="${active}">
-        <div class="flex items-center gap-md">
-          <div class="sub-badge w-10 h-10 rounded-lg ${active ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant'} flex items-center justify-center font-bold shrink-0 transition-colors">${no}</div>
+    return `<div id="sub-${u.id}" class="sub-card scroll-mt-20 bg-white border ${active ? 'border-primary/40' : 'border-outline-variant'} rounded-xl overflow-hidden shadow-note hover:shadow-lift transition-all">
+      <button class="card-toggle w-full flex items-center justify-between p-5 text-left hover:bg-paper2/60 transition-colors" aria-expanded="${active}">
+        <div class="flex items-center gap-4">
+          <div class="sub-badge w-10 h-10 rounded-lg ${active ? 'bg-primary text-white' : 'bg-surface-container text-on-surface-variant'} flex items-center justify-center font-mono font-bold shrink-0 transition-colors">${no}</div>
           <div>
-            <h4 class="text-title-lg text-on-surface">${esc(u.name)}</h4>
-            <p class="text-caption text-on-surface-variant mt-0.5">${esc(u.description)}</p>
+            <h4 class="text-lg font-extrabold tracking-tightest text-ink">${esc(u.name)}</h4>
+            <p class="text-[13px] text-ink3 mt-0.5">${esc(u.description)}</p>
           </div>
         </div>
-        <span class="material-symbols-outlined arrow ${active ? 'rotate-180' : ''}">expand_more</span>
+        <span class="material-symbols-outlined lab-ic arrow text-ink3 ${active ? 'rotate-180' : ''}">expand_more</span>
       </button>
       <div class="acc-panel" style="height:${active ? 'auto' : '0'}">
-        <div class="p-md border-t border-outline-variant bg-surface-container-lowest">
+        <div class="p-5 dashed bg-paper/40">
           ${materialsBlock(u)}
         </div>
       </div>
@@ -332,23 +301,23 @@
         const on = m.id === state.midUnitId;
         const subs = (m.subunits || []).map((s) => {
           const sOn = s.id === state.subunitId;
-          return `<button data-sub="${s.id}" data-mid="${m.id}" class="sub-btn w-full flex items-center gap-2 p-2 rounded-lg transition-all text-caption text-left ${sOn ? 'bg-primary-fixed text-primary font-bold' : 'text-on-surface hover:bg-surface-container-highest'}">
-            <span class="material-symbols-outlined text-[18px] ${sOn ? 'text-primary' : 'text-outline'}">${sOn ? 'radio_button_checked' : 'radio_button_unchecked'}</span>
+          return `<button data-sub="${s.id}" data-mid="${m.id}" class="sub-btn w-full flex items-center gap-2 p-2 rounded-lg transition-all text-[12.5px] text-left ${sOn ? 'bg-lime-soft text-ink font-bold' : 'text-ink3 hover:bg-paper3/60'}">
+            <span class="material-symbols-outlined lab-ic text-[16px] ${sOn ? 'text-signal' : 'text-ink3/60'}">${sOn ? 'check_circle' : 'radio_button_unchecked'}</span>
             <span>${esc(s.name)}</span>
           </button>`;
         }).join('');
         return `<div>
-          <button data-mid="${m.id}" data-unit="${u.id}" class="mid-btn w-full flex items-center justify-between p-3 rounded-lg transition-all text-left ${on ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-highest'}">
-            <span class="text-label-md text-left">${esc(m.name)}</span>
-            <span class="material-symbols-outlined text-[18px] mid-chevron ${on ? 'rotate-180' : ''}">expand_more</span>
+          <button data-mid="${m.id}" data-unit="${u.id}" class="mid-btn w-full flex items-center justify-between p-2.5 rounded-lg transition-all text-left ${on ? 'bg-ink text-paper font-bold' : 'text-ink3 hover:bg-paper3/60'}">
+            <span class="text-[13px] text-left">${esc(m.name)}</span>
+            <span class="material-symbols-outlined lab-ic text-[16px] mid-chevron ${on ? 'rotate-180 text-lime' : 'text-ink3/60'}">expand_more</span>
           </button>
-          ${on ? `<div class="mt-1 ml-4 space-y-0.5 ${animate ? 'swap-in' : ''}">${subs || '<p class="text-caption text-on-surface-variant p-2">소단원이 없습니다.</p>'}</div>` : ''}
+          ${on ? `<div class="mt-1 ml-3 pl-2 border-l border-ink/15 space-y-0.5 ${animate ? 'swap-in' : ''}">${subs || '<p class="text-[12px] text-ink3 p-2">소단원이 없습니다.</p>'}</div>` : ''}
         </div>`;
       }).join('');
       return `<div>
-        <button data-unit="${u.id}" class="unit-toggle w-full flex items-center justify-between p-3 rounded-lg hover:bg-surface-container-highest transition-all text-left">
-          <span class="text-label-md font-bold ${unitOpen ? 'text-primary' : 'text-on-surface-variant'}">${esc(u.name)}</span>
-          <span class="material-symbols-outlined arrow-icon text-outline ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
+        <button data-unit="${u.id}" class="unit-toggle w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-paper3/60 transition-all text-left">
+          <span class="text-[13px] font-bold ${unitOpen ? 'text-ink' : 'text-ink3'}">${esc(u.name)}</span>
+          <span class="material-symbols-outlined lab-ic arrow-icon text-ink3 ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
         </button>
         <div class="acc-panel" style="height:${unitOpen ? 'auto' : '0'}"><div class="mt-1 space-y-1">${mids}</div></div>
       </div>`;
@@ -414,23 +383,23 @@
   // ---------- 브레드크럼 · 히어로 · 소단원 ----------
   function renderMain(animate) {
     const { unit, mid } = findSelection();
-    const chev = '<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>';
+    const chev = '<span class="material-symbols-outlined lab-ic text-ink3/60 text-[16px]">chevron_right</span>';
     $('breadcrumb').innerHTML = [
-      `<span class="text-on-surface-variant">${esc(state.tree.name)}</span>`,
-      unit ? `<span class="text-on-surface-variant">${esc(unit.name)}</span>` : '',
-      mid ? `<span class="text-primary font-bold border-b-2 border-primary">${esc(mid.name)}</span>` : '',
+      `<span class="text-ink3">${esc(state.tree.name)}</span>`,
+      unit ? `<span class="text-ink3">${esc(unit.name)}</span>` : '',
+      mid ? `<span class="text-ink font-bold hl-soft">${esc(mid.name)}</span>` : '',
     ].filter(Boolean).join(chev);
 
     $('hero-subject').textContent = state.tree.name;
-    $('hero-path').innerHTML = [unit && esc(unit.name), mid && esc(mid.name)].filter(Boolean).join(' <span class="text-outline">›</span> ');
+    $('hero-path').innerHTML = [unit && esc(unit.name), mid && esc(mid.name)].filter(Boolean).join(' <span class="text-signal">›</span> ');
 
     const list = $('subunit-list');
     const subs = (mid && mid.subunits) || [];
     list.innerHTML = !mid
-      ? '<p class="flex items-center justify-center gap-2 text-center text-on-surface-variant py-xl"><span class="material-symbols-outlined text-outline">list</span>왼쪽에서 중단원을 선택하세요.</p>'
+      ? '<p class="flex items-center justify-center gap-2 text-center text-ink3 py-16"><span class="material-symbols-outlined lab-ic text-ink3">list</span>왼쪽에서 중단원을 선택하세요.</p>'
       : (subs.length
           ? subs.map(subunitItem).join('')
-          : '<p class="text-center text-on-surface-variant py-lg">이 중단원에는 소단원이 없습니다.</p>');
+          : '<p class="text-center text-ink3 py-10">이 중단원에는 소단원이 없습니다.</p>');
     if (animate) { list.classList.remove('swap-in'); void list.offsetWidth; list.classList.add('swap-in'); }
 
     document.querySelectorAll('#subunit-list a[href="#"]').forEach((a) => a.addEventListener('click', (e) => e.preventDefault()));
@@ -484,10 +453,10 @@
     if (matModalEl) return matModalEl;
     const el = document.createElement('div');
     el.id = 'mat-modal';
-    el.className = 'hidden fixed inset-0 z-[70] bg-black/40 flex items-center justify-center p-4';
-    el.innerHTML = `<div class="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-lg shadow-xl">
-      <div class="flex items-center justify-between mb-md"><h3 class="text-title-lg font-bold">자료 추가</h3>
-        <button id="mat-close" class="p-1 text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined">close</span></button></div>
+    el.className = 'hidden fixed inset-0 z-[70] bg-ink/40 flex items-center justify-center p-4';
+    el.innerHTML = `<div class="card rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 shadow-lift">
+      <div class="flex items-center justify-between mb-5"><h3 class="text-lg font-extrabold tracking-tightest text-ink">자료 추가</h3>
+        <button id="mat-close" class="p-1 text-ink3 hover:text-signal"><span class="material-symbols-outlined lab-ic">close</span></button></div>
       <form id="mat-form" class="space-y-sm"></form></div>`;
     document.body.appendChild(el);
     el.addEventListener('click', (e) => { if (e.target === el) closeMatModal(); });
@@ -513,7 +482,7 @@
       <div><label class="text-label-md text-on-surface-variant">부가 설명 <span class="text-outline">(선택)</span></label>
         <input name="meta" id="m2-meta" type="text" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 12쪽"></div>
       <label class="flex items-center gap-2 p-1 cursor-pointer"><input type="checkbox" name="teacher_only" id="m2-teacher" class="rounded text-primary focus:ring-primary"><span class="text-body-md">교사만 보기 <span class="text-caption text-on-surface-variant">(학생 화면에 안 보임)</span></span></label>
-      <div class="flex gap-2 pt-1"><button type="button" id="m2-cancel" class="flex-1 border border-outline-variant py-2.5 rounded-lg text-label-md">취소</button><button type="submit" id="m2-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">저장</button></div>`;
+      <div class="flex gap-2 pt-1"><button type="button" id="m2-cancel" class="flex-1 border border-faint py-2.5 rounded-lg text-[14px] font-bold text-ink3 hover:bg-paper2 transition-colors">취소</button><button type="submit" id="m2-save" class="flex-1 bg-ink text-paper py-2.5 rounded-lg text-[14px] font-bold hover:bg-ink2 transition-colors">저장</button></div>`;
   }
   function openMatModal(subId) {
     state.addingSubId = subId;

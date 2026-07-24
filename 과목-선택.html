@@ -1,105 +1,63 @@
 <!DOCTYPE html>
-<html class="light" lang="ko">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>과목 선택 · 정환쌤과 함께하는 과학 수업</title>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">try{
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        colors: {
-          "surface-container-low": "#eff4ff",
-          "secondary": "#006b5f",
-          "error": "#ba1a1a",
-          "on-surface-variant": "#414754",
-          "secondary-container": "#8df5e4",
-          "on-surface": "#0d1c2e",
-          "surface-container-lowest": "#ffffff",
-          "on-secondary-container": "#00504a",
-          "background": "#f8f9ff",
-          "surface-bright": "#f8f9ff",
-          "primary": "#005bbf",
-          "on-primary": "#ffffff",
-          "surface-container": "#e6eeff",
-          "on-tertiary-container": "#341100",
-          "outline-variant": "#c1c6d6",
-          "tertiary": "#9e4300",
-          "on-tertiary": "#ffffff",
-          "surface-variant": "#d5e3fc",
-          "primary-container": "#1a73e8",
-          "primary-fixed": "#d8e2ff",
-          "on-primary-fixed": "#001a41",
-          "outline": "#727785",
-          "surface": "#f8f9ff",
-          "surface-container-highest": "#d5e3fc",
-          "on-background": "#0d1c2e"
-        },
-        borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
-        spacing: { "gutter": "24px", "base": "4px", "md": "24px", "sm": "16px", "xl": "64px", "lg": "40px", "xs": "8px", "max-width": "1280px" },
-        fontFamily: { "sans": ["Be Vietnam Pro", "sans-serif"] },
-        fontSize: {
-          "title-lg": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
-          "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
-          "caption": ["13px", {"lineHeight": "1.35", "fontWeight": "400"}],
-          "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
-          "headline-lg": ["32px", {"lineHeight": "1.25", "fontWeight": "700"}],
-          "display": ["44px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-          "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "500"}],
-          "headline-md": ["24px", {"lineHeight": "1.35", "fontWeight": "600"}]
-        }
-      }
-    }
-  }
-}catch(_e){}</script>
-<style>
-  body { font-family: "Be Vietnam Pro", sans-serif; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="js/theme.js?v=20260724a"></script>
 </head>
-<body class="bg-background text-on-background min-h-screen flex flex-col">
+<body class="font-sans text-ink antialiased min-h-screen flex flex-col">
 
-<!-- TopNavBar (두 페이지 공통) -->
-<header class="bg-surface border-b border-outline-variant z-50 sticky top-0">
-  <div class="flex justify-between items-center h-16 px-md max-w-max-width mx-auto w-full">
-    <div class="flex items-center gap-3">
-      <span class="material-symbols-outlined text-primary text-[28px]">science</span>
-      <h1 class="text-headline-md font-bold text-primary">정환쌤과 함께하는 과학 수업</h1>
-    </div>
-    <div class="flex items-center gap-3">
-      <span id="teacher-badge" class="hidden text-caption text-white bg-primary px-2 py-0.5 rounded-full font-semibold">교사 시점</span>
-      <span id="who" class="text-caption text-on-surface-variant hidden sm:inline"></span>
-      <a id="admin-link" href="관리자.html" class="hidden text-caption text-on-surface-variant hover:text-primary items-center gap-1"><span class="material-symbols-outlined text-[20px]">admin_panel_settings</span>관리 페이지</a>
-      <button id="logout-btn" class="text-caption text-on-surface-variant hover:text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[20px]">logout</span>로그아웃</button>
+<!-- TopNavBar (학생 페이지 공통) -->
+<header class="sticky top-0 z-50 border-b border-ink/15 bg-paper/85 backdrop-blur-md">
+  <div class="mx-auto flex h-16 max-w-max-width items-center justify-between px-5 w-full">
+    <a href="과목-선택.html" class="flex items-center gap-3">
+      <span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lime font-mono text-sm font-bold">LAB</span>
+      <div class="leading-tight">
+        <div class="font-mono text-[10px] uppercase tracking-[0.2em] text-signal">Science Class</div>
+        <h1 class="font-bold tracking-tightest text-[15px]">정환쌤과 함께하는 과학 수업</h1>
+      </div>
+    </a>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <span id="teacher-badge" class="hidden font-mono text-[11px] font-bold text-lime bg-ink px-2.5 py-1 rounded-full">교사 시점</span>
+      <span id="who" class="hidden sm:inline text-[13px] text-ink3"></span>
+      <a id="admin-link" href="관리자.html" class="hidden text-[13px] text-ink3 hover:text-signal items-center gap-1"><span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>관리</a>
+      <button id="logout-btn" class="text-[13px] text-ink3 hover:text-signal flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">logout</span>로그아웃</button>
     </div>
   </div>
 </header>
 
 <div class="flex flex-1 max-w-max-width mx-auto w-full">
-  <main class="flex-1 p-md md:p-lg lg:p-xl overflow-y-auto">
-    <div class="max-w-4xl mx-auto">
-      <div class="mb-lg text-center md:text-left">
-        <h2 class="text-display text-on-surface mb-xs">과목 선택</h2>
-        <p class="text-body-lg text-on-surface-variant max-w-2xl">탐구와 실험을 통해 과학적 소양을 기르는 정환쌤과 함께하는 과학 수업의 핵심 커리큘럼입니다. 학습할 과목을 선택하세요.</p>
+  <main class="flex-1 px-5 py-10 sm:py-12">
+    <div class="max-w-5xl mx-auto">
+      <div class="flex items-end justify-between flex-wrap gap-3 mb-7">
+        <div>
+          <div class="pin-label inline-flex items-center gap-2 rounded-full bg-ink px-3.5 py-1.5 text-[12px] font-bold text-lime shadow-note mb-4">
+            <span class="text-signal">●</span> 과목 선택
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tightest">과목 선택</h2>
+          <p class="mt-2 text-[14px] text-ink3 max-w-2xl leading-relaxed">탐구와 실험으로 과학적 소양을 기르는 정환쌤 과학 수업. 올해 배울 과목을 골라 <span class="hl-soft font-semibold">나의 실험노트</span>를 시작하세요.</p>
+        </div>
+        <span id="subject-count" class="font-mono text-[12px] text-ink3 border border-faint rounded-md px-3 py-1.5">SUBJECTS</span>
       </div>
 
       <!-- Subject Grid (DB에서 로드) -->
-      <div id="subject-grid" class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
-        <p class="text-on-surface-variant col-span-full py-lg text-center">과목을 불러오는 중…</p>
+      <div id="subject-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <p class="text-ink3 col-span-full py-lg text-center">과목을 불러오는 중…</p>
       </div>
     </div>
   </main>
 </div>
 
 <!-- Mobile Bottom NavBar -->
-<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant flex justify-around py-xs z-50">
-  <button class="flex flex-col items-center gap-1 text-primary min-w-[64px] py-1"><span class="material-symbols-outlined">home</span><span class="text-caption">홈</span></button>
-  <button class="flex flex-col items-center gap-1 text-on-surface-variant min-w-[64px] py-1"><span class="material-symbols-outlined">menu_book</span><span class="text-caption">과목</span></button>
-  <button class="flex flex-col items-center gap-1 text-on-surface-variant min-w-[64px] py-1"><span class="material-symbols-outlined">person</span><span class="text-caption">내 정보</span></button>
+<nav class="md:hidden sticky bottom-0 left-0 right-0 bg-paper/90 backdrop-blur border-t border-ink/15 flex justify-around py-2 z-40">
+  <span class="flex flex-col items-center gap-0.5 text-ink min-w-[64px] py-1"><span class="material-symbols-outlined text-[22px]">menu_book</span><span class="font-mono text-[10px]">과목</span></span>
+  <a href="비밀번호-변경.html" class="flex flex-col items-center gap-0.5 text-ink3 hover:text-ink min-w-[64px] py-1"><span class="material-symbols-outlined text-[22px]">person</span><span class="font-mono text-[10px]">내 정보</span></a>
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -125,23 +83,31 @@
 
   function card(s, i) {
     const a = ACCENTS[s.accent] || ACCENTS.blue;
+    const n = String((i ?? 0) + 1).padStart(2, '0');
     return `<a href="과목-홈.html?subject=${s.id}"
-      class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:shadow-lg hover:-translate-y-1 ${a.border} transition-all duration-300 flex flex-col focus:outline-none focus-visible:ring-2 ${a.ring}">
-      <div class="h-1.5 ${a.strip}"></div>
-      <div class="p-md flex flex-col flex-1">
-        <div class="mb-sm"><div class="${a.iconBox} p-3 rounded-lg w-fit"><span class="material-symbols-outlined text-[32px]">${esc(s.icon || 'science')}</span></div></div>
-        <h3 class="text-headline-md text-on-surface mb-xs">${esc(s.name)}</h3>
-        <p class="text-body-md text-on-surface-variant mb-md flex-1">${esc(s.description)}</p>
-        <span class="w-full ${a.btn} text-white py-3 rounded-lg text-label-md font-bold text-center transition-colors">과목 선택하기</span>
+      class="lift-hover card group relative rounded-xl p-6 shadow-note hover:shadow-lift ${a.border} flex flex-col focus:outline-none focus-visible:ring-2 ${a.ring}">
+      <span class="absolute right-4 top-4 font-mono text-[11px] text-ink3/60">${n}</span>
+      <div class="flex h-12 w-12 items-center justify-center rounded-lg" style="background:${a.iconBg};color:${a.iconFg};">
+        <span class="material-symbols-outlined text-[24px]">${esc(s.icon || 'science')}</span>
+      </div>
+      <div class="mt-4 flex items-center gap-2">
+        <h3 class="text-xl font-extrabold tracking-tight">${esc(s.name)}</h3>
+        <span class="h-2.5 w-2.5 rounded-full" style="background:${a.dot}"></span>
+      </div>
+      <p class="mt-1.5 text-[13.5px] text-ink3 leading-relaxed flex-1">${esc(s.description || '')}</p>
+      <div class="dashed mt-5 pt-3 flex items-center justify-between">
+        <span class="font-mono text-[12px] font-bold text-ink group-hover:text-signal transition">과목 선택하기</span>
+        <span class="inline-block transition-transform group-hover:translate-x-1.5 text-ink">→</span>
       </div>
     </a>`;
   }
 
   try {
     const subjects = await fetchSubjects();
+    document.getElementById('subject-count').textContent = 'SUBJECTS · ' + String(subjects.length).padStart(2, '0');
     grid.innerHTML = subjects.length
       ? subjects.map(card).join('')
-      : '<p class="text-on-surface-variant col-span-full py-lg text-center">등록된 과목이 없습니다.</p>';
+      : '<p class="text-ink3 col-span-full py-lg text-center">등록된 과목이 없습니다.</p>';
   } catch (e) {
     grid.innerHTML = `<p class="text-error col-span-full py-lg text-center">과목을 불러오지 못했습니다. (${esc(e.message)})</p>`;
   }

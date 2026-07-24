@@ -4,19 +4,55 @@
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>구글 드라이브 연결 · 정환쌤과 함께하는 과학 수업</title>
+
+<!-- 실험노트 테마: Pretendard + Space Mono -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  body { font-family: system-ui, -apple-system, "Malgun Gothic", sans-serif; background: #f8f9ff; color: #0d1c2e; margin: 0; display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
-  .card { max-width: 440px; width: 100%; background: #fff; border: 1px solid #c1c6d6; border-radius: 16px; padding: 32px 28px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
-  .icon { font-size: 48px; margin-bottom: 12px; }
-  h1 { font-size: 20px; margin: 0 0 8px; }
-  p { font-size: 15px; line-height: 1.6; color: #414754; margin: 0 0 8px; }
-  .btn { display: inline-block; margin-top: 16px; background: #005bbf; color: #fff; text-decoration: none; font-weight: 700; padding: 12px 24px; border-radius: 10px; border: 0; cursor: pointer; font-size: 15px; }
-  .muted { color: #727785; font-size: 13px; }
+  :root{ --paper:#FBFAF6; --ink:#16213E; --ink3:#5A6379; --lime:#C4E000; --signal:#FF5B24; --line:#E7E4D6; }
+  *{ box-sizing:border-box; }
+  body {
+    font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    background-color:var(--paper);
+    background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),linear-gradient(to bottom,var(--line) 1px,transparent 1px);
+    background-size:26px 26px;
+    color:var(--ink); margin:0; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; padding:24px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono { font-family:"Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
+  /* 브랜드 헤더 (카드 밖 — 상태가 바뀌어도 유지) */
+  .brand { display:flex; align-items:center; gap:11px; }
+  .brand .badge { display:inline-flex; height:36px; width:36px; align-items:center; justify-content:center; border-radius:9px; background:var(--ink); color:var(--lime); font-weight:700; font-size:13px; }
+  .brand .kicker { font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--signal); }
+  .brand .title { font-weight:700; font-size:15px; letter-spacing:-0.02em; line-height:1.2; }
+  /* 상태 카드 */
+  .card { position:relative; max-width:440px; width:100%; background:#fff; border:1px solid var(--line); border-radius:18px; padding:34px 30px 30px; text-align:center; box-shadow:0 1px 0 rgba(22,33,62,.04), 0 18px 40px -20px rgba(22,33,62,.40); }
+  .icon { font-size:46px; margin-bottom:10px; line-height:1; }
+  h1 { font-size:20px; margin:0 0 8px; letter-spacing:-0.02em; font-weight:800; }
+  p { font-size:15px; line-height:1.65; color:#4A5064; margin:0 0 4px; }
+  p b { color:var(--ink); }
+  .btn { display:inline-block; margin-top:18px; background:var(--ink); color:var(--paper); text-decoration:none; font-weight:700; padding:12px 24px; border-radius:10px; border:0; cursor:pointer; font-size:15px; transition:transform .15s ease, box-shadow .15s ease; }
+  .btn:hover { transform:translateY(-2px); box-shadow:0 12px 26px -12px rgba(22,33,62,.6); }
+  .muted { color:#8A8676; font-size:13px; }
+  /* 로딩 점멸 */
+  .pulse { animation:labpulse 1.4s ease-in-out infinite; }
+  @keyframes labpulse { 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+  @media (prefers-reduced-motion:reduce){ .pulse{ animation:none; } }
+  ::selection { background:var(--lime); color:var(--ink); }
 </style>
 </head>
 <body>
+<div class="brand">
+  <span class="badge mono">LAB</span>
+  <div>
+    <div class="kicker mono">Science Class</div>
+    <div class="title">정환쌤과 함께하는 과학 수업</div>
+  </div>
+</div>
 <div class="card" id="card">
-  <div class="icon">⏳</div>
+  <div class="icon pulse">⏳</div>
   <h1>구글 드라이브 연결 중…</h1>
   <p class="muted">잠시만 기다려 주세요.</p>
 </div>
