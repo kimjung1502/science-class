@@ -262,6 +262,19 @@
   ICONS.calendar_today = ICONS.event;
   ICONS.help = ICONS.quiz;
 
+  // 과목 아이콘(관리자 자유 입력 대응) — 지구/실험실/에너지 등 과학 과목용 라인 아이콘
+  ICONS.public = '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 3.6 9A14 14 0 0 1 12 21a14 14 0 0 1-3.6-9A14 14 0 0 1 12 3z"/>';
+  ICONS.language = ICONS.public;
+  ICONS.labs = '<path d="M4.5 3h15"/><path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3"/><path d="M6 14h12"/>';
+  ICONS.bolt = '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>';
+  ICONS.electric_bolt = ICONS.bolt;
+  ICONS.eco = '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/>';
+  ICONS.water_drop = '<path d="M12 2.7c4 4.5 6 7.5 6 10.3a6 6 0 0 1-12 0c0-2.8 2-5.8 6-10.3z"/>';
+  ICONS.thermostat = '<path d="M14 14.76V4a2 2 0 0 0-4 0v10.76a4 4 0 1 0 4 0z"/>';
+  ICONS.calculate = '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>';
+  ICONS.functions = '<path d="M17 4H6l6 8-6 8h11"/>';
+  ICONS.monitoring = '<path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/><path d="M18 8h3v3"/>';
+
   var FALLBACK = '<circle cx="12" cy="12" r="8"/>';
   var SPIN = { progress_activity: 1, hourglass_top: 1 };
 
