@@ -66,7 +66,7 @@
           <h1 id="doc-title" class="text-[15px] font-extrabold text-ink truncate leading-tight">PDF 판서</h1>
         </div>
         <span class="hidden md:inline-flex items-center gap-1 font-mono text-[10px] font-bold text-ink3 bg-paper2 border border-ink/10 px-2 py-1 rounded-full">
-          S펜 전용 · 저장 안 됨
+          S펜 필기 · 저장 안 됨
         </span>
       </div>
       <div class="flex items-center gap-2 shrink-0">
@@ -140,7 +140,7 @@
           </button>
         </div>
         <p class="mt-6 font-mono text-[11px] text-ink3/70">
-          S펜 전용 · 손가락·손바닥은 인식 안 함 &nbsp;·&nbsp; ←/→ 페이지 &nbsp;·&nbsp; Ctrl+Z 실행취소 &nbsp;·&nbsp; 이동은 '이동' 도구
+          필기는 S펜 · 두 손가락으로 확대·이동 · 손바닥은 무시 &nbsp;·&nbsp; ←/→ 페이지 &nbsp;·&nbsp; Ctrl+Z 실행취소
         </p>
       </div>
     </div>
@@ -440,10 +440,58 @@
     if (changed) { S.strokes[S.page] = keep; renderInkFromStrokes(); }
   }
 
+  // ---------- 두 손가락 핀치: 확대/이동 ----------
+  // 한 손가락·손바닥은 무시(팜리젝션), 필기는 S펜만. 두 손가락일 때만 확대/이동.
+  var touches = new Map();   // pointerId -> {x, y}
+  var pinch = null;
+  function _tArr() { return Array.from(touches.values()); }
+  function _tDist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  function _tMid(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+
+  function beginPinch() {
+    var a = _tArr(), wr = wrap.getBoundingClientRect(), m = _tMid(a[0], a[1]);
+    pinch = {
+      startDist: _tDist(a[0], a[1]) || 1,
+      startZoom: S.zoom,
+      fx: (m.x - wr.left) / wr.width,   // 중점의 콘텐츠 내 상대 위치(0..1)
+      fy: (m.y - wr.top) / wr.height,
+      startMid: m, lastK: 1, lastMid: m
+    };
+    wrap.style.transformOrigin = (m.x - wr.left) + 'px ' + (m.y - wr.top) + 'px';
+    wrap.style.willChange = 'transform';
+  }
+  function updatePinch() {
+    var a = _tArr();
+    if (!pinch || a.length < 2) return;
+    var k = (_tDist(a[0], a[1]) || 1) / pinch.startDist;
+    var m = _tMid(a[0], a[1]);
+    pinch.lastK = k; pinch.lastMid = m;
+    wrap.style.transform = 'translate(' + (m.x - pinch.startMid.x) + 'px,' + (m.y - pinch.startMid.y) + 'px) scale(' + k + ')';
+  }
+  async function endPinch() {
+    if (!pinch) return;
+    var p = pinch; pinch = null;
+    wrap.style.transform = ''; wrap.style.transformOrigin = ''; wrap.style.willChange = '';
+    var finalZoom = Math.max(0.3, Math.min(p.startZoom * p.lastK, 4));
+    if (Math.abs(finalZoom - p.startZoom) < 0.004) return;
+    S.zoom = finalZoom;
+    await renderPage(S.page);   // 새 배율로 선명하게 재렌더
+    // 손가락 중점 아래 콘텐츠 지점을 그대로 유지하도록 스크롤 보정
+    var m = p.lastMid, wr = wrap.getBoundingClientRect();
+    stage.scrollLeft += (wr.left + p.fx * wr.width) - m.x;
+    stage.scrollTop += (wr.top + p.fy * wr.height) - m.y;
+  }
+
   function onPointerDown(e) {
     if (!S.pdf) return;
-    // 손가락·손바닥(터치)은 완전히 무시 — 필기는 오직 S펜(pen)으로만.
-    if (e.pointerType === 'touch') return;
+    // 두 손가락(터치)은 확대/이동, 한 손가락·손바닥은 무시 — 필기는 오직 S펜.
+    if (e.pointerType === 'touch') {
+      if (active) return;   // S펜 필기 중엔 손 접촉 무시
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      try { inkCanvas.setPointerCapture(e.pointerId); } catch (_e) {}
+      if (touches.size === 2) beginPinch();
+      return;               // 한 손가락은 아무 동작 없음(팜리젝션)
+    }
 
     var lp = toLocal(e);
 
@@ -480,6 +528,11 @@
   }
 
   function onPointerMove(e) {
+    if (touches.has(e.pointerId)) {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch) { updatePinch(); e.preventDefault(); }
+      return;
+    }
     if (pan) {
       stage.scrollLeft = pan.sl - (e.clientX - pan.x);
       stage.scrollTop = pan.st - (e.clientY - pan.y);
@@ -503,6 +556,12 @@
   }
 
   function onPointerUp(e) {
+    if (touches.has(e.pointerId)) {
+      touches.delete(e.pointerId);
+      try { inkCanvas.releasePointerCapture(e.pointerId); } catch (_e) {}
+      if (pinch && touches.size < 2) endPinch();
+      return;
+    }
     if (pan) {
       pan = null;
       inkCanvas.classList.remove('grabbing');
