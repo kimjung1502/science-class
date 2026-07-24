@@ -190,8 +190,25 @@
   </div>
 </div>
 
+<!-- 마인드맵 그리기 모달 (전체 화면) -->
+<div id="mm-modal" class="hidden fixed inset-0 z-[70] flex flex-col bg-paper">
+  <div class="flex items-center gap-3 px-4 py-3 border-b border-faint bg-white shrink-0">
+    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-ink text-lime"><span class="material-symbols-outlined text-[20px]">account_tree</span></span>
+    <div class="min-w-0">
+      <p id="mm-title" class="font-extrabold tracking-tight text-ink text-[15px] truncate">마인드맵</p>
+      <p id="mm-hint" class="text-[12px] text-ink3 truncate">노드를 더블클릭해 편집 · Tab=자식 · Enter=형제 · Del=삭제</p>
+    </div>
+    <span id="mm-status" class="ml-auto font-mono text-[11px] text-ink3"></span>
+    <button type="button" id="mm-cancel" class="px-3 py-2 rounded-lg border border-faint text-ink3 font-bold text-[13px] hover:bg-paper2 hover:text-ink transition-colors">취소</button>
+    <button type="button" id="mm-save" class="px-4 py-2 rounded-lg bg-lime text-ink font-extrabold text-[13px] shadow-note hover:shadow-lift transition-all disabled:opacity-60 inline-flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">check</span><span id="mm-save-label">완료</span></button>
+  </div>
+  <div id="mm-mount" class="relative flex-1 min-h-0"></div>
+  <p id="mm-error" class="hidden px-4 py-2 font-mono text-[12px] text-error bg-signal-soft/40 shrink-0"></p>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/db.js?v=20260724d"></script>
+<script src="js/mindmap.js?v=20260724a"></script>
 <script>
 (function () {
   const {
@@ -221,11 +238,12 @@
   const OPTION_TYPES = new Set(['radio', 'checkbox', 'dropdown']);
   const FIELD_TYPES = [
     ['short', '단답형'], ['long', '장문형'], ['radio', '객관식(단일 선택)'], ['checkbox', '체크박스(복수 선택)'],
-    ['dropdown', '드롭다운'], ['scale', '선형 배율'], ['date', '날짜'], ['file', '파일 업로드'],
+    ['dropdown', '드롭다운'], ['scale', '선형 배율'], ['date', '날짜'], ['file', '파일 업로드'], ['mindmap', '마인드맵'],
   ];
   function isEmptyAnswer(f, v) {
     if (f.type === 'checkbox') return !Array.isArray(v) || !v.length;
     if (f.type === 'file') return !(v && v.storage_path);
+    if (f.type === 'mindmap') return !(v && v.storage_path);
     return v == null || String(v).trim() === '';
   }
 
@@ -390,6 +408,17 @@
         <label class="px-4 py-2 rounded-lg border border-ink text-ink font-bold text-[13px] cursor-pointer hover:bg-ink hover:text-paper transition-colors ${disabled ? 'opacity-50 pointer-events-none' : ''}"><span class="material-symbols-outlined text-[16px] align-[-3px]">upload</span> 파일 선택<input id="ff_${f.id}" type="file" class="hidden" ${dis}></label>
         ${cur}<span id="ffs_${f.id}" class="font-mono text-[11px] text-signal"></span></div>`;
     }
+    if (f.type === 'mindmap') {
+      const has = !!(val && (val.storage_path || (val.data && Array.isArray(val.data.nodes) && val.data.nodes.length)));
+      const label = disabled ? '마인드맵 보기' : (has ? '마인드맵 이어 그리기' : '마인드맵 그리기');
+      const canOpen = disabled ? has : true; // 읽기전용은 작성된 것만 열람
+      const status = has
+        ? `<span id="ffmn_${f.id}" class="text-[13px] text-ink flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-lime bg-ink rounded p-0.5">check</span>작성됨</span>`
+        : `<span id="ffmn_${f.id}" class="text-[13px] text-ink3">아직 안 그림</span>`;
+      return `<div class="flex items-center gap-3 flex-wrap">
+        <button type="button" id="ffmm_${f.id}" data-mm="${f.id}" ${canOpen ? '' : 'disabled'} class="px-4 py-2 rounded-lg border border-ink text-ink font-bold text-[13px] hover:bg-ink hover:text-paper transition-colors inline-flex items-center gap-1 ${canOpen ? '' : 'opacity-50 pointer-events-none'}"><span class="material-symbols-outlined text-[16px]">account_tree</span>${label}</button>
+        ${status}<span id="ffms_${f.id}" class="font-mono text-[11px] text-signal"></span></div>`;
+    }
     // short
     return `<input id="ff_${f.id}" type="text" value="${esc(val || '')}" ${dis} class="${base}">`;
   }
@@ -418,6 +447,10 @@
         catch (e) { st.textContent = ''; showFillErr('업로드 실패: ' + e.message); }
       });
     });
+    page.fields.filter((f) => f.type === 'mindmap').forEach((f) => {
+      const btn = $('ffmm_' + f.id); if (!btn) return;
+      btn.addEventListener('click', () => openMindmap(f, filler.readOnly));
+    });
     const last = pi === pages.length - 1;
     $('fill-prev').classList.toggle('hidden', pi === 0); $('fill-prev').classList.toggle('flex', pi > 0);
     $('fill-next').classList.toggle('hidden', last); $('fill-next').classList.toggle('flex', !last);
@@ -437,7 +470,7 @@
     const page = filler.pages[filler.page];
     const body = $('fill-body');
     page.fields.forEach((f) => {
-      if (f.type === 'file') return;
+      if (f.type === 'file' || f.type === 'mindmap') return;
       if (f.type === 'checkbox') { filler.answers[f.id] = [...body.querySelectorAll(`input[name="ff_${f.id}"]:checked`)].map((el) => el.value); return; }
       if (f.type === 'radio' || f.type === 'scale') { const el = body.querySelector(`input[name="ff_${f.id}"]:checked`); filler.answers[f.id] = el ? el.value : ''; return; }
       const el = $('ff_' + f.id); if (el) filler.answers[f.id] = el.value;
@@ -502,6 +535,89 @@
     catch (e) { showFillErr('제출 실패: ' + e.message); btn.disabled = false; btn.textContent = orig; }
   });
 
+  // ==================== 마인드맵 필드 (그리기/보기) ====================
+  let mmEditor = null, mmField = null, mmReadOnly = false, mmStudentKey = null, mmKeyCurrent = null, mmGen = 0;
+  async function mmResolveStudentKey() {
+    if (mmStudentKey == null) {
+      try { const st = await window.DB.currentStudent(); mmStudentKey = (st && st.id) || 'anon'; } catch (_e) { mmStudentKey = 'anon'; }
+    }
+    return mmStudentKey;
+  }
+  const mmShowErr = (msg) => { const el = $('mm-error'); el.textContent = msg; el.classList.remove('hidden'); };
+  const mmClearErr = () => $('mm-error').classList.add('hidden');
+  function mmDestroyEditor() { if (mmEditor) { try { mmEditor.destroy(); } catch (_e) {} mmEditor = null; } }
+
+  async function openMindmap(field, readOnly) {
+    if (!window.MindmapEditor) { showFillErr('마인드맵 편집기를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.'); return; }
+    // 이전 에디터 정리 + 세대 증가로 진행 중이던 비동기 콜백 무효화(재진입/레이스 방지)
+    mmDestroyEditor();
+    const gen = ++mmGen;
+    const assignmentId = filler.assignmentId;
+    mmField = field; mmReadOnly = !!readOnly;
+    mmClearErr();
+    $('mm-title').textContent = field.label || '마인드맵';
+    $('mm-hint').textContent = readOnly ? '읽기 전용 · 드래그로 이동, 휠/버튼으로 확대·축소' : '노드를 더블클릭해 편집 · Tab=자식 · Enter=형제 · Del=삭제';
+    $('mm-status').textContent = '';
+    $('mm-save').disabled = false; $('mm-cancel').disabled = false;
+    $('mm-save-label').textContent = readOnly ? '닫기' : '완료';
+    $('mm-modal').classList.remove('hidden');
+    // 저장 키를 에디터 생성 전에 확정(콜백에서 await 없이 사용 → 잘못된 키 저장 방지)
+    const sid = await mmResolveStudentKey();
+    if (gen !== mmGen) return; // 그 사이 다른 열기/닫기 발생 → 이번 호출은 폐기
+    const key = `mm:${assignmentId}:${field.id}:${sid}`;
+    mmKeyCurrent = key;
+    // 데이터 우선순위: 이미 제출된 답변(data) > (편집일 때) 로컬 임시저장 > 새로 시작
+    let data = null;
+    const cur = filler.answers[field.id];
+    if (cur && cur.data && Array.isArray(cur.data.nodes)) data = cur.data;
+    else if (!readOnly) { try { const raw = localStorage.getItem(key); if (raw) data = JSON.parse(raw); } catch (_e) {} }
+    const mount = $('mm-mount'); mount.textContent = '';
+    const editor = window.MindmapEditor.create(mount, {
+      readonly: mmReadOnly, data: data,
+      onChange: mmReadOnly ? null : () => {
+        if (gen !== mmGen || mmEditor !== editor) return; // 이 호출이 만든 에디터가 현재일 때만 저장
+        try { localStorage.setItem(key, JSON.stringify(editor.getData())); $('mm-status').textContent = '임시 저장됨'; } catch (_e) {}
+      },
+    });
+    mmEditor = editor;
+    editor.focusCanvas();
+  }
+  function mmClose() {
+    mmGen++; // 진행 중이던 저장/임시저장 콜백 무효화
+    mmDestroyEditor();
+    $('mm-modal').classList.add('hidden');
+    mmField = null; mmKeyCurrent = null;
+  }
+  async function mmSaveDone() {
+    if (mmReadOnly || !mmEditor || !mmField) { mmClose(); return; }
+    // 이 저장 작업이 시작한 세션을 고정(await 이후 세션이 바뀌면 결과 폐기)
+    const gen = mmGen, field = mmField, editor = mmEditor, assignmentId = filler.assignmentId, key = mmKeyCurrent;
+    if (editor.isEmpty()) { mmShowErr('중심 주제를 입력하거나 가지를 추가한 뒤 완료하세요.'); return; }
+    const btn = $('mm-save'), cancel = $('mm-cancel'), lbl = $('mm-save-label'); const orig = lbl.textContent;
+    btn.disabled = true; cancel.disabled = true; lbl.textContent = '저장 중…'; mmClearErr();
+    try {
+      const data = editor.getData();
+      const blob = await editor.exportPNGBlob({ scale: 2 });
+      const file = new File([blob], 'mindmap.png', { type: 'image/png' });
+      const ref = await uploadSubmissionFile(assignmentId, field.id, file);
+      if (gen !== mmGen) return; // 저장 중 취소/다른 필드 열림 → 이번 결과 폐기
+      filler.answers[field.id] = Object.assign({}, ref, { data: data });
+      try { if (key) localStorage.removeItem(key); } catch (_e) {}
+      // 현재 페이지 DOM만 갱신(다른 입력값 유지)
+      const nm = $('ffmn_' + field.id);
+      if (nm) { nm.className = 'text-[13px] text-ink flex items-center gap-1'; nm.innerHTML = '<span class="material-symbols-outlined text-[18px] text-lime bg-ink rounded p-0.5">check</span>작성됨'; }
+      const b = $('ffmm_' + field.id);
+      if (b) b.innerHTML = '<span class="material-symbols-outlined text-[16px]">account_tree</span>마인드맵 이어 그리기';
+      mmClose();
+    } catch (e) {
+      if (gen !== mmGen) return; // 이미 다른 세션 → 이 오류는 표시하지 않음
+      mmShowErr('저장 실패: ' + e.message);
+      btn.disabled = false; cancel.disabled = false; lbl.textContent = orig;
+    }
+  }
+  $('mm-save').addEventListener('click', mmSaveDone);
+  $('mm-cancel').addEventListener('click', mmClose);
+
   // ==================== 교사: 폼 빌더 ====================
   const builder = { fields: [] };
 
@@ -535,6 +651,8 @@
         <input data-role="scaleMaxLabel" type="text" value="${esc(f.scaleMaxLabel || '')}" placeholder="최대 라벨" class="px-2 py-1.5 rounded-lg border border-faint bg-white w-28"></div>`;
     } else if (f.type === 'file') {
       extra = `<p class="mt-2 text-[12px] text-ink3">학생이 파일 1개를 업로드합니다. (최대 25MB · 엑셀에는 다운로드 링크로 기록)</p>`;
+    } else if (f.type === 'mindmap') {
+      extra = `<p class="mt-2 text-[12px] text-ink3">학생이 온라인에서 마인드맵을 그려 제출합니다. (PNG 이미지로 저장 · 마감 전 재편집 가능 · 엑셀엔 이미지 다운로드 링크로 기록)</p>`;
     }
     return `<div data-idx="${idx}" class="rounded-xl border border-faint bg-white p-3">
       <div class="flex items-center gap-2 mb-2 flex-wrap">
