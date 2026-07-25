@@ -495,7 +495,7 @@
 
 <script>
   const HINT_PW="1234";
-  const REQUIRE_PHOTOS=true; // 사진을 올려야 ④ 통과 (교사 설정: false로 바꾸면 사진 없이도 통과)
+  const REQUIRE_PHOTOS=!(window.__SITE_STUDENT__&&window.__SITE_STUDENT__.isAdmin); // 학생은 사진 필수 · 교사·관리자 미리보기는 사진 없이도 ④ 통과
   const TOTAL=6;
   // ④ 제출물이 이 실험과 무관한(장난) 사진·글인지 Claude로 가볍게 확인하는 서버 엔드포인트.
   // 공개(publishable) 키라 그대로 노출해도 안전 — 실제 채점 로직·API 키는 서버(Edge Function)에만 있음.
