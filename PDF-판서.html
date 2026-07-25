@@ -89,11 +89,16 @@
       <!-- 색상 -->
       <div id="palette" class="flex items-center gap-1.5"></div>
       <div class="divider"></div>
-      <!-- 굵기 -->
+      <!-- 굵기 (슬라이더로 자유 선택) -->
+      <div class="flex items-center gap-2">
+        <span class="font-mono text-[11px] font-bold text-ink3">굵기</span>
+        <input id="width-range" type="range" min="1" max="24" value="6" class="w-24 accent-ink align-middle cursor-pointer">
+        <span id="width-val" class="font-mono text-[12px] font-bold text-ink w-6 text-right">6</span>
+      </div>
+      <div class="divider"></div>
+      <!-- 선 스타일 -->
       <div class="flex items-center gap-1.5">
-        <button data-width="3"  class="tbtn wbtn">얇게</button>
-        <button data-width="6"  class="tbtn wbtn on">보통</button>
-        <button data-width="11" class="tbtn wbtn">굵게</button>
+        <button id="btn-dash" class="tbtn" title="점선 켜기/끄기">점선</button>
       </div>
       <div class="divider"></div>
       <!-- 편집 -->
@@ -217,6 +222,7 @@
     penColor: '#16213E',
     hlColor: '#C4E000',
     width: 6,              // 기준 두께(px, 맞춤배율 기준)
+    dash: false,           // 점선 모드
     fitScale: 1,           // 페이지 폭을 무대에 맞춘 배율
     zoom: 1,               // 사용자 확대 배율 (fitScale에 곱)
     dpr: Math.min(window.devicePixelRatio || 1, 2.5),
@@ -349,6 +355,23 @@
     var W = S.cssW, H = S.cssH;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    if (s.dash) {
+      // 점선: 한 경로로 그리고 둥근 점 패턴(굵기 일정). 형광펜/펜 공용.
+      var isHl = (s.tool === 'highlight');
+      ctx.globalAlpha = isHl ? 0.32 : 1;
+      ctx.strokeStyle = s.color;
+      var dw = Math.max(1, isHl ? Math.max(6, s.baseW * W) : s.baseW * W);
+      ctx.lineWidth = dw;
+      ctx.setLineDash([0.1, dw * 2]);
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x * W, pts[0].y * H);
+      for (var di = 1; di < pts.length; di++) ctx.lineTo(pts[di].x * W, pts[di].y * H);
+      if (pts.length === 1) ctx.lineTo(pts[0].x * W + 0.1, pts[0].y * H + 0.1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      return;
+    }
     if (s.tool === 'highlight') {
       ctx.globalAlpha = 0.32;
       ctx.strokeStyle = s.color;
@@ -574,6 +597,7 @@
       tool: S.tool,
       color: color,
       baseW: px / S.cssW,   // 정규화 두께(확대/리사이즈에도 비율 유지)
+      dash: S.dash,         // 점선 여부
       points: [],
       straight: (S.tool === 'highlight'), // 형광펜은 항상 직선
       holdX: e.clientX, holdY: e.clientY
@@ -621,8 +645,8 @@
       active.erasing = true; clearTimeout(holdTimer);
       return;
     }
-    // 크게 움직이면 '길게 누름' 타이머 리셋(작은 떨림은 무시)
-    if (Math.hypot(e.clientX - active.holdX, e.clientY - active.holdY) > 6) {
+    // 크게 움직이면 '길게 누름' 타이머 리셋(S펜 손떨림은 무시 — 넉넉히 12px)
+    if (Math.hypot(e.clientX - active.holdX, e.clientY - active.holdY) > 12) {
       active.holdX = e.clientX; active.holdY = e.clientY; scheduleHold();
     }
     scheduleActive();
@@ -698,11 +722,16 @@
   document.querySelectorAll('.tool').forEach(function (b) {
     b.addEventListener('click', function () { setTool(b.dataset.tool); });
   });
-  document.querySelectorAll('.wbtn').forEach(function (b) {
-    b.addEventListener('click', function () {
-      S.width = parseInt(b.dataset.width, 10);
-      document.querySelectorAll('.wbtn').forEach(function (x) { x.classList.toggle('on', x === b); });
-    });
+  // 굵기 슬라이더 (자유 선택)
+  var widthRange = $('width-range');
+  if (widthRange) widthRange.addEventListener('input', function () {
+    S.width = parseInt(widthRange.value, 10) || 1;
+    $('width-val').textContent = widthRange.value;
+  });
+  // 점선 토글
+  $('btn-dash').addEventListener('click', function () {
+    S.dash = !S.dash;
+    this.classList.toggle('on', S.dash);
   });
 
   // 편집
