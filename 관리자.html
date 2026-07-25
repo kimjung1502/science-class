@@ -414,6 +414,11 @@
         <input name="name" type="text" value="${esc(item?.name || '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학 교과서"></div>
       <div id="file-field" class="hidden"><label class="text-label-md text-on-surface-variant">파일 업로드 <span class="text-outline">(Supabase 저장)</span></label>
         <input name="file" type="file" class="w-full mt-1 text-caption"><p class="text-caption text-on-surface-variant mt-1" id="cur-file"></p>
+        <div id="m-split" class="hidden mt-2 rounded-lg bg-surface-container border border-outline-variant p-2.5">
+          <label class="text-caption font-bold">일부만 올리기 — 페이지 범위 <span class="text-outline font-normal">(선택, 비우면 전체)</span></label>
+          <input name="page_range" id="m-range" type="text" inputmode="numeric" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-[14px]" placeholder="예: 1-40 또는 3,5,10-20">
+          <p id="m-split-note" class="text-caption text-on-surface-variant mt-1"></p>
+        </div>
         <div class="mt-2 flex items-center gap-2">
           <span class="text-caption text-on-surface-variant">또는</span>
           <button type="button" id="drive-pick-btn" class="inline-flex items-center gap-1 text-caption px-2.5 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">
@@ -466,6 +471,18 @@
     sel.addEventListener('change', sync); sync();
     const driveBtn = $('drive-pick-btn');
     if (driveBtn) driveBtn.addEventListener('click', openDrivePicker);
+    // PDF를 고르면 "일부만 올리기(페이지 범위)" 칸 표시 + 전체 쪽수 안내
+    const fileInput = document.querySelector('#modal-form [name="file"]');
+    fileInput.addEventListener('change', async () => {
+      const box = $('m-split'); const note = $('m-split-note');
+      const f = fileInput.files && fileInput.files[0];
+      const isPdf = !!f && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+      box.classList.toggle('hidden', !isPdf);
+      if (!isPdf) { $('m-range').value = ''; return; }
+      note.textContent = '전체 쪽수 확인 중…';
+      try { note.textContent = `전체 ${await window.DB.pdfPageCount(f)}쪽 · ${(f.size / 1048576).toFixed(1)} MB — 범위를 적으면 그 부분만 추출해 올려요.`; }
+      catch (_e) { note.textContent = '쪽수를 읽지 못했습니다. 범위를 적으면 저장할 때 추출을 시도해요.'; }
+    });
   }
 
   // ---------------- 구글 드라이브 파일 선택기(Picker) ----------------
@@ -515,6 +532,7 @@
       const nameInput = document.querySelector('[name="name"]');
       if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name || '';
       const fi = document.querySelector('[name="file"]'); if (fi) fi.value = '';
+      const sb = $('m-split'); if (sb) { sb.classList.add('hidden'); $('m-range').value = ''; }
       picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 링크로 등록됩니다.';
     } catch (e) {
       picked.textContent = '공유 설정 실패: ' + e.message;
@@ -552,10 +570,19 @@
           } else {
             const file = fd.get('file');
             if (file && file.size) {
-              const path2 = `${parentId()}/${Date.now()}-${safeStorageName(file.name)}`;
-              await uploadToBucket('materials', path2, file);
+              let up = file;
+              const range = (fd.get('page_range') || '').trim();
+              if (range && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name))) {
+                saveBtn.textContent = 'PDF 추출 중…';
+                const sp = await window.DB.splitPdfFile(file, range);
+                up = sp.file;
+                if (!payload.meta) payload.meta = `p.${sp.label} 발췌 (전체 ${sp.total}쪽 중 ${sp.pages}쪽)`;
+                saveBtn.textContent = '저장 중…';
+              }
+              const path2 = `${parentId()}/${Date.now()}-${safeStorageName(up.name)}`;
+              await uploadToBucket('materials', path2, up);
               payload.storage_path = path2;
-              payload.original_filename = file.name;
+              payload.original_filename = up.name;
               payload.url = supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
             } else if (t.upload && urlInput) {
               // 교과서 등: 파일 대신 링크로 등록. 기존 업로드 파일이 있으면 정리.

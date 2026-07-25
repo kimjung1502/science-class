@@ -492,6 +492,67 @@
     return out; // { data:{title,summary,status,weight,tags,start_date,due_date,unit_name,mid_name,sub_name,body,rubric}, usage }
   }
 
+  // ---------- PDF 분할 (교과서 등 큰 PDF에서 일부 페이지만 추출해 업로드) ----------
+  // pdf-lib은 무거워서 필요할 때만 CDN에서 로드
+  let pdfLibPromise = null;
+  function loadPdfLib() {
+    if (window.PDFLib) return Promise.resolve(window.PDFLib);
+    if (!pdfLibPromise) {
+      pdfLibPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+        s.onload = () => resolve(window.PDFLib);
+        s.onerror = () => { pdfLibPromise = null; reject(new Error('PDF 처리 모듈을 불러오지 못했습니다 (네트워크 확인).')); };
+        document.head.appendChild(s);
+      });
+    }
+    return pdfLibPromise;
+  }
+
+  async function pdfPageCount(file) {
+    const PDFLib = await loadPdfLib();
+    const doc = await PDFLib.PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true, updateMetadata: false });
+    return doc.getPageCount();
+  }
+
+  // "1-40, 55, 60~70" → 1부터 시작하는 쪽 번호 배열 (입력 순서 유지, 중복 제거)
+  function parsePageRange(str, total) {
+    const out = []; const seen = new Set();
+    for (const part of String(str || '').split(',')) {
+      const p = part.trim();
+      if (!p) continue;
+      const m = p.match(/^(\d+)\s*[-~–]\s*(\d+)$/) || p.match(/^(\d+)$/);
+      if (!m) throw new Error(`페이지 범위를 이해할 수 없습니다: "${p}" (예: 1-40 또는 3,5,10-20)`);
+      let a = parseInt(m[1], 10), b = parseInt(m[2] || m[1], 10);
+      if (a > b) { const t = a; a = b; b = t; }
+      if (a < 1 || (total && b > total)) throw new Error(`${a}${a === b ? '' : '-' + b}쪽은 범위를 벗어납니다 (전체 ${total}쪽).`);
+      for (let i = a; i <= b; i++) if (!seen.has(i)) { seen.add(i); out.push(i); }
+    }
+    if (!out.length) throw new Error('추출할 페이지가 없습니다.');
+    return out;
+  }
+
+  // PDF에서 지정한 페이지만 뽑은 새 File 반환 → { file, pages(추출 쪽수), total(원본 쪽수), label }
+  async function splitPdfFile(file, rangeStr) {
+    const PDFLib = await loadPdfLib();
+    let src;
+    try {
+      src = await PDFLib.PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true, updateMetadata: false });
+    } catch (_e) {
+      throw new Error('PDF를 읽지 못했습니다. 손상됐거나 지원하지 않는 형식일 수 있어요.');
+    }
+    const total = src.getPageCount();
+    const pages = parsePageRange(rangeStr, total);
+    const out = await PDFLib.PDFDocument.create();
+    const copied = await out.copyPages(src, pages.map((p) => p - 1));
+    copied.forEach((pg) => out.addPage(pg));
+    const bytes = await out.save();
+    const label = String(rangeStr).replace(/\s+/g, '');
+    const base = file.name.replace(/\.pdf$/i, '');
+    const newFile = new File([bytes], `${base}_p${label}.pdf`, { type: 'application/pdf' });
+    return { file: newFile, pages: pages.length, total, label };
+  }
+
   // 전역 노출
   window.DB = {
     SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL,
@@ -507,6 +568,7 @@
     fetchSubmissionsByAssignments, fetchSubmissionsForAssignment,
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
     extractAssessmentFromPdf,
+    pdfPageCount, splitPdfFile,
     driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveAccessToken, driveShareAnyone,
   };
 })();

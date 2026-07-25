@@ -123,7 +123,7 @@
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
-  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeFromBucket, driveAccessToken, driveShareAnyone } = window.DB;
+  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeFromBucket, driveAccessToken, driveShareAnyone, pdfPageCount, splitPdfFile } = window.DB;
 
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
@@ -508,6 +508,11 @@
       <div id="m2-file-field"><label class="text-label-md text-on-surface-variant">파일 업로드 <span class="text-outline">(Supabase)</span></label>
         <input name="file" id="m2-file" type="file" class="w-full mt-1 text-caption">
         ${curNote}
+        <div id="m2-split" class="hidden mt-2 rounded-lg bg-paper2 border border-faint p-2.5">
+          <label class="text-caption font-bold text-ink2">일부만 올리기 — 페이지 범위 <span class="text-outline font-normal">(선택, 비우면 전체)</span></label>
+          <input name="page_range" id="m2-range" type="text" inputmode="numeric" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-[14px]" placeholder="예: 1-40 또는 3,5,10-20">
+          <p id="m2-split-note" class="text-caption text-on-surface-variant mt-1"></p>
+        </div>
         <div class="mt-2 flex items-center gap-2"><span class="text-caption text-on-surface-variant">또는</span>
           <button type="button" id="m2-drive" class="inline-flex items-center gap-1 text-caption px-2.5 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[16px] text-primary">add_to_drive</span>구글 드라이브에서 선택 <span class="text-outline">(용량 0)</span></button></div>
         <p id="m2-picked" class="text-caption text-primary mt-1 hidden"></p>
@@ -537,6 +542,18 @@
     const sel = form.querySelector('#m2-type');
     const sync = () => { const t = MATERIAL_TYPES[sel.value]; form.querySelector('#m2-file-field').classList.toggle('hidden', !(t.file || t.upload)); form.querySelector('#m2-url-field').classList.toggle('hidden', t.file); };
     sel.addEventListener('change', sync); sync();
+    // PDF를 고르면 "일부만 올리기(페이지 범위)" 칸 표시 + 전체 쪽수 안내
+    const fileInput = form.querySelector('#m2-file');
+    fileInput.addEventListener('change', async () => {
+      const box = form.querySelector('#m2-split'); const note = form.querySelector('#m2-split-note');
+      const f = fileInput.files && fileInput.files[0];
+      const isPdf = !!f && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+      box.classList.toggle('hidden', !isPdf);
+      if (!isPdf) { form.querySelector('#m2-range').value = ''; return; }
+      note.textContent = '전체 쪽수 확인 중…';
+      try { note.textContent = `전체 ${await pdfPageCount(f)}쪽 · ${(f.size / 1048576).toFixed(1)} MB — 범위를 적으면 그 부분만 추출해 올려요.`; }
+      catch (_e) { note.textContent = '쪽수를 읽지 못했습니다. 범위를 적으면 저장할 때 추출을 시도해요.'; }
+    });
     form.querySelector('#m2-drive').addEventListener('click', () => openDrivePicker(form));
     form.querySelector('#m2-cancel').addEventListener('click', closeMatModal);
     const delBtn = form.querySelector('#m2-delete');
@@ -578,6 +595,7 @@
       form.querySelector('#m2-drive-name').value = doc.name || '';
       const nameInput = form.querySelector('#m2-name'); if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name || '';
       const fi = form.querySelector('#m2-file'); if (fi) fi.value = '';
+      const sb = form.querySelector('#m2-split'); if (sb) { sb.classList.add('hidden'); form.querySelector('#m2-range').value = ''; }
       picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 링크로 등록';
     } catch (e) { picked.textContent = '공유 설정 실패: ' + e.message; }
   }
@@ -599,9 +617,18 @@
           payload.url = driveUrl; payload.storage_path = ''; payload.original_filename = (fd.get('drive_name') || '').trim();
           if (editing && editing.storage_path) await removeFromBucket('materials', [editing.storage_path]);
         } else if (file && file.size) {
-          const path2 = `${(editing ? editing.subunit_id : state.addingSubId)}/${Date.now()}-${safeStorageName(file.name)}`;
-          await uploadToBucket('materials', path2, file);
-          payload.storage_path = path2; payload.original_filename = file.name;
+          let up = file;
+          const range = (fd.get('page_range') || '').trim();
+          if (range && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name))) {
+            saveBtn.textContent = 'PDF 추출 중…';
+            const sp = await splitPdfFile(file, range);
+            up = sp.file;
+            if (!payload.meta) payload.meta = `p.${sp.label} 발췌 (전체 ${sp.total}쪽 중 ${sp.pages}쪽)`;
+            saveBtn.textContent = '저장 중…';
+          }
+          const path2 = `${(editing ? editing.subunit_id : state.addingSubId)}/${Date.now()}-${safeStorageName(up.name)}`;
+          await uploadToBucket('materials', path2, up);
+          payload.storage_path = path2; payload.original_filename = up.name;
           payload.url = window.DB.supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
           if (editing && editing.storage_path && editing.storage_path !== path2) await removeFromBucket('materials', [editing.storage_path]);
         } else if (t.upload && urlInput) {
