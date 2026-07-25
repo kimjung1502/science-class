@@ -369,6 +369,7 @@
     const payload = {
       subject_id: a.subjectId, title: a.title, description: a.description || '',
       due_date: a.dueDate || null, due_at: a.dueAt || null,
+      publish_at: a.publishAt || null,
       fields: Array.isArray(a.fields) ? a.fields : [],
       is_active: a.isActive !== false,
     };

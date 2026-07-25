@@ -160,6 +160,10 @@
         </div>
         <div class="flex flex-wrap items-end gap-3">
           <div class="flex flex-col gap-base">
+            <label for="b-publish" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">공개 일시 <span class="text-ink3/70 normal-case">(비우면 즉시)</span></label>
+            <input id="b-publish" type="datetime-local" class="px-3 py-2.5 rounded-lg border border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none text-[15px]">
+          </div>
+          <div class="flex flex-col gap-base">
             <label for="b-due" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">마감 일시</label>
             <input id="b-due" type="datetime-local" class="px-3 py-2.5 rounded-lg border border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none text-[15px]">
           </div>
@@ -168,6 +172,7 @@
             <span class="text-[14px] text-ink">학생에게 공개(제출 받기)</span>
           </label>
         </div>
+        <p class="text-[12px] text-ink3">‘공개 일시’를 미래로 정하면 그 시각까지 학생에게 숨겨졌다가 자동으로 공개됩니다. (‘학생에게 공개’가 켜져 있어야 해요)</p>
       </div>
 
       <div class="dashed pt-md">
@@ -207,7 +212,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260724d"></script>
+<script src="js/db.js?v=20260725a"></script>
 <script src="js/mindmap.js?v=20260724a"></script>
 <script>
 (function () {
@@ -234,6 +239,8 @@
   function dueMs(a) { if (a.due_at) return new Date(a.due_at).getTime(); if (a.due_date) return new Date(a.due_date + 'T23:59:59.999').getTime(); return null; }
   function isClosed(a) { const d = dueMs(a); return d != null && d < Date.now(); }
   function fmtDue(a) { if (a.due_at) return fmtDateTime(a.due_at); if (a.due_date) return fmtDate(a.due_date); return ''; }
+  // 예약 공개: 공개(is_active)지만 공개 일시가 아직 미래 → 학생에겐 아직 숨겨짐(교사 화면에만 표시)
+  function isScheduled(a) { return a.is_active !== false && !!a.publish_at && new Date(a.publish_at).getTime() > Date.now(); }
   const isSection = (f) => f.type === 'section';
   const OPTION_TYPES = new Set(['radio', 'checkbox', 'dropdown']);
   const FIELD_TYPES = [
@@ -321,12 +328,13 @@
     return `<div class="card rounded-xl p-md shadow-note ${isClosed(a) && !mySub && !state.isAdmin ? 'border-l-4 border-l-signal' : ''}">
       <div class="flex justify-between items-start gap-3 mb-2">
         <div class="flex flex-wrap items-center gap-2 min-w-0">
-          ${state.isAdmin ? (inactive ? '<span class="px-2.5 py-1 rounded-full bg-paper3 text-ink3 font-mono text-[11px] font-bold">비공개</span>' : '<span class="px-2.5 py-1 rounded-full bg-lime-soft text-ink font-mono text-[11px] font-bold">공개</span>') : statusPill(mySub, closed)}
+          ${state.isAdmin ? (inactive ? '<span class="px-2.5 py-1 rounded-full bg-paper3 text-ink3 font-mono text-[11px] font-bold">비공개</span>' : (isScheduled(a) ? '<span class="px-2.5 py-1 rounded-full bg-signal-soft text-signal font-mono text-[11px] font-bold">예약 공개</span>' : '<span class="px-2.5 py-1 rounded-full bg-lime-soft text-ink font-mono text-[11px] font-bold">공개</span>')) : statusPill(mySub, closed)}
           <span class="px-2.5 py-1 rounded-full bg-paper2 text-ink3 font-mono text-[11px]">질문 ${qCount(a)}개</span>
         </div>
         ${adminCtrls}
       </div>
       <h3 class="text-lg font-extrabold tracking-tight text-ink break-words">${esc(a.title)}</h3>
+      ${state.isAdmin && isScheduled(a) ? `<p class="text-[12.5px] text-signal font-bold mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span>공개 예정 <span class="font-mono">${fmtDateTime(a.publish_at)}</span></p>` : ''}
       ${dueMs(a) != null ? `<p class="text-[12.5px] ${isClosed(a) ? 'text-signal font-bold' : 'text-ink3'} mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span>마감 <span class="font-mono">${fmtDue(a)}</span>${isClosed(a) ? ' · 마감됨' : ''}</p>` : ''}
       ${a.description ? `<p class="text-[15px] text-ink2 mt-2 leading-relaxed whitespace-pre-wrap break-words">${nl2br(a.description)}</p>` : ''}
       ${studentArea}${teacherArea}
@@ -720,6 +728,7 @@
     $('b-title').value = a ? (a.title || '') : '';
     $('b-desc').value = a ? (a.description || '') : '';
     $('b-due').value = a && a.due_at ? toLocalInput(a.due_at) : (a && a.due_date ? a.due_date + 'T23:59' : '');
+    $('b-publish').value = a && a.publish_at ? toLocalInput(a.publish_at) : '';
     $('b-active').checked = a ? a.is_active !== false : true;
     builder.fields = a && Array.isArray(a.fields) ? JSON.parse(JSON.stringify(a.fields)) : [{ id: uid(), type: 'short', label: '', required: false, options: [] }];
     builder.fields.forEach((f) => { if (!f.id) f.id = uid(); });
@@ -752,9 +761,11 @@
     const dueVal = $('b-due').value;
     const dueAt = dueVal ? new Date(dueVal).toISOString() : null;
     const dueDate = dueVal ? dueVal.slice(0, 10) : null;
+    const pubVal = $('b-publish').value;
+    const publishAt = pubVal ? new Date(pubVal).toISOString() : null;
     const btn = $('build-save'); btn.disabled = true; $('build-save-label').textContent = '저장 중…';
     try {
-      await saveSubmissionAssignment(state.editingId, { subjectId, title, description: $('b-desc').value.trim(), dueAt, dueDate, fields, isActive: $('b-active').checked });
+      await saveSubmissionAssignment(state.editingId, { subjectId, title, description: $('b-desc').value.trim(), dueAt, dueDate, publishAt, fields, isActive: $('b-active').checked });
       closeBuild(); await loadList();
     } catch (e2) { err.textContent = '저장 실패: ' + e2.message; err.classList.remove('hidden'); }
     btn.disabled = false; $('build-save-label').textContent = state.editingId ? '저장' : '등록';
