@@ -136,7 +136,7 @@
     ppt:      { label: 'PPT',           icon: 'co_present',     action: 'download',    box: 'bg-orange-50 text-orange-600', file: true },
     video:    { label: '실험 안내 영상', icon: 'smart_display',  action: 'play_circle', box: 'bg-blue-50 text-blue-600',     file: true },
     quiz:     { label: '형성평가 평가지', icon: 'quiz',           action: 'edit_note',   box: 'bg-green-50 text-green-600',   file: true },
-    textbook: { label: '교과서',        icon: 'menu_book',      action: 'open_in_new', box: 'bg-indigo-50 text-indigo-600', file: false, newTab: true },
+    textbook: { label: '교과서',        icon: 'menu_book',      action: 'open_in_new', box: 'bg-indigo-50 text-indigo-600', file: false, newTab: true, upload: true }, // 링크 또는 PDF 업로드 둘 다 허용
     link:     { label: '링크 자료',      icon: 'link',           action: 'open_in_new', box: 'bg-slate-100 text-slate-600',  file: false, newTab: true },
     html:     { label: '실험 자료(HTML)', icon: 'science',       action: 'expand_more', box: 'bg-violet-50 text-violet-600', file: true, newTab: false },
   };

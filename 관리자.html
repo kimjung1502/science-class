@@ -329,7 +329,7 @@
     if (cfg.material) {
       const t = MATERIAL_TYPES[item.type];
       const name = item.name || (t ? t.label : item.type);
-      const meta = item.meta || (t && !t.file ? (item.url || '') : '');
+      const meta = item.meta || (t && !t.file && !item.storage_path ? (item.url || '') : '');
       return { icon: t ? t.icon : 'description', box: t ? t.box : 'bg-surface-container text-on-surface-variant', title: name, sub: `${t ? t.label : item.type}${meta ? ' · ' + meta : ''}` };
     }
     return { icon: cfg.table === 'subjects' ? (item.icon || 'science') : 'folder', box: 'bg-surface-container text-primary', title: item.name, sub: item.description || '' };
@@ -425,7 +425,7 @@
         <input type="hidden" name="drive_name" id="drive-name">
       </div>
       <div id="url-field" class="hidden"><label class="text-label-md text-on-surface-variant">링크 주소 (URL)</label>
-        <input name="url" type="url" value="${esc(item?.url && item.url !== '#' ? item.url : '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="https://..."></div>
+        <input name="url" type="url" value="${esc(item && !item.storage_path && item.url && item.url !== '#' ? item.url : '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="https://..."></div>
       <div><label class="text-label-md text-on-surface-variant">부가 설명 <span class="text-outline">(용량·쪽수·출판사 등, 선택)</span></label>
         <input name="meta" type="text" value="${esc(item?.meta || '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 12.5 MB · 24쪽"></div>
       <label class="flex items-center gap-2 p-1 cursor-pointer">
@@ -455,11 +455,12 @@
     const sel = $('mtype');
     const sync = () => {
       const t = MATERIAL_TYPES[sel.value];
-      $('file-field').classList.toggle('hidden', !t.file);
+      $('file-field').classList.toggle('hidden', !(t.file || t.upload));
       $('url-field').classList.toggle('hidden', t.file);
-      if (t.file) {
+      if (t.file || t.upload) {
         if (item?.storage_path) $('cur-file').textContent = '현재 파일: ' + item.storage_path.split('/').pop();
         else if (item?.url && item.url !== '#') $('cur-file').textContent = '현재: 드라이브 링크';
+        else $('cur-file').textContent = '';
       }
     };
     sel.addEventListener('change', sync); sync();
@@ -540,8 +541,9 @@
         payload.meta = fd.get('meta').trim();
         payload.teacher_only = fd.get('teacher_only') === 'on';
         const t = MATERIAL_TYPES[payload.type];
-        if (t.file) {
+        if (t.file || t.upload) {
           const driveUrl = (fd.get('drive_url') || '').trim();
+          const urlInput = (fd.get('url') || '').trim(); // upload 허용 유형(교과서)은 링크칸도 있음
           if (driveUrl) {
             // 구글 드라이브에서 선택한 파일: 링크만 저장(Supabase 용량 0)
             payload.url = driveUrl;
@@ -555,8 +557,14 @@
               payload.storage_path = path2;
               payload.original_filename = file.name;
               payload.url = supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
+            } else if (t.upload && urlInput) {
+              // 교과서 등: 파일 대신 링크로 등록. 기존 업로드 파일이 있으면 정리.
+              payload.url = urlInput;
+              payload.storage_path = '';
+              payload.original_filename = '';
+              if (editingItem && editingItem.storage_path) await removeFromBucket('materials', [editingItem.storage_path]);
             } else if (!editingItem) {
-              throw new Error('파일을 업로드하거나 드라이브에서 고르세요.');
+              throw new Error(t.upload ? 'PDF 파일을 올리거나 링크 주소를 입력하세요.' : '파일을 업로드하거나 드라이브에서 고르세요.');
             }
           }
         } else {

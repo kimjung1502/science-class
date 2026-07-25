@@ -498,7 +498,8 @@
           : (isFile && mat.url ? `<p class="text-caption text-on-surface-variant mt-1">현재: 드라이브/링크 자료 <span class="text-outline">— 바꾸려면 새로 선택(선택)</span></p>` : ''))
       : '';
     const publicChecked = mat ? (mat.teacher_only ? '' : 'checked') : 'checked';
-    const urlVal = (mat && !isFile) ? (mat.url || '') : '';
+    // 저장된 파일(storage_path)이 있으면 URL칸은 비워둔다(교과서 PDF 편집 시 링크로 오인 방지)
+    const urlVal = (isEdit && !mat.storage_path && mat.url && mat.url !== '#') ? mat.url : '';
     return `
       <div><label class="text-label-md text-on-surface-variant">자료 유형</label>
         <select name="type" id="m2-type" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">${typeOpts}</select></div>
@@ -534,7 +535,7 @@
     const form = matModalEl.querySelector('#mat-form');
     form.innerHTML = matFormHtml(mat);
     const sel = form.querySelector('#m2-type');
-    const sync = () => { const t = MATERIAL_TYPES[sel.value]; form.querySelector('#m2-file-field').classList.toggle('hidden', !t.file); form.querySelector('#m2-url-field').classList.toggle('hidden', t.file); };
+    const sync = () => { const t = MATERIAL_TYPES[sel.value]; form.querySelector('#m2-file-field').classList.toggle('hidden', !(t.file || t.upload)); form.querySelector('#m2-url-field').classList.toggle('hidden', t.file); };
     sel.addEventListener('change', sync); sync();
     form.querySelector('#m2-drive').addEventListener('click', () => openDrivePicker(form));
     form.querySelector('#m2-cancel').addEventListener('click', closeMatModal);
@@ -590,9 +591,10 @@
       const type = fd.get('type'); const t = MATERIAL_TYPES[type];
       const payload = { type, name: (fd.get('name') || '').trim(), meta: (fd.get('meta') || '').trim(), teacher_only: fd.get('is_public') !== 'on' };
       if (!editing) { payload.subunit_id = state.addingSubId; payload.sort_order = Date.now() % 100000; }
-      if (t.file) {
+      if (t.file || t.upload) {
         const driveUrl = (fd.get('drive_url') || '').trim();
         const file = fd.get('file');
+        const urlInput = (fd.get('url') || '').trim(); // upload 허용 유형(교과서)은 링크칸도 있음
         if (driveUrl) {
           payload.url = driveUrl; payload.storage_path = ''; payload.original_filename = (fd.get('drive_name') || '').trim();
           if (editing && editing.storage_path) await removeFromBucket('materials', [editing.storage_path]);
@@ -602,10 +604,14 @@
           payload.storage_path = path2; payload.original_filename = file.name;
           payload.url = window.DB.supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
           if (editing && editing.storage_path && editing.storage_path !== path2) await removeFromBucket('materials', [editing.storage_path]);
+        } else if (t.upload && urlInput) {
+          // 교과서 등: 파일 대신 링크로 등록. 기존 업로드 파일이 있으면 정리.
+          payload.url = urlInput; payload.storage_path = ''; payload.original_filename = '';
+          if (editing && editing.storage_path) await removeFromBucket('materials', [editing.storage_path]);
         } else if (editing) {
-          // 새 파일을 안 고르면 기존 파일 유지
+          // 새 파일/링크를 안 주면 기존 것 유지
           payload.url = editing.url; payload.storage_path = editing.storage_path || ''; payload.original_filename = editing.original_filename || '';
-        } else throw new Error('파일을 업로드하거나 드라이브에서 고르세요.');
+        } else throw new Error(t.upload ? 'PDF 파일을 올리거나 링크 주소를 입력하세요.' : '파일을 업로드하거나 드라이브에서 고르세요.');
       } else {
         payload.url = (fd.get('url') || '').trim(); payload.storage_path = '';
         if (!payload.url) throw new Error('링크 주소를 입력하세요.');
