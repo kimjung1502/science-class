@@ -414,7 +414,8 @@
   async function loadAssessments() {
     const box = $('assess-list');
     try {
-      const list = await fetchAssessments(subjectId);
+      // 학생 공개 기간 밖(detail_locked)인 공지는 학생 화면에서 숨김 (교사는 전부 표시)
+      const list = (await fetchAssessments(subjectId)).filter((a) => !a.detail_locked);
       if (!list.length) { box.innerHTML = '<p class="text-ink3 py-md text-center col-span-full card rounded-xl border-dashed py-lg">등록된 수행평가 공지가 없습니다.</p>'; return; }
       box.innerHTML = list.slice(0, 4).map((a, i) => assessCard(a, i)).join('');
       state.counts.assessOngoing = list.filter((x) => x.status === 'ongoing').length; renderHeroChips();

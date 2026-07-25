@@ -181,9 +181,9 @@
 
       <div class="flex flex-col gap-1.5 p-3 rounded-lg bg-paper2 border border-faint">
         <label class="text-[13px] text-ink font-semibold flex items-center gap-1">
-          <span class="material-symbols-outlined text-[18px] text-signal">visibility</span>세부 내용 공개 기간 <span class="text-ink3 font-normal">(선택)</span>
+          <span class="material-symbols-outlined text-[18px] text-signal">visibility</span>학생 공개 기간 <span class="text-ink3 font-normal">(선택)</span>
         </label>
-        <p class="text-[12px] text-ink3">비워두면 <b>즉시 공개</b>됩니다. 날짜를 정하면 그 기간에만 학생이 세부 안내·평가 기준을 볼 수 있어요. (제목·기간·요약은 항상 보임)</p>
+        <p class="text-[12px] text-ink3">비워두면 <b>즉시 공개</b>됩니다. 날짜를 정하면 <b>그 기간에만 학생에게 이 공지가 보이고</b>, 기간 밖에는 학생 화면에서 완전히 숨겨집니다.</p>
         <div class="grid grid-cols-2 gap-3 mt-1">
           <div class="flex flex-col gap-1">
             <span class="font-mono text-[11px] text-ink3">공개 시작</span>
@@ -582,7 +582,8 @@
 
   async function loadBoard() {
     try {
-      state.assessments = await fetchAssessments(subjectId);
+      // 학생 공개 기간 밖(detail_locked)인 공지는 학생 화면에서 숨김. 교사는 detail_locked=false → 전부 표시
+      state.assessments = (await fetchAssessments(subjectId)).filter((a) => !a.detail_locked);
       if (!state.assessments.some((a) => a.id === state.selectedId)) {
         const first = filteredAssessments()[0] || state.assessments[0];
         state.selectedId = first ? first.id : null;
