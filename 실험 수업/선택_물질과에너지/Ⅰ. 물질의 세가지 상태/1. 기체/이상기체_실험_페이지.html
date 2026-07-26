@@ -129,6 +129,7 @@
   .gauge.meas .v{font-size:13.5px;color:var(--ink2)}
   .lockchip{display:inline-flex;align-items:center;gap:5px;background:var(--ink);color:#fff;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;align-self:flex-start}
   .speedlegend{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink3)}
+  .playrow{margin-top:6px}
   .speedlegend .bar{flex:1;height:8px;border-radius:5px;background:linear-gradient(90deg,#2f6fd0,#C4E000,#FF5B24);border:1px solid var(--paper3)}
 
   /* §2.1 캔버스 바로 아래 sticky — 뷰포트를 잡아먹지 않도록 상한을 두고 그 안에서만 스크롤한다.
@@ -206,7 +207,7 @@
   /* ③ 좁은 폭(≤720px): 1열 접기 + 계기판(P·V·T·n)은 캔버스 위 오버레이 칩 */
   @media (max-width:720px){
     .simwrap{grid-template-columns:1fr}
-    .simblock{--ctl-reserve:140px}   /* 잠금 라벨 + 스테퍼·기록 + 재생 = 최대 3줄 */
+    .simblock{--ctl-reserve:168px}   /* 360px 폭에서 잠금 라벨·스테퍼·기록이 각각 한 줄 */
     /* 권장 크기 280×360 을 기본으로 쓰되, 내부 높이가 모자라면 비율을 지키며 줄여
        '캔버스 + 핵심 컨트롤 동시 표시'(§2.1의 판정 기준)를 항상 만족시킨다. */
     .simcanvas{height:min(360px,calc(100vh - var(--rail-h) - var(--ctl-reserve) - 16px));width:auto;aspect-ratio:280/360;margin:0 auto}
@@ -226,12 +227,13 @@
         왼쪽 = 캔버스(내부 높이 − 진행 띠, 최소 180px), 오른쪽 = 계기판 칩 + 조작 컨트롤 세로 배치.
         .simwrap 을 display:contents 로 풀어 캔버스·계기판·컨트롤을 .simblock 그리드에 직접 올린다. */
   @media (max-height:470px){
-    .simblock{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:12px;align-items:start}
+    .simblock{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:12px;align-items:start;max-height:calc(100vh - var(--rail-h) - 8px)}
     .simwrap{display:contents}
     .canvasbox{grid-column:1;grid-row:1/3}
     .gaugepanel{grid-column:2;grid-row:1;gap:4px}
     .gaugepanel>.gauges:nth-of-type(2){display:none}   /* 측정 칩은 아래 스크롤로 — 높이 확보 */
     .speedlegend{display:none}
+    .playrow{margin-top:4px}
     .lowbanner{grid-column:1/-1;grid-row:1}
     .simctl{grid-column:2;grid-row:2;gap:4px}
     .ctlrow{gap:6px}
@@ -242,11 +244,11 @@
     .simctl{flex-direction:column;flex-wrap:nowrap;align-items:stretch;padding:0;min-height:0}
     .canvasbox{width:auto;margin:0}
     .gauges{position:static;top:auto;left:auto;transform:none;width:auto;z-index:auto;pointer-events:auto;
-      grid-template-columns:1fr 1fr;background:none;border:0;border-radius:0;padding:0}
+      grid-template-columns:repeat(4,minmax(0,1fr));background:none;border:0;border-radius:0;padding:0}
     .gauges .gauge{background:var(--paper2);border-color:var(--paper3);padding:4px 7px}
     .gauges .gauge .v{font-size:12.5px}
     .gauges .gauge .k{font-size:10px}
-    .gauges .gauge.wide{grid-column:1/-1}
+    .gauges .gauge.wide{grid-column:auto}
     .simctl{position:static;padding:4px 0}
     main{padding-top:8px}
   }
@@ -1172,12 +1174,9 @@ function gate(step) {
 /* §3.1 unlockedStep 재평가 — 저장값 무시, ①부터 순서대로 */
 function recomputeUnlocked() {
   // 교사 미리보기(§3.2)는 게이트 '조건'만 우회하고 진행 '순서'는 학생과 똑같이 간다.
-  // (조건까지 통과시킨 뒤 순차 재평가를 돌리면 6단계가 한꺼번에 펼쳐져서
-  //  '시작하기'를 눌러도 아무것도 안 나타나는 것처럼 보인다 — 미리보기가 학생 화면과 달라짐)
-  if (IS_ADMIN) {
-    var saved = parseInt(state.unlockedStep, 10);
-    return Math.min(6, Math.max(1, isFinite(saved) ? saved : 1));
-  }
+  // 열 때마다 항상 ①부터 — 미리보기는 '학생이 보는 첫 화면'을 확인하는 도구이므로
+  // 지난번 진행 단계가 남아 6단계가 펼쳐진 채로 열리면 안 된다(조건 우회는 그대로라 다음을 계속 누르면 됨).
+  if (IS_ADMIN) return 1;
   var s = 1, k;
   for (k = 1; k <= 5; k++) { if (gate(k).ok) s = k + 1; else break; }
   return Math.min(6, Math.max(1, s));
@@ -1300,7 +1299,7 @@ function blockTemplate(kind) {
       '<input class="val" data-v="p" type="text" inputmode="decimal" autocomplete="off" aria-label="압력을 직접 입력 (1.0~4.0 기압)">' +
       '<span class="unit" data-u="p">atm</span>' +
       '<button type="button" data-act="p+" aria-label="추 얹기 (압력 0.5 기압 증가)">+</button>' +
-      '<span class="cap" data-cap="p">추 0개</span></span><span class="whybadge" data-why="p"></span></span>';
+      '<span class="cap" data-cap="p">추 0개</span></span></span>';
   }
   if (k.ctl.indexOf('t') >= 0) {
     core += '<span class="ctlgrp" data-row="t"><span class="rowlbl">온도</span>' +
@@ -1308,7 +1307,7 @@ function blockTemplate(kind) {
       '<input class="val" data-v="t" type="text" inputmode="numeric" autocomplete="off" aria-label="온도를 직접 입력">' +
       '<span class="unit" data-u="t">K</span>' +
       '<button type="button" data-act="t+" aria-label="가열 (온도 25도 올리기)">🔥</button></span>' +
-      '<span class="whybadge" data-why="t"></span></span>';
+      '</span>';
   }
   if (k.ctl.indexOf('n') >= 0) {
     core += '<span class="ctlgrp" data-row="n"><span class="rowlbl">펌프</span>' +
@@ -1316,15 +1315,16 @@ function blockTemplate(kind) {
       '<input class="val" data-v="n" type="text" inputmode="decimal" autocomplete="off" aria-label="기체 양을 직접 입력 (0.25~2.0 몰, 0.25 단위)">' +
       '<span class="unit" data-u="n">mol</span>' +
       '<button type="button" data-act="n+" aria-label="입자 10개 넣기 (0.25 몰 증가)">+</button>' +
-      '<span class="cap" data-cap="n">40개</span></span><span class="whybadge" data-why="n"></span></span>';
+      '<span class="cap" data-cap="n">40개</span></span></span>';
   }
   if (k.record) {
     core += '<button type="button" class="btn sm lime" data-act="record">' +
       '<span class="long">● 지금 상태를 표에 기록</span><span class="short">● 기록</span></button>' +
       '<span class="recstate" data-rec>측정 준비 중…</span>';
   }
+  k.ctl.forEach(function (w) { core += '<span class="whybadge" data-why="' + w + '"></span>'; });
   rows = '<div class="ctlrow core">' + core + '</div>' + rows;
-  rows += '<div class="ctlrow sec"><button type="button" class="minibtn" data-act="play">⏸ 일시정지</button>' +
+  var playRow = '<div class="ctlrow playrow"><button type="button" class="minibtn" data-act="play">⏸ 일시정지</button>' +
     '<span style="font-size:11.5px;color:var(--ink3);font-weight:700">속도</span>' +
     '<button type="button" class="minibtn" data-sp="0.5" aria-pressed="false">0.5×</button>' +
     '<button type="button" class="minibtn" data-sp="1" aria-pressed="true">1×</button>' +
@@ -1344,6 +1344,7 @@ function blockTemplate(kind) {
         '</div>' +
         '<div class="speedlegend"><span>느림</span><span class="bar"></span><span>빠름</span>' +
           '<span style="margin-left:auto" data-status></span></div>' +
+        playRow +
       '</div>' +
     '</div>' +
     '<div class="simctl">' + rows + '</div>';
