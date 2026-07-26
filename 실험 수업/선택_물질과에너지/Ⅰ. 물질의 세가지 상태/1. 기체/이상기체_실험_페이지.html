@@ -906,6 +906,7 @@ function tx(v) { return typeof v === 'string' ? v.trim() : ''; }
 /* ===================== §3.1 저장 / 로드 ===================== */
 var saveTimer = null;
 function save(now) {
+  if (IS_ADMIN) return;                 // 교사 미리보기는 저장하지 않음(항상 빈 화면에서 시작)
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   if (!now) { saveTimer = setTimeout(function () { saveTimer = null; save(true); }, 400); return; }
   try {
@@ -2401,8 +2402,8 @@ function init() {
     $('#manualNote').innerHTML = 'ℹ️ 이름이 없어요. 이름을 입력해 주세요.';
   }
 
-  // 저장 불러오기 (§3.1)
-  var res = readKey(activeKey);
+  // 저장 불러오기 (§3.1) — 교사 미리보기는 저장본을 읽지 않고 항상 빈 상태로 시작
+  var res = IS_ADMIN ? { empty: true } : readKey(activeKey);
   if (res.broken) { backup(activeKey, res.raw); state = defaultState(); }
   else if (res.data) {
     var injected = (S && S.sid) || '';
