@@ -95,7 +95,7 @@
           <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-lime-soft text-ink text-[20px]"><span class="material-symbols-outlined">cloud</span></span>
           <div class="flex-1 min-w-0">
             <p class="text-[14px] font-bold text-ink">구글 드라이브 <span id="drive-status" class="text-ink3 font-normal">확인 중…</span></p>
-            <p class="text-[12.5px] text-ink3">저장 경로: <b id="drive-path" class="font-mono text-[11.5px] text-ink">학교 › 년도 › 학기 › 과목 › 분반 › 과제명(과목명_분반).xlsx</b></p>
+            <p class="text-[12.5px] text-ink3">저장 경로: <b id="drive-path" class="font-mono text-[11.5px] text-ink">학교 › 년도 › 학기 › 과목 › 분반 › 과제명(과목명_분반) 시트</b></p>
           </div>
           <button id="drive-settings-btn" class="px-3 py-2 rounded-lg border border-faint text-ink3 font-bold text-[13px] hover:bg-paper2 hover:text-ink transition-colors">폴더 설정</button>
           <button id="drive-connect" class="px-4 py-2 rounded-lg border border-ink text-ink font-bold text-[13px] hover:bg-ink hover:text-paper transition-colors">연결</button>
@@ -318,7 +318,7 @@
       teacherArea = `<div class="mt-md dashed pt-3">
         <div class="flex flex-wrap items-center gap-2">
           <button data-panel="${a.id}" class="font-mono text-[13px] text-ink font-bold flex items-center gap-1 hover:text-signal transition-colors"><span class="text-[18px] arrow ${state.openPanel[a.id] ? 'rotate-180' : ''}"><span class="material-symbols-outlined">expand_more</span></span>제출 현황</button>
-          <button data-export="${a.id}" class="ml-auto px-3.5 py-2 rounded-lg bg-ink text-paper font-bold text-[13px] flex items-center gap-1 hover:shadow-lift transition-all"><span class="material-symbols-outlined text-[18px]">table_view</span>엑셀 내보내기</button>
+          <button data-export="${a.id}" class="ml-auto px-3.5 py-2 rounded-lg bg-ink text-paper font-bold text-[13px] flex items-center gap-1 hover:shadow-lift transition-all"><span class="material-symbols-outlined text-[18px]">table_view</span>시트 내보내기</button>
           ${exp}
         </div>
         <div id="panel-${a.id}" class="${state.openPanel[a.id] ? '' : 'hidden'} mt-3"></div>
@@ -659,9 +659,9 @@
         <input data-role="scaleMinLabel" type="text" value="${esc(f.scaleMinLabel || '')}" placeholder="최소 라벨" class="px-2 py-1.5 rounded-lg border border-faint bg-white w-28">
         <input data-role="scaleMaxLabel" type="text" value="${esc(f.scaleMaxLabel || '')}" placeholder="최대 라벨" class="px-2 py-1.5 rounded-lg border border-faint bg-white w-28"></div>`;
     } else if (f.type === 'file') {
-      extra = `<p class="mt-2 text-[12px] text-ink3">학생이 파일 1개를 업로드합니다. (최대 25MB · 엑셀에는 다운로드 링크로 기록)</p>`;
+      extra = `<p class="mt-2 text-[12px] text-ink3">학생이 파일 1개를 업로드합니다. (최대 25MB · 시트에는 다운로드 링크로 기록)</p>`;
     } else if (f.type === 'mindmap') {
-      extra = `<p class="mt-2 text-[12px] text-ink3">학생이 온라인에서 마인드맵을 그려 제출합니다. (PNG 이미지로 저장 · 마감 전 재편집 가능 · 엑셀엔 이미지 다운로드 링크로 기록)</p>`;
+      extra = `<p class="mt-2 text-[12px] text-ink3">학생이 온라인에서 마인드맵을 그려 제출합니다. (PNG 이미지로 저장 · 마감 전 재편집 가능 · 시트엔 이미지 다운로드 링크로 기록)</p>`;
     }
     return `<div data-idx="${idx}" class="rounded-xl border border-faint bg-white p-3">
       <div class="flex items-center gap-2 mb-2 flex-wrap">
@@ -822,7 +822,7 @@
   async function runExport(aid, btn) {
     const box = $('export-' + aid);
     btn.disabled = true; const orig = btn.innerHTML; btn.innerHTML = '<span class="material-symbols-outlined text-[18px] spin">progress_activity</span>생성 중…';
-    box.innerHTML = '<p class="text-[12px] text-ink3">엑셀 생성 중… (분반이 많으면 시간이 걸릴 수 있어요)</p>';
+    box.innerHTML = '<p class="text-[12px] text-ink3">시트 생성 중… (분반이 많으면 시간이 걸릴 수 있어요)</p>';
     try {
       const out = await exportSubmissions(aid);
       const results = out.results || [];
@@ -846,7 +846,7 @@
       if (s.connected) { $('drive-status').innerHTML = `연결됨${s.email ? ' · <b>' + esc(s.email) + '</b>' : ''}`; $('drive-status').className = 'text-ink font-semibold'; $('drive-connect').textContent = '연결 해제'; }
       else { $('drive-status').textContent = s.hasClient ? '미연결' : '미설정'; $('drive-status').className = 'text-signal font-normal'; $('drive-connect').textContent = '연결'; }
       const school = s.school || '학교', year = s.year || '년도', sem = s.semester || '학기', cur = s.curriculum || '개정';
-      $('drive-path').innerHTML = `제출: ${esc(school)} › ${esc(year)} › ${esc(sem)} › 과목 › 분반 › 과제명(과목명_분반).xlsx<br>수업자료: ${esc(school)} › 수업자료 › ${esc(cur)} › 과목 › 대단원 › 중단원`;
+      $('drive-path').innerHTML = `제출: ${esc(school)} › ${esc(year)} › ${esc(sem)} › 과목 › 분반 › 과제명(과목명_분반) 시트<br>수업자료: ${esc(school)} › 수업자료 › ${esc(cur)} › 과목 › 대단원 › 중단원`;
       $('set-school').value = s.school || ''; $('set-year').value = s.year || ''; $('set-semester').value = s.semester || '1학기'; $('set-curriculum').value = s.curriculum || '';
     } catch (e) { $('drive-status').textContent = '상태 확인 실패'; $('drive-status').className = 'text-signal font-normal'; }
   }

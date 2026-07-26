@@ -45,6 +45,9 @@ async function ensureFolder(token: string, name: string, parentId: string): Prom
   const cr = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }) })
   const cd = await cr.json(); if (!cr.ok) throw new Error('folder create failed'); return cd.id
 }
+// xlsx 바이트를 올리되 대상 mimeType을 구글 시트로 지정 → Drive가 네이티브 구글 시트로 변환 저장.
+// 같은 이름의 시트가 이미 있으면 내용만 교체(재내보내기 시 링크·파일 id 유지).
+const SHEET_MIME = 'application/vnd.google-apps.spreadsheet'
 async function uploadDrive(token: string, folderId: string, filename: string, bytes: Uint8Array, mime: string): Promise<{ id: string; link: string }> {
   const q = `trashed=false and name='${q1(filename)}' and '${folderId}' in parents`
   const fr = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&spaces=drive`, { headers: { Authorization: `Bearer ${token}` } })
@@ -54,7 +57,7 @@ async function uploadDrive(token: string, folderId: string, filename: string, by
     const pd = await pr.json(); if (!pr.ok) throw new Error('drive update failed'); return { id: pd.id, link: pd.webViewLink }
   }
   const boundary = '----driveBoundaryXlsx7MA4YWxk'
-  const pre = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: filename, parents: [folderId] })}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`
+  const pre = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: filename, parents: [folderId], mimeType: SHEET_MIME })}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`
   const body = new Blob([pre, bytes, `\r\n--${boundary}--`])
   const ur = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` }, body })
   const ud = await ur.json(); if (!ur.ok) throw new Error('drive upload failed'); return { id: ud.id, link: ud.webViewLink }
@@ -65,7 +68,7 @@ async function signFileUrl(admin: any, path: string): Promise<string> {
   return data?.signedUrl || ''
 }
 
-// 과제 한 건을 분반별 xlsx로 생성 후 드라이브 업로드
+// 과제 한 건을 분반별로 xlsx 생성 → 드라이브에 구글 시트로 변환 업로드
 async function exportAssignment(admin: any, assignmentId: string): Promise<{ ok: boolean; results?: any[]; error?: string }> {
   const { data: asg } = await admin.from('submission_assignments').select('id, subject_id, title, fields, due_at, due_date').eq('id', assignmentId).maybeSingle()
   if (!asg) return { ok: false, error: '과제를 찾을 수 없습니다.' }
@@ -142,7 +145,7 @@ async function exportAssignment(admin: any, assignmentId: string): Promise<{ ok:
     const bytes = new Uint8Array(out)
 
     const fClass = await ensureFolder(token, c.name || '미분류', fSubj)
-    const filename = sanitizeName(`${asg.title}(${subjectName}_${c.name})`) + '.xlsx'
+    const filename = sanitizeName(`${asg.title}(${subjectName}_${c.name})`) // 구글 시트라 확장자 없음
     const up = await uploadDrive(token, fClass, filename, bytes, mime)
     results.push({ class_name: c.name, filename, drive_link: up.link || '', submitted: (subs || []).filter((s: any) => members.some((m: any) => m.id === s.student_id)).length, total: members.length })
   }
