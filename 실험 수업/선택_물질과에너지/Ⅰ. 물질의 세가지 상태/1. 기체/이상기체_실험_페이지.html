@@ -437,7 +437,12 @@
           <canvas class="graphcanvas" data-graph="charlesK" width="480" height="360" role="img" aria-label="부피와 절대온도 그래프"></canvas>
         </div>
       </div>
-      <div class="note" id="axisNoteK" style="margin-top:10px"></div>
+      <div class="q" style="margin-top:14px;border-bottom:none;padding-bottom:0">
+        <p class="qtext">Q. 그럼 <b>℃ 로 계산하면 안 되는 이유</b>는 뭘까요? 왜 <b>K</b> 를 써야 할까요?</p>
+        <p class="qhint">위 ℃ 그래프와 아래 K 그래프를 견줘 보세요 — <b>0 ℃ 일 때 부피가 0</b> 인가요? 표의 <b>V/T</b> 열은 어떤가요?</p>
+        <textarea id="q_charles_whyK" placeholder="두 그래프의 차이로 설명해 보세요."></textarea>
+      </div>
+      <div class="note" id="axisNoteK" style="margin-top:10px;display:none"></div>
     </div>
 
     <div class="card">
@@ -862,7 +867,7 @@ function defaultState() {
     intro: { started: false },
     predict: { pv: '', vt: '', pt: '', reason: '' },
     boyle: { points: [], q1: '', q2: '', inverseToggled: false },
-    charles: { points: [], axisToggled: false, intercept: '', relation: '' },
+    charles: { points: [], axisToggled: false, intercept: '', relation: '', whyKelvin: '' },
     gaylussac: { points: [], relation: '' },
     combine: { points: [], rAnswer: '' },
     assess: { a1: '', a2: '', a3: '' },
@@ -968,6 +973,14 @@ function backup(k, raw) { try { localStorage.setItem(k + '_bak', raw); } catch (
 function migrate(o) {
   if (!o.intro) o.intro = { started: false };
   if (typeof o.intro.started !== 'boolean') o.intro.started = false;
+  // ④ '왜 ℃ 로 계산하면 안 되나' 서술은 나중에 추가된 항목 — 없는 저장본은 빈 값으로 채우고,
+  // 이미 ④를 마친 학생은 다시 막지 않는다(새로고침 시 단계가 뒤로 밀리는 것 방지).
+  if (o.charles && typeof o.charles.whyKelvin !== 'string') {
+    o.charles.whyKelvin = '';
+    if (o.charles.axisToggled === true && Array.isArray(o.charles.points) && o.charles.points.length >= 4) {
+      o.charles.whyKelvinLegacy = true;
+    }
+  }
   return o;
 }
 
@@ -1160,6 +1173,8 @@ function gate(step) {
     if (span < 150 - 1e-9) return { ok: false, why: '온도 범위가 150 K 이상이어야 해요 — 지금 ' + Math.round(span) + ' K' };
     if (!s.charles.axisToggled) return { ok: false, why: 'x축을 K 로 바꿔서도 봐야 해요.' };
     if (!interceptOk(s.charles.intercept)) return { ok: false, why: 'x절편(℃)을 맞혀 주세요.' };
+    if (!tx(s.charles.whyKelvin) && !s.charles.whyKelvinLegacy)
+      return { ok: false, why: '℃ 로 계산하면 안 되는 이유를 써 주세요.' };
     if (!tx(s.charles.relation)) return { ok: false, why: '서술 문항을 써 주세요.' };
     if (!aiGateOk(4)) return { ok: false, why: 'AI 확인이 끝나지 않았어요.' };
     return { ok: true, why: '' };
@@ -1706,7 +1721,7 @@ function renderCharlesK() {
   for (i = 0; i < pts.length; i++) {
     p = pts[i];
     html += '<tr><td>' + (i + 1) + '</td><td>' + Math.round(celsius(p.t)) + '</td><td>' + Math.round(p.t) +
-      '</td><td>' + fmt(p.v, 2) + '</td><td><b>' + fmt(p.v / p.t, 4) + '</b></td></tr>';
+      '</td><td>' + fmt(p.v, 1) + '</td><td><b>' + fmt(p.v / p.t, 4) + '</b></td></tr>';
   }
   tbl.querySelector('tbody').innerHTML = html ||
     '<tr><td colspan="5" style="text-align:center;color:var(--ink3)">아직 기록한 점이 없어요</td></tr>';
@@ -1720,10 +1735,10 @@ function renderTable(store) {
   for (i = 0; i < pts.length; i++) {
     p = pts[i];
     if (store === 'boyle') {
-      html += '<tr><td>' + (i + 1) + '</td><td>' + fmt(p.pExternal, 2) + '</td><td>' + fmt(p.v, 2) + '</td><td>' + fmt(p.pExternal * p.v, 2) + '</td>' +
+      html += '<tr><td>' + (i + 1) + '</td><td>' + fmt(p.pExternal, 2) + '</td><td>' + fmt(p.v, 1) + '</td><td>' + fmt(p.pExternal * p.v, 2) + '</td>' +
         '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
     } else if (store === 'charles') {
-      html += '<tr><td>' + (i + 1) + '</td><td class="kcol">' + Math.round(p.t) + '</td><td>' + Math.round(celsius(p.t)) + '</td><td>' + fmt(p.v, 2) + '</td>' +
+      html += '<tr><td>' + (i + 1) + '</td><td class="kcol">' + Math.round(p.t) + '</td><td>' + Math.round(celsius(p.t)) + '</td><td>' + fmt(p.v, 1) + '</td>' +
         '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
     } else if (store === 'gaylussac') {
       html += '<tr><td>' + (i + 1) + '</td><td>' + Math.round(p.t) + '</td><td>' + fmt(p.pTheory, 3) + '</td><td>' + fmt(p.pTheory / p.t, 5) + '</td>' +
@@ -1755,7 +1770,7 @@ function renderAllTable() {
   rows.forEach(function (r, idx) {
     var P = coherentP(r.store, r.p), R = P * r.p.v / (r.p.n * r.p.t);
     html += '<tr><td>' + (idx + 1) + '</td><td style="text-align:left;font-family:var(--sans);font-size:12px">' + r.label + '</td>' +
-      '<td>' + fmt(P, 2) + '</td><td>' + fmt(r.p.v, 2) + '</td><td>' + Math.round(r.p.t) + '</td><td>' + fmt(r.p.n, 2) + '</td>' +
+      '<td>' + fmt(P, 2) + '</td><td>' + fmt(r.p.v, 1) + '</td><td>' + Math.round(r.p.t) + '</td><td>' + fmt(r.p.n, 2) + '</td>' +
       '<td><b>' + fmt(R, 4) + '</b></td>' +
       '<td>' + (r.store === 'combine' ? '<button class="del" data-del="combine" data-i="' + r.i + '"' + (ro6 ? ' disabled' : '') + ' aria-label="점 삭제">✕</button>' : '') + '</td></tr>';
   });
@@ -2086,8 +2101,13 @@ function paintAxisNote() {
   var el = $('#axisNote');
   if (el) el.innerHTML = 'ℹ️ <b>℃</b> 로 그리면 직선이 <b>원점을 지나지 않아요</b>. 왼쪽으로 늘여 보면 V=0 이 되는 x절편이 보여요 — 몇 도일까요?';
   var k = $('#axisNoteK');
-  if (k) k.innerHTML = '✔ <b>K</b> 로 바꾸니 직선이 <b>원점을 지나는 정비례</b>가 됐어요. 표의 <b>V/T</b> 열도 모두 같은 값이죠 — ' +
-    '그래서 기체 계산에는 ℃ 가 아니라 <b>절대온도</b>를 씁니다.';
+  if (k) {
+    k.innerHTML = '✔ <b>K</b> 로 바꾸니 직선이 <b>원점을 지나는 정비례</b>가 됐어요. 표의 <b>V/T</b> 열도 모두 같은 값이죠 — ' +
+      '℃ 는 <b>0 이 시작점이 아니라서</b>(0 ℃ 에서도 부피가 남아 있죠) 배수 관계가 성립하지 않아요. ' +
+      '그래서 기체 계산에는 ℃ 가 아니라 <b>절대온도</b>를 씁니다.';
+    // 학생이 스스로 이유를 쓴 뒤에 정리 문구를 보여 준다
+    k.style.display = tx(state.charles.whyKelvin) ? 'block' : 'none';
+  }
   var card = $('#kGraphCard');
   if (card) card.style.display = kIntroduced() ? 'block' : 'none';
 }
@@ -2243,6 +2263,7 @@ function hydrate() {
   });
   var map = {
     '#predReason': 'predict.reason', '#q_boyle_q1': 'boyle.q1', '#q_boyle_q2': 'boyle.q2',
+    '#q_charles_whyK': 'charles.whyKelvin',
     '#q_charles_relation': 'charles.relation', '#q_gaylussac_relation': 'gaylussac.relation',
     '#q_assess_a1': 'assess.a1', '#q_assess_a2': 'assess.a2', '#q_assess_a3': 'assess.a3',
     '#interceptIn': 'charles.intercept', '#rAnswer': 'combine.rAnswer'
@@ -2301,6 +2322,7 @@ function bindText(sel, path) {
     var aiKey = el.getAttribute('data-ai');
     if (aiKey) clearAi(aiKey);                             // §8.4 입력 수정 시 판정 폐기·요청 취소
     if (path === 'charles.intercept') { paintIntercept(); refreshTempUnits(); paintAxisNote(); renderGraphs(); }
+    if (path === 'charles.whyKelvin') paintAxisNote();
     if (path === 'combine.rAnswer') paintR();
     if (path === 'assess.a3') paintA3();
     save(); paintAllLocks(); paintProgress(); invalidateExport();
@@ -2316,6 +2338,7 @@ function bindAll() {
   });
   bindText('#predReason', 'predict.reason');
   bindText('#q_boyle_q1', 'boyle.q1'); bindText('#q_boyle_q2', 'boyle.q2');
+  bindText('#q_charles_whyK', 'charles.whyKelvin');
   bindText('#q_charles_relation', 'charles.relation');
   bindText('#q_gaylussac_relation', 'gaylussac.relation');
   bindText('#q_assess_a1', 'assess.a1'); bindText('#q_assess_a2', 'assess.a2'); bindText('#q_assess_a3', 'assess.a3');
