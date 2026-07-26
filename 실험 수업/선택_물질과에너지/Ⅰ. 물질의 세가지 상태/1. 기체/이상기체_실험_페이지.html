@@ -1171,6 +1171,13 @@ function gate(step) {
 }
 /* §3.1 unlockedStep 재평가 — 저장값 무시, ①부터 순서대로 */
 function recomputeUnlocked() {
+  // 교사 미리보기(§3.2)는 게이트 '조건'만 우회하고 진행 '순서'는 학생과 똑같이 간다.
+  // (조건까지 통과시킨 뒤 순차 재평가를 돌리면 6단계가 한꺼번에 펼쳐져서
+  //  '시작하기'를 눌러도 아무것도 안 나타나는 것처럼 보인다 — 미리보기가 학생 화면과 달라짐)
+  if (IS_ADMIN) {
+    var saved = parseInt(state.unlockedStep, 10);
+    return Math.min(6, Math.max(1, isFinite(saved) ? saved : 1));
+  }
   var s = 1, k;
   for (k = 1; k <= 5; k++) { if (gate(k).ok) s = k + 1; else break; }
   return Math.min(6, Math.max(1, s));
