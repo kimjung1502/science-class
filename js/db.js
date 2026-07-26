@@ -451,7 +451,7 @@
   async function driveAuthUrl(redirectUri, state) { return callGoogleOAuth(`op=authurl&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`); }
   async function driveExchange(code, redirectUri) { return callGoogleOAuth('op=exchange', { code, redirect_uri: redirectUri }); }
   async function driveDisconnect() { return callGoogleOAuth('op=disconnect'); }
-  async function driveSaveSettings(school, year, semester) { return callGoogleOAuth('op=savesettings', { school, year, semester }); }
+  async function driveSaveSettings(school, year, semester, curriculum) { return callGoogleOAuth('op=savesettings', { school, year, semester, curriculum }); }
   // Picker용: 연결된 refresh_token으로 액세스 토큰 발급(+API키/appId 동봉). 관리자 전용.
   async function driveAccessToken() { return callGoogleOAuth('op=accesstoken'); }
   // Picker로 고른 파일을 "링크가 있는 모든 사용자 보기"로 공유(학생이 로그인 없이 보게)
@@ -508,14 +508,16 @@
     if (!up.ok) throw new Error('드라이브 업로드 실패: ' + ((d.error && d.error.message) || up.status));
     return { id: d.id, url: d.webViewLink || `https://drive.google.com/file/d/${d.id}/view` };
   }
-  // 수업자료 파일을 선생님 드라이브(학교›년도›수업자료›과목›대단원›중단원)에 올리고 학생 열람 공유까지.
-  // subPath: '수업자료' 아래로 이어질 폴더 이름 배열(예: [과목, 대단원, 중단원]) — 빈 값은 건너뜀.
+  // 수업자료 파일을 선생님 드라이브(학교›수업자료›개정›과목›대단원›중단원)에 올리고 학생 열람 공유까지.
+  // 수업자료는 년도가 아니라 교육과정 개정 기준으로 묶는다(개정이 같으면 해마다 재사용).
+  // subPath: 개정 아래로 이어질 폴더 이름 배열(예: [과목, 대단원, 중단원]) — 빈 값은 건너뜀.
   // 반환: { url, storage_path: 'gdrive:<id>', original_filename }
   // 드라이브 미연결이면 driveAccessToken()에서 throw → 호출부가 버킷 업로드로 폴백한다.
   async function uploadMaterialToDrive(file, subPath, driveName) {
     const { access_token } = await driveAccessToken();
     const s = await driveStatus().catch(() => ({}));
-    const names = [s.school || '학교', s.year || '년도', '수업자료'];
+    const names = [s.school || '학교', '수업자료'];
+    if (s.curriculum) names.push(s.curriculum);
     (Array.isArray(subPath) ? subPath : [subPath]).forEach((n) => { if (n) names.push(String(n)); });
     let parent = 'root';
     for (const n of names) parent = await driveEnsureFolder(access_token, n, parent);
