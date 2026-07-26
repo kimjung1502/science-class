@@ -507,7 +507,7 @@
       <div class="tablescroll"><table class="dtable" id="allTable"><thead><tr><th>#</th><th>탐구</th><th>P<span style="font-weight:400">(atm)</span></th><th>V<span style="font-weight:400">(L)</span></th><th>T<span style="font-weight:400">(K)</span></th><th>n<span style="font-weight:400">(mol)</span></th><th>PV/nT</th><th></th></tr></thead><tbody></tbody></table></div>
       <div class="q" style="margin-top:14px">
         <p class="qtext">Q. <b>PV/nT</b> 열이 항상 같은 값이에요. 이 값의 이름은 무엇일까요?</p>
-        <input class="inlinein" type="text" id="rAnswer" placeholder="예: 기체 상수 R" autocomplete="off" style="width:200px">
+        <input class="inlinein" type="text" id="rAnswer" placeholder="이름을 써 보세요" autocomplete="off" style="width:200px">
         <div class="verdict" id="rVerdict"></div>
       </div>
       <div class="note lime" id="pvnrtNote" style="font-size:15px;font-weight:800;text-align:center;display:none">💡 그래서 &nbsp; <span style="font-family:var(--mono)">PV = nRT</span></div>
@@ -2303,7 +2303,7 @@ function paintR() {
   if (!v) return;
   if (!tx(val)) { v.className = 'verdict'; v.textContent = ''; return; }
   if (got) { v.className = 'verdict show good'; v.textContent = '✔ 맞아요 — 기체 상수 R = 0.0821 L·atm/(mol·K)'; }
-  else { v.className = 'verdict show bad'; v.textContent = '✕ 다시 생각해 보세요 (힌트: 기호는 R)'; }
+  else { v.className = 'verdict show bad'; v.textContent = '✕ 다시 생각해 보세요 — 이 값은 어떤 기체에서든 같아서 붙은 이름이 있어요.'; }
 }
 function paintA3() {
   var v = $('#a3Verdict'), val = state.assess.a3;
