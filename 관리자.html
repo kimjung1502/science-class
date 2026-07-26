@@ -200,10 +200,10 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260725a"></script>
+<script src="js/db.js?v=20260726a"></script>
 <script>
 (function () {
-  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, removeFromBucket } = window.DB;
+  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile } = window.DB;
 
   const $ = (id) => document.getElementById(id);
   const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2200); };
@@ -463,7 +463,7 @@
       $('file-field').classList.toggle('hidden', !(t.file || t.upload));
       $('url-field').classList.toggle('hidden', t.file);
       if (t.file || t.upload) {
-        if (item?.storage_path) $('cur-file').textContent = '현재 파일: ' + item.storage_path.split('/').pop();
+        if (item?.storage_path) $('cur-file').textContent = '현재 파일: ' + (item.original_filename || item.storage_path.split('/').pop());
         else if (item?.url && item.url !== '#') $('cur-file').textContent = '현재: 드라이브 링크';
         else $('cur-file').textContent = '';
       }
@@ -550,6 +550,7 @@
     e.preventDefault();
     const cfg = curConfig();
     const saveBtn = $('modal-save'); saveBtn.disabled = true; saveBtn.textContent = '저장 중…';
+    let driveWarn = '';
     try {
       const fd = new FormData(e.target);
       let payload = {};
@@ -567,6 +568,7 @@
             payload.url = driveUrl;
             payload.storage_path = '';
             payload.original_filename = (fd.get('drive_name') || '').trim();
+            if (editingItem && editingItem.storage_path) await removeMaterialFile(editingItem.storage_path);
           } else {
             const file = fd.get('file');
             if (file && file.size) {
@@ -577,19 +579,33 @@
                 const sp = await window.DB.splitPdfFile(file, range);
                 up = sp.file;
                 if (!payload.meta) payload.meta = `p.${sp.label} 발췌 (전체 ${sp.total}쪽 중 ${sp.pages}쪽)`;
-                saveBtn.textContent = '저장 중…';
               }
-              const path2 = `${parentId()}/${Date.now()}-${safeStorageName(up.name)}`;
-              await uploadToBucket('materials', path2, up);
-              payload.storage_path = path2;
+              // 업로드 파일은 선생님 구글 드라이브(학교›년도›수업자료›과목)로. 단, html 자료는
+              // 아코디언(fetch→iframe srcdoc) 렌더링 때문에 CORS가 되는 우리 스토리지에 둬야 한다.
+              const isHtml = payload.type === 'html' || /\.html?$/i.test(up.name);
+              let stored = null;
+              if (!isHtml) {
+                saveBtn.textContent = '드라이브 업로드 중…';
+                try { stored = await uploadMaterialToDrive(up, (path[0] && path[0].name) || ''); }
+                catch (e2) { driveWarn = e2.message || String(e2); }
+              }
+              if (!stored) {
+                saveBtn.textContent = '저장 중…';
+                const path2 = `${parentId()}/${Date.now()}-${safeStorageName(up.name)}`;
+                await uploadToBucket('materials', path2, up);
+                stored = { storage_path: path2, url: supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl };
+              }
+              saveBtn.textContent = '저장 중…';
+              payload.storage_path = stored.storage_path;
               payload.original_filename = up.name;
-              payload.url = supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
+              payload.url = stored.url;
+              if (editingItem && editingItem.storage_path && editingItem.storage_path !== payload.storage_path) await removeMaterialFile(editingItem.storage_path);
             } else if (t.upload && urlInput) {
               // 교과서 등: 파일 대신 링크로 등록. 기존 업로드 파일이 있으면 정리.
               payload.url = urlInput;
               payload.storage_path = '';
               payload.original_filename = '';
-              if (editingItem && editingItem.storage_path) await removeFromBucket('materials', [editingItem.storage_path]);
+              if (editingItem && editingItem.storage_path) await removeMaterialFile(editingItem.storage_path);
             } else if (!editingItem) {
               throw new Error(t.upload ? 'PDF 파일을 올리거나 링크 주소를 입력하세요.' : '파일을 업로드하거나 드라이브에서 고르세요.');
             }
@@ -615,6 +631,7 @@
         toast('추가되었습니다.');
       }
       closeModal(); loadLevel();
+      if (driveWarn) alert('구글 드라이브 업로드가 안 되어 수파베이스 저장소에 대신 저장했어요.\n(' + driveWarn + ')');
     } catch (err) {
       alert('저장 실패: ' + err.message);
     } finally {
@@ -630,7 +647,7 @@
     const name = item.name || (MATERIAL_TYPES[item.type]?.label ?? '항목');
     const warn = cfg.material ? '' : '\n하위 항목(대단원·중단원·소단원·자료)도 함께 삭제됩니다.';
     if (!confirm(`"${name}"을(를) 삭제할까요?${warn}`)) return;
-    if (cfg.material && item.storage_path) await removeFromBucket('materials', [item.storage_path]);
+    if (cfg.material && item.storage_path) await removeMaterialFile(item.storage_path);
     const { error } = await supabase.from(cfg.table).delete().eq('id', item.id);
     if (error) { alert('삭제 실패: ' + error.message); return; }
     toast('삭제되었습니다.'); loadLevel();

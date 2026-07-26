@@ -13,7 +13,7 @@
 <!-- PDF 렌더링(PDF.js) · 수업자료 불러오기(Supabase) -->
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js"></script>
+<script src="js/db.js?v=20260726a"></script>
 <style>
   html, body { height: 100%; }
   /* 판서 무대: 자체 스크롤. 배경은 종이빛(모눈 없이 차분하게) */
@@ -260,7 +260,15 @@
         task = pdfjsLib.getDocument({ data: source });
       } else {
         // URL → 전체를 받아서 로드(범위요청·CORS 이슈 회피)
-        var buf = await fetch(source).then(function (r) {
+        // 드라이브 프록시(drive-file) 자료는 로그인돼 있으면 토큰을 실어 보낸다(교사만 자료 대응)
+        var fetchOpts = {};
+        if (source.indexOf('/drive-file') >= 0 && window.DB && window.DB.supabase) {
+          try {
+            var sess = (await window.DB.supabase.auth.getSession()).data.session;
+            if (sess) fetchOpts.headers = { 'Authorization': 'Bearer ' + sess.access_token };
+          } catch (_e) {}
+        }
+        var buf = await fetch(source, fetchOpts).then(function (r) {
           if (!r.ok) throw new Error('파일을 받지 못했습니다 (' + r.status + ')');
           return r.arrayBuffer();
         });
@@ -871,6 +879,13 @@
         (m.subunits || []).forEach(function (su) {
           (su.materials || []).forEach(function (mat) {
             var url = mat.url || '';
+            // 드라이브에 저장된 자료('gdrive:')는 프록시 주소로 바꿔서 fetch 가능하게.
+            // Picker로 링크만 등록한 드라이브 자료는 원본을 못 받아 목록에서 제외.
+            if (mat.storage_path && mat.storage_path.indexOf('gdrive:') === 0) {
+              url = window.DB.driveProxyUrl(mat.storage_path.slice(7));
+            } else if (/drive\.google\.com/i.test(url)) {
+              return;
+            }
             var isPdf = (mat.type === 'print') ||
               /\.pdf(\?|$)/i.test(url) ||
               /\.pdf$/i.test(mat.original_filename || '');

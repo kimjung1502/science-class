@@ -119,11 +119,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260725a"></script>
+<script src="js/db.js?v=20260726a"></script>
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
-  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeFromBucket, driveAccessToken, driveShareAnyone, pdfPageCount, splitPdfFile } = window.DB;
+  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeMaterialFile, uploadMaterialToDrive, driveAccessToken, driveShareAnyone, pdfPageCount, splitPdfFile } = window.DB;
 
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
@@ -156,8 +156,9 @@
     const t = MATERIAL_TYPES[m.type];
     if (!t) return '';
     const name = m.name || t.label;
-    // 파일형인데 storage_path가 없으면 외부(구글 드라이브 등) 링크 → 새 탭으로 열기, ?download 미부여
-    const isExternal = t.file && !m.storage_path && m.url && m.url !== '#';
+    // 파일형인데 storage_path가 없거나 드라이브 저장('gdrive:')이면 외부 링크 취급 → 새 탭으로 열기, ?download 미부여
+    const isDriveStored = !!(m.storage_path && m.storage_path.indexOf('gdrive:') === 0);
+    const isExternal = t.file && (isDriveStored || !m.storage_path) && m.url && m.url !== '#';
     let href = m.url || '#';
 
     // html 자료(실험 페이지 등): 링크로 열지 않고 카드 아래에 아코디언으로 펼쳐서 바로 보여준다.
@@ -240,8 +241,8 @@
     }
   }
 
-  // 판서로 열 수 있는 PDF인지: 우리 스토리지(공개 URL)에 있는 print/‧pdf 파일만.
-  // (외부 구글드라이브 링크는 CORS로 fetch가 막혀 판서 뷰어가 못 읽음 → 제외)
+  // 판서로 열 수 있는 PDF인지: 우리 스토리지(공개 URL) 또는 이 사이트가 올린 드라이브 파일('gdrive:' → drive-file 프록시로 fetch 가능).
+  // (Picker로 링크만 등록한 외부 드라이브 파일은 storage_path가 비어 있어 제외 — CORS로 판서 뷰어가 못 읽음)
   function isPdfMaterial(m) {
     if (!m) return false;
     const direct = m.storage_path && m.url && m.url !== '#';
@@ -251,7 +252,8 @@
   function drawHref(m) {
     const t = MATERIAL_TYPES[m.type];
     const name = m.name || (t && t.label) || 'PDF';
-    return `PDF-판서.html?src=${encodeURIComponent(m.url)}&title=${encodeURIComponent(name)}`;
+    const src = (m.storage_path && m.storage_path.indexOf('gdrive:') === 0) ? window.DB.driveProxyUrl(m.storage_path.slice(7)) : m.url;
+    return `PDF-판서.html?src=${encodeURIComponent(src)}&title=${encodeURIComponent(name)}`;
   }
 
   function matCardWrap(m) {
@@ -505,7 +507,7 @@
         <select name="type" id="m2-type" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">${typeOpts}</select></div>
       <div><label class="text-label-md text-on-surface-variant">이름 <span class="text-outline">(비우면 유형 기본)</span></label>
         <input name="name" id="m2-name" type="text" value="${esc(mat ? (mat.name || '') : '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 1강 학습지"></div>
-      <div id="m2-file-field"><label class="text-label-md text-on-surface-variant">파일 업로드 <span class="text-outline">(Supabase)</span></label>
+      <div id="m2-file-field"><label class="text-label-md text-on-surface-variant">파일 업로드 <span class="text-outline">(선생님 구글 드라이브에 저장)</span></label>
         <input name="file" id="m2-file" type="file" class="w-full mt-1 text-caption">
         ${curNote}
         <div id="m2-split" class="hidden mt-2 rounded-lg bg-paper2 border border-faint p-2.5">
@@ -603,6 +605,7 @@
     e.preventDefault();
     const form = e.target;
     const saveBtn = form.querySelector('#m2-save'); saveBtn.disabled = true; saveBtn.textContent = '저장 중…';
+    let driveWarn = '';
     try {
       const editing = state.editingMat;
       const fd = new FormData(form);
@@ -615,7 +618,7 @@
         const urlInput = (fd.get('url') || '').trim(); // upload 허용 유형(교과서)은 링크칸도 있음
         if (driveUrl) {
           payload.url = driveUrl; payload.storage_path = ''; payload.original_filename = (fd.get('drive_name') || '').trim();
-          if (editing && editing.storage_path) await removeFromBucket('materials', [editing.storage_path]);
+          if (editing && editing.storage_path) await removeMaterialFile(editing.storage_path);
         } else if (file && file.size) {
           let up = file;
           const range = (fd.get('page_range') || '').trim();
@@ -624,17 +627,29 @@
             const sp = await splitPdfFile(file, range);
             up = sp.file;
             if (!payload.meta) payload.meta = `p.${sp.label} 발췌 (전체 ${sp.total}쪽 중 ${sp.pages}쪽)`;
-            saveBtn.textContent = '저장 중…';
           }
-          const path2 = `${(editing ? editing.subunit_id : state.addingSubId)}/${Date.now()}-${safeStorageName(up.name)}`;
-          await uploadToBucket('materials', path2, up);
-          payload.storage_path = path2; payload.original_filename = up.name;
-          payload.url = window.DB.supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl;
-          if (editing && editing.storage_path && editing.storage_path !== path2) await removeFromBucket('materials', [editing.storage_path]);
+          // 업로드 파일은 선생님 구글 드라이브(학교›년도›수업자료›과목)로. 단, html 자료는
+          // 아코디언(fetch→iframe srcdoc) 렌더링 때문에 CORS가 되는 우리 스토리지에 둬야 한다.
+          const isHtml = type === 'html' || /\.html?$/i.test(up.name);
+          let stored = null;
+          if (!isHtml) {
+            saveBtn.textContent = '드라이브 업로드 중…';
+            try { stored = await uploadMaterialToDrive(up, (state.tree && state.tree.name) || ''); }
+            catch (e) { driveWarn = e.message || String(e); }
+          }
+          if (!stored) {
+            saveBtn.textContent = '저장 중…';
+            const path2 = `${(editing ? editing.subunit_id : state.addingSubId)}/${Date.now()}-${safeStorageName(up.name)}`;
+            await uploadToBucket('materials', path2, up);
+            stored = { storage_path: path2, url: window.DB.supabase.storage.from('materials').getPublicUrl(path2).data.publicUrl };
+          }
+          saveBtn.textContent = '저장 중…';
+          payload.storage_path = stored.storage_path; payload.original_filename = up.name; payload.url = stored.url;
+          if (editing && editing.storage_path && editing.storage_path !== payload.storage_path) await removeMaterialFile(editing.storage_path);
         } else if (t.upload && urlInput) {
           // 교과서 등: 파일 대신 링크로 등록. 기존 업로드 파일이 있으면 정리.
           payload.url = urlInput; payload.storage_path = ''; payload.original_filename = '';
-          if (editing && editing.storage_path) await removeFromBucket('materials', [editing.storage_path]);
+          if (editing && editing.storage_path) await removeMaterialFile(editing.storage_path);
         } else if (editing) {
           // 새 파일/링크를 안 주면 기존 것 유지
           payload.url = editing.url; payload.storage_path = editing.storage_path || ''; payload.original_filename = editing.original_filename || '';
@@ -652,12 +667,13 @@
       }
       closeMatModal();
       await reloadTree();
+      if (driveWarn) alert('구글 드라이브 업로드가 안 되어 수파베이스 저장소에 대신 저장했어요.\n(' + driveWarn + ')');
     } catch (err) { alert('저장 실패: ' + err.message); } finally { if (form.querySelector('#m2-save')) { saveBtn.disabled = false; saveBtn.textContent = '저장'; } }
   }
   async function deleteMaterial(id, storagePath, fromModal) {
     if (!confirm('이 자료를 삭제할까요?')) return;
     try {
-      if (storagePath) await removeFromBucket('materials', [storagePath]);
+      if (storagePath) await removeMaterialFile(storagePath);
       const { error } = await window.DB.supabase.from('materials').delete().eq('id', id);
       if (error) throw error;
       if (fromModal) closeMatModal();

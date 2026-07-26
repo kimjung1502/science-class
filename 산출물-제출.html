@@ -212,7 +212,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260725a"></script>
+<script src="js/db.js?v=20260726a"></script>
 <script src="js/mindmap.js?v=20260724a"></script>
 <script>
 (function () {
@@ -249,8 +249,8 @@
   ];
   function isEmptyAnswer(f, v) {
     if (f.type === 'checkbox') return !Array.isArray(v) || !v.length;
-    if (f.type === 'file') return !(v && v.storage_path);
-    if (f.type === 'mindmap') return !(v && v.storage_path);
+    if (f.type === 'file') return !(v && (v.storage_path || v.drive_id));
+    if (f.type === 'mindmap') return !(v && (v.storage_path || v.drive_id));
     return v == null || String(v).trim() === '';
   }
 
@@ -411,13 +411,13 @@
       return `<div class="flex items-center gap-2 flex-wrap"><span class="text-[12px] text-ink3">${esc(f.scaleMinLabel || '')}</span><div class="flex items-end gap-4 flex-wrap">${cells.join('')}</div><span class="text-[12px] text-ink3">${esc(f.scaleMaxLabel || '')}</span></div>`;
     }
     if (f.type === 'file') {
-      const cur = (val && val.storage_path) ? `<span id="ffn_${f.id}" class="text-[13px] text-ink flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-lime bg-ink rounded p-0.5">description</span>${esc(val.file_name || '첨부됨')}</span>` : `<span id="ffn_${f.id}" class="text-[13px] text-ink3">선택된 파일 없음</span>`;
+      const cur = (val && (val.storage_path || val.drive_id)) ? `<span id="ffn_${f.id}" class="text-[13px] text-ink flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-lime bg-ink rounded p-0.5">description</span>${esc(val.file_name || '첨부됨')}</span>` : `<span id="ffn_${f.id}" class="text-[13px] text-ink3">선택된 파일 없음</span>`;
       return `<div class="flex items-center gap-3 flex-wrap">
         <label class="px-4 py-2 rounded-lg border border-ink text-ink font-bold text-[13px] cursor-pointer hover:bg-ink hover:text-paper transition-colors ${disabled ? 'opacity-50 pointer-events-none' : ''}"><span class="material-symbols-outlined text-[16px] align-[-3px]">upload</span> 파일 선택<input id="ff_${f.id}" type="file" class="hidden" ${dis}></label>
         ${cur}<span id="ffs_${f.id}" class="font-mono text-[11px] text-signal"></span></div>`;
     }
     if (f.type === 'mindmap') {
-      const has = !!(val && (val.storage_path || (val.data && Array.isArray(val.data.nodes) && val.data.nodes.length)));
+      const has = !!(val && (val.storage_path || val.drive_id || (val.data && Array.isArray(val.data.nodes) && val.data.nodes.length)));
       const label = disabled ? '마인드맵 보기' : (has ? '마인드맵 이어 그리기' : '마인드맵 그리기');
       const canOpen = disabled ? has : true; // 읽기전용은 작성된 것만 열람
       const status = has

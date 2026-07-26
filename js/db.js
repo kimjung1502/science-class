@@ -464,6 +464,84 @@
     return true;
   }
 
+  // ---------- 구글 드라이브 직접 업로드 (교사 수업자료) ----------
+  // 같은 이름의 폴더가 있으면 재사용, 없으면 생성 → 폴더 id
+  async function driveEnsureFolder(token, name, parentId) {
+    const esc1 = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const q = `mimeType='application/vnd.google-apps.folder' and trashed=false and name='${esc1(name)}' and '${parentId}' in parents`;
+    const fr = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&spaces=drive`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const fd = await fr.json().catch(() => ({}));
+    if (fr.ok && fd.files && fd.files.length) return fd.files[0].id;
+    const cr = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+    });
+    const cd = await cr.json().catch(() => ({}));
+    if (!cr.ok) throw new Error('드라이브 폴더 생성 실패: ' + ((cd.error && cd.error.message) || cr.status));
+    return cd.id;
+  }
+  // 파일 1개 업로드(4MB 이하 multipart, 초과는 resumable) → { id, url }
+  async function driveUploadBytes(token, folderId, filename, file) {
+    const meta = { name: filename, parents: [folderId] };
+    const mime = file.type || 'application/octet-stream';
+    if (file.size <= 4 * 1024 * 1024) {
+      const boundary = '----labDriveUp' + Date.now();
+      const pre = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`;
+      const body = new Blob([pre, file, `\r\n--${boundary}--`]);
+      const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` }, body,
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error('드라이브 업로드 실패: ' + ((d.error && d.error.message) || r.status));
+      return { id: d.id, url: d.webViewLink || `https://drive.google.com/file/d/${d.id}/view` };
+    }
+    const init = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,webViewLink', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': mime, 'X-Upload-Content-Length': String(file.size) },
+      body: JSON.stringify(meta),
+    });
+    if (!init.ok) { const d = await init.json().catch(() => ({})); throw new Error('드라이브 업로드 시작 실패: ' + ((d.error && d.error.message) || init.status)); }
+    const loc = init.headers.get('Location') || init.headers.get('location');
+    if (!loc) throw new Error('드라이브 업로드 세션 주소를 받지 못했습니다.');
+    const up = await fetch(loc, { method: 'PUT', headers: { 'Content-Type': mime }, body: file });
+    const d = await up.json().catch(() => ({}));
+    if (!up.ok) throw new Error('드라이브 업로드 실패: ' + ((d.error && d.error.message) || up.status));
+    return { id: d.id, url: d.webViewLink || `https://drive.google.com/file/d/${d.id}/view` };
+  }
+  // 수업자료 파일을 선생님 드라이브(학교›년도›수업자료›과목)에 올리고 학생 열람 공유까지.
+  // 반환: { url, storage_path: 'gdrive:<id>', original_filename }
+  // 드라이브 미연결이면 driveAccessToken()에서 throw → 호출부가 버킷 업로드로 폴백한다.
+  async function uploadMaterialToDrive(file, subjectName) {
+    const { access_token } = await driveAccessToken();
+    const s = await driveStatus().catch(() => ({}));
+    const names = [s.school || '학교', s.year || '년도', '수업자료'];
+    if (subjectName) names.push(subjectName);
+    let parent = 'root';
+    for (const n of names) parent = await driveEnsureFolder(access_token, n, parent);
+    const up = await driveUploadBytes(access_token, parent, file.name, file);
+    await driveShareAnyone(up.id, access_token);
+    return { url: up.url, storage_path: 'gdrive:' + up.id, original_filename: file.name };
+  }
+  // 드라이브 파일을 휴지통으로(완전삭제 아님 — 실수 복구 여지). 실패해도 조용히 넘어감.
+  async function driveTrashFile(fileId) {
+    try {
+      const { access_token } = await driveAccessToken();
+      await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true`, {
+        method: 'PATCH', headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashed: true }),
+      });
+      return true;
+    } catch (_e) { return false; }
+  }
+  // 자료 파일 정리: 'gdrive:<id>'면 드라이브 휴지통, 아니면 materials 버킷에서 삭제
+  async function removeMaterialFile(storagePath) {
+    if (!storagePath) return true;
+    if (storagePath.indexOf('gdrive:') === 0) return driveTrashFile(storagePath.slice(7));
+    return removeFromBucket('materials', [storagePath]);
+  }
+  // 드라이브 자료를 브라우저에서 fetch할 수 있는 프록시 주소 (PDF 판서 등 CORS 필요 시)
+  function driveProxyUrl(fileId) { return `${FUNCTIONS_URL}/drive-file?id=${encodeURIComponent(fileId)}`; }
+
   // 제출 파일 다운로드 서명 URL (storage_path 기준). 관리자 또는 본인만.
   async function signSubmissionFile(path, opts) {
     const { assignmentId = '', name = '' } = opts || {};
@@ -570,5 +648,6 @@
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
     driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveAccessToken, driveShareAnyone,
+    uploadMaterialToDrive, removeMaterialFile, driveProxyUrl,
   };
 })();
