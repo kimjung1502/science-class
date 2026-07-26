@@ -512,16 +512,29 @@
   // subPath: '수업자료' 아래로 이어질 폴더 이름 배열(예: [과목, 대단원, 중단원]) — 빈 값은 건너뜀.
   // 반환: { url, storage_path: 'gdrive:<id>', original_filename }
   // 드라이브 미연결이면 driveAccessToken()에서 throw → 호출부가 버킷 업로드로 폴백한다.
-  async function uploadMaterialToDrive(file, subPath) {
+  async function uploadMaterialToDrive(file, subPath, driveName) {
     const { access_token } = await driveAccessToken();
     const s = await driveStatus().catch(() => ({}));
     const names = [s.school || '학교', s.year || '년도', '수업자료'];
     (Array.isArray(subPath) ? subPath : [subPath]).forEach((n) => { if (n) names.push(String(n)); });
     let parent = 'root';
     for (const n of names) parent = await driveEnsureFolder(access_token, n, parent);
-    const up = await driveUploadBytes(access_token, parent, file.name, file);
+    const up = await driveUploadBytes(access_token, parent, driveName || file.name, file);
     await driveShareAnyone(up.id, access_token);
     return { url: up.url, storage_path: 'gdrive:' + up.id, original_filename: file.name };
+  }
+  // 드라이브에 저장할 파일 이름 규칙: "자료이름_유형라벨(_발췌면 대단원-중단원).확장자"
+  // 자료 이름이 비어 있으면 원본 파일 이름(확장자 뺀 것)을 대신 쓴다.
+  function materialDriveName(opts) {
+    const { name, typeLabel, fileName, unitNames, excerpt } = opts || {};
+    const dot = (fileName || '').lastIndexOf('.');
+    const ext = dot > 0 ? fileName.slice(dot) : '';
+    const stem = (name || '').trim() || (dot > 0 ? fileName.slice(0, dot) : fileName || '자료');
+    let out = stem + (typeLabel ? '_' + typeLabel : '');
+    const units = (unitNames || []).filter(Boolean).join('-');
+    if (excerpt && units) out += '_' + units;
+    out = out.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+    return (out || '자료') + ext;
   }
   // 드라이브 파일을 휴지통으로(완전삭제 아님 — 실수 복구 여지). 실패해도 조용히 넘어감.
   async function driveTrashFile(fileId) {
@@ -649,6 +662,6 @@
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
     driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveAccessToken, driveShareAnyone,
-    uploadMaterialToDrive, removeMaterialFile, driveProxyUrl,
+    uploadMaterialToDrive, removeMaterialFile, driveProxyUrl, materialDriveName,
   };
 })();

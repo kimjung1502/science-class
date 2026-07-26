@@ -200,7 +200,7 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260726b"></script>
+<script src="js/db.js?v=20260726c"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile } = window.DB;
@@ -573,22 +573,25 @@
             const file = fd.get('file');
             if (file && file.size) {
               let up = file;
+              let didSplit = false;
               const range = (fd.get('page_range') || '').trim();
               if (range && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name))) {
                 saveBtn.textContent = 'PDF 추출 중…';
                 const sp = await window.DB.splitPdfFile(file, range);
-                up = sp.file;
+                up = sp.file; didSplit = true;
                 if (!payload.meta) payload.meta = `p.${sp.label} 발췌 (전체 ${sp.total}쪽 중 ${sp.pages}쪽)`;
               }
-              // 업로드 파일은 선생님 구글 드라이브(학교›년도›수업자료›과목)로. 단, html 자료는
+              // 업로드 파일은 선생님 구글 드라이브(학교›년도›수업자료›과목›대단원›중단원)로. 단, html 자료는
               // 아코디언(fetch→iframe srcdoc) 렌더링 때문에 CORS가 되는 우리 스토리지에 둬야 한다.
               const isHtml = payload.type === 'html' || /\.html?$/i.test(up.name);
               let stored = null;
               if (!isHtml) {
                 saveBtn.textContent = '드라이브 업로드 중…';
                 // path 브레드크럼 = [과목, 대단원, 중단원, 소단원] → 과목›대단원›중단원 폴더로
-                const folderPath = [path[0] && path[0].name, path[1] && path[1].name, path[2] && path[2].name];
-                try { stored = await uploadMaterialToDrive(up, folderPath); }
+                const unitNames = [path[1] && path[1].name, path[2] && path[2].name];
+                const folderPath = [path[0] && path[0].name].concat(unitNames);
+                const driveName = window.DB.materialDriveName({ name: payload.name, typeLabel: t.label, fileName: up.name, unitNames, excerpt: didSplit });
+                try { stored = await uploadMaterialToDrive(up, folderPath, driveName); }
                 catch (e2) { driveWarn = e2.message || String(e2); }
               }
               if (!stored) {
