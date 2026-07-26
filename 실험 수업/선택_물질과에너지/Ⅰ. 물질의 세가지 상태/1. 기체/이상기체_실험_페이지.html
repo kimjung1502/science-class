@@ -410,13 +410,8 @@
       <div class="datagrid" style="margin-top:12px">
         <div class="tablescroll"><table class="dtable" data-table="charles"><thead><tr><th>#</th><th class="kcol">T<span style="font-weight:400">(K)</span></th><th>T<span style="font-weight:400">(℃)</span></th><th>V<span style="font-weight:400">(L)</span></th><th></th></tr></thead><tbody></tbody></table></div>
         <div class="graphbox">
-          <div class="graphhead"><span class="t">V–T 그래프</span>
-            <span class="modes" role="group" aria-label="x축 단위">
-              <button class="minibtn" id="axC" aria-pressed="true">x축 ℃</button>
-              <button class="minibtn" id="axK" aria-pressed="false">x축 K</button>
-            </span>
-          </div>
-          <canvas class="graphcanvas" data-graph="charles" width="480" height="360" role="img" aria-label="부피와 온도 그래프"></canvas>
+          <div class="graphhead"><span class="t">V–T 그래프 &nbsp;<span style="font-weight:600;color:var(--ink3)">x축 : ℃</span></span></div>
+          <canvas class="graphcanvas" data-graph="charles" width="480" height="360" role="img" aria-label="부피와 섭씨온도 그래프"></canvas>
         </div>
       </div>
       <div class="note" id="axisNote" style="margin-top:10px"></div>
@@ -428,12 +423,29 @@
         <input class="inlinein" type="text" id="interceptIn" inputmode="text" placeholder="정수로 입력" autocomplete="off"> <span style="font-weight:700">℃</span>
         <div class="verdict" id="interceptVerdict"></div>
       </div>
+      <div class="note signal">⚠️ 실제로는 그 온도에 닿기 훨씬 전에 기체가 액체가 돼요. 그래서 이 값은 <b>외삽</b>(선을 늘여서 얻은 값)입니다.</div>
+    </div>
+
+    <!-- 절대영도를 찾아낸 뒤에 열리는 카드 — 같은 데이터를 K 축으로 다시 그린다 -->
+    <div class="card" id="kGraphCard" style="display:none">
+      <p class="qtext">🎉 방금 찾은 <b>−273 ℃</b> 를 <b>0</b> 으로 삼는 새 온도 눈금을 만들어 봅시다 — 이것이 <b>절대온도(K)</b> 입니다.</p>
+      <div class="note lime"><b>K = ℃ + 273</b> &nbsp;· 같은 데이터를 x축만 K 로 바꿔 다시 그린 것이 아래 그래프예요.</div>
+      <div class="datagrid" style="margin-top:12px">
+        <div class="tablescroll"><table class="dtable" data-table="charlesK"><thead><tr><th>#</th><th>T<span style="font-weight:400">(℃)</span></th><th>T<span style="font-weight:400">(K)</span></th><th>V<span style="font-weight:400">(L)</span></th><th>V/T<span style="font-weight:400">(K)</span></th></tr></thead><tbody></tbody></table></div>
+        <div class="graphbox">
+          <div class="graphhead"><span class="t">V–T 그래프 &nbsp;<span style="font-weight:600;color:var(--ink3)">x축 : K</span></span></div>
+          <canvas class="graphcanvas" data-graph="charlesK" width="480" height="360" role="img" aria-label="부피와 절대온도 그래프"></canvas>
+        </div>
+      </div>
+      <div class="note" id="axisNoteK" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
       <div class="q">
         <p class="qtext">Q. 온도를 올리면 왜 부피가 커질까요? <span style="font-weight:400;color:var(--ink3)">(입자의 운동으로 설명)</span></p>
         <textarea id="q_charles_relation" data-ai="charles.relation" placeholder="입자의 속력·충돌로 설명해 보세요."></textarea>
         <div class="aimsg" id="ai-charles.relation"></div>
       </div>
-      <div class="note signal">⚠️ 실제로는 그 온도에 닿기 훨씬 전에 기체가 액체가 돼요. 그래서 이 값은 <b>외삽</b>(선을 늘여서 얻은 값)입니다.</div>
       <div class="note" id="cmp4"></div>
     </div>
     <button class="btn next" id="next4">다음으로 계속 ↓</button>
@@ -1204,7 +1216,7 @@ function applyReadOnly() {
     var sec = document.getElementById('s' + k);
     if (!sec) continue;
     $$('textarea, input[type=text], input[type=radio]', sec).forEach(function (el) { el.disabled = false; });
-    $$('.dtable .del, #invToggle, #axC, #axK', sec).forEach(function (el) { el.disabled = false; });
+    $('.dtable .del, #invToggle', sec).forEach(function (el) { el.disabled = false; });
   }
   paintBrokenWarnings();
 }
@@ -1683,7 +1695,20 @@ function coherentP(store, pt) { return (store === 'gaylussac' || store === 'comb
 /* ---------- 표 ---------- */
 function renderStore(store) {
   renderTable(store); renderGraphs(); renderAllTable();
-  if (store === 'charles') paintAxisNote();
+  if (store === 'charles') { renderCharlesK(); paintAxisNote(); }
+}
+/* 절대온도 유도 후 보여주는 표 — ℃ / K / V / V/T */
+function renderCharlesK() {
+  var tbl = $('[data-table="charlesK"]');
+  if (!tbl) return;
+  var pts = state.charles.points, html = '', i, p;
+  for (i = 0; i < pts.length; i++) {
+    p = pts[i];
+    html += '<tr><td>' + (i + 1) + '</td><td>' + Math.round(celsius(p.t)) + '</td><td>' + Math.round(p.t) +
+      '</td><td>' + fmt(p.v, 2) + '</td><td><b>' + fmt(p.v / p.t, 4) + '</b></td></tr>';
+  }
+  tbl.querySelector('tbody').innerHTML = html ||
+    '<tr><td colspan="5" style="text-align:center;color:var(--ink3)">아직 기록한 점이 없어요</td></tr>';
 }
 function renderTable(store) {
   var tbl = $('[data-table="' + store + '"]');
@@ -1798,14 +1823,25 @@ function drawGraph(cv, cfg) {
         var dmin = Math.min.apply(null, dxs), dmax = Math.max.apply(null, dxs);
         x.strokeStyle = '#16213E'; x.lineWidth = 2; x.setLineDash([]);
         x.beginPath(); x.moveTo(PX(dmin), PY(a * dmin + c0)); x.lineTo(PX(dmax), PY(a * dmax + c0)); x.stroke();
+        if (cfg.extendToOrigin) {
+          x.strokeStyle = '#16213E'; x.lineWidth = 1.6; x.setLineDash([5, 4]);
+          x.beginPath(); x.moveTo(PX(0), PY(c0)); x.lineTo(PX(dmin), PY(a * dmin + c0)); x.stroke();
+          x.setLineDash([]);
+          x.fillStyle = '#C4E000'; x.strokeStyle = '#16213E'; x.lineWidth = 1.8;
+          x.beginPath(); x.arc(PX(0), PY(0), 5, 0, 7); x.fill(); x.stroke();
+          x.fillStyle = '#16213E'; x.font = 'bold 11px sans-serif'; x.textAlign = 'left';
+          x.fillText('원점 (0, 0)', Math.min(PX(0) + 8, L + GW - 62), PY(0) - 9);
+        }
         if (cfg.extrapolate && Math.abs(a) > 1e-12) {
           var xi = -c0 / a;                                   // V=0 이 되는 x절편
           x.strokeStyle = '#FF5B24'; x.lineWidth = 1.8; x.setLineDash([6, 5]);
           x.beginPath(); x.moveTo(PX(dmin), PY(a * dmin + c0)); x.lineTo(PX(xi), PY(0)); x.stroke();
           x.setLineDash([]);
           x.fillStyle = '#FF5B24'; x.beginPath(); x.arc(PX(xi), PY(0), 4.5, 0, 7); x.fill();
-          x.font = 'bold 12px monospace'; x.textAlign = 'left';
-          x.fillText('x절편 ' + xi.toFixed(0), Math.min(PX(xi) + 7, L + GW - 76), PY(0) - 8);
+          if (cfg.showIntercept) {          // 정답을 맞힌 뒤에만 숫자를 띄운다(그 전엔 학생이 축에서 읽어야 함)
+            x.font = 'bold 12px monospace'; x.textAlign = 'left';
+            x.fillText('x절편 ' + xi.toFixed(0), Math.min(PX(xi) + 7, L + GW - 76), PY(0) - 8);
+          }
         }
       }
     } else if (cfg.fit === 'hyperbola') {
@@ -1841,12 +1877,20 @@ function renderGraphs() {
     fit: inv ? 'line' : 'hyperbola', includeZeroY: inv, includeZeroX: inv,
     fx: function (v) { return inv ? v.toFixed(3) : v.toFixed(0); }
   });
-  var cp = state.charles.points, useK = axisK;
+  var cp = state.charles.points, gotK = kIntroduced();
+  // 위 그래프 — 언제나 ℃. V=0 까지 주황 점선으로 외삽(절편 숫자는 정답을 맞힌 뒤에만)
   drawGraph($('[data-graph="charles"]'), {
-    pts: cp.map(function (p) { return { x: useK ? p.t : celsius(p.t), y: p.v }; }),
-    xl: useK ? 'T 온도 (K)' : 'T 온도 (℃)', yl: 'V 부피 (L)',
-    fit: 'line', extrapolate: !useK, includeZeroY: true, clampY0: true,
-    forceX: useK ? [0] : [-290], fx: function (v) { return v.toFixed(0); }
+    pts: cp.map(function (p) { return { x: celsius(p.t), y: p.v }; }),
+    xl: 'T 온도 (℃)', yl: 'V 부피 (L)',
+    fit: 'line', extrapolate: true, showIntercept: gotK, includeZeroY: true, clampY0: true,
+    forceX: [-290], fx: function (v) { return v.toFixed(0); }
+  });
+  // 아래 그래프 — 절대영도를 찾아낸 뒤 같은 데이터를 K 축으로 다시 그린다(원점 통과)
+  drawGraph($('[data-graph="charlesK"]'), {
+    pts: cp.map(function (p) { return { x: p.t, y: p.v }; }),
+    xl: 'T 절대온도 (K)', yl: 'V 부피 (L)',
+    fit: 'line', extendToOrigin: true, includeZeroY: true, includeZeroX: true, clampY0: true,
+    forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
   });
   var gp = state.gaylussac.points;
   drawGraph($('[data-graph="gaylussac"]'), {
@@ -1957,7 +2001,6 @@ function draw(b) {
 
 /* ===================== 뷰 토글 상태 ===================== */
 var invView = false;     // ③ 1/V 보기
-var axisK = false;       // ④ x축 K 보기
 
 /* ===================== §8.2 루프 · 가시성 ===================== */
 var lastTs = 0;
@@ -2036,14 +2079,16 @@ function paintCompare() {
 /* 절대온도 도입 시점에 온도 표기가 쓰인 모든 곳을 다시 그린다 */
 function refreshTempUnits() {
   blocks.forEach(function (b) { paintCtl(b); paintGauges(b, true); });
-  renderTable('charles'); renderAllTable();
+  renderTable('charles'); renderCharlesK(); renderAllTable();
 }
 function paintAxisNote() {
   var el = $('#axisNote');
-  if (!el) return;
-  el.innerHTML = axisK
-    ? '✔ <b>K(절대온도)</b> 로 보면 직선이 <b>원점을 지나는 정비례</b>가 돼요. 그래서 기체 계산에는 절대온도를 씁니다.'
-    : 'ℹ️ <b>℃</b> 로 그리면 직선이 <b>원점을 지나지 않아요</b>. 왼쪽으로 늘여 보면 V=0 이 되는 x절편이 보여요 — 몇 도일까요?';
+  if (el) el.innerHTML = 'ℹ️ <b>℃</b> 로 그리면 직선이 <b>원점을 지나지 않아요</b>. 왼쪽으로 늘여 보면 V=0 이 되는 x절편이 보여요 — 몇 도일까요?';
+  var k = $('#axisNoteK');
+  if (k) k.innerHTML = '✔ <b>K</b> 로 바꾸니 직선이 <b>원점을 지나는 정비례</b>가 됐어요. 표의 <b>V/T</b> 열도 모두 같은 값이죠 — ' +
+    '그래서 기체 계산에는 ℃ 가 아니라 <b>절대온도</b>를 씁니다.';
+  var card = $('#kGraphCard');
+  if (card) card.style.display = kIntroduced() ? 'block' : 'none';
 }
 
 /* ===================== §3.3 내보내기 ===================== */
@@ -2205,9 +2250,8 @@ function hydrate() {
   invView = state.boyle.inverseToggled ? invView : false;
   $('#invToggle').setAttribute('aria-pressed', String(invView));
   $('#invToggle').textContent = invView ? 'P–V 로 보기' : '1/V 로 보기';
-  $('#axC').setAttribute('aria-pressed', String(!axisK));
-  $('#axK').setAttribute('aria-pressed', String(axisK));
   ['boyle', 'charles', 'gaylussac'].forEach(renderTable);
+  renderCharlesK();
   renderAllTable(); renderGraphs(); paintCompare(); paintAxisNote();
   paintIntercept(); paintR(); paintA3();
   AI_ALL.forEach(paintAi);
@@ -2224,6 +2268,8 @@ function paintIntercept() {
   if (interceptOk(val)) {
     v.className = 'verdict show good';
     v.textContent = '✔ 맞았어요 — 이 온도에서 입자 운동이 멈춘다고 외삽한 값이 절대영도(−273 ℃ = 0 K)예요.';
+    // §6 ④ 게이트의 'K 축을 봤다' 조건 — 토글 버튼 대신 아래 K 그래프가 열리는 것으로 충족
+    if (!state.charles.axisToggled) { state.charles.axisToggled = true; save(); }
   } else { v.className = 'verdict show bad'; v.textContent = '✕ 아직 아니에요 — 그래프의 주황 점선이 V=0 과 만나는 곳을 읽어 보세요.'; }
 }
 function paintR() {
@@ -2253,7 +2299,7 @@ function bindText(sel, path) {
     setPath(state, path, el.value);
     var aiKey = el.getAttribute('data-ai');
     if (aiKey) clearAi(aiKey);                             // §8.4 입력 수정 시 판정 폐기·요청 취소
-    if (path === 'charles.intercept') { paintIntercept(); refreshTempUnits(); }
+    if (path === 'charles.intercept') { paintIntercept(); refreshTempUnits(); paintAxisNote(); renderGraphs(); }
     if (path === 'combine.rAnswer') paintR();
     if (path === 'assess.a3') paintA3();
     save(); paintAllLocks(); paintProgress(); invalidateExport();
@@ -2281,12 +2327,6 @@ function bindAll() {
     this.textContent = invView ? 'P–V 로 보기' : '1/V 로 보기';
     renderGraphs(); save(); paintAllLocks(); invalidateExport();
   });
-  $('#axC').addEventListener('click', function () { axisK = false; $('#axC').setAttribute('aria-pressed', 'true'); $('#axK').setAttribute('aria-pressed', 'false'); renderGraphs(); paintAxisNote(); });
-  $('#axK').addEventListener('click', function () {
-    axisK = true; state.charles.axisToggled = true;      // ← 절대온도가 화면에 도입되는 순간(§1.5)
-    $('#axC').setAttribute('aria-pressed', 'false'); $('#axK').setAttribute('aria-pressed', 'true');
-    renderGraphs(); paintAxisNote(); refreshTempUnits(); save(); paintAllLocks(); invalidateExport();
-  });
 
   $('#startBtn').addEventListener('click', function () {
     state.intro.started = true; save(); proceed(1);
@@ -2303,7 +2343,7 @@ function bindAll() {
     try { localStorage.removeItem(getActiveKeyName()); } catch (e) { }
     state = defaultState();
     if (S) { state.student.name = S.name || ''; state.student.sid = S.sid || ''; state.student.fromSite = true; }
-    unlocked = 1; invView = false; axisK = false;
+    unlocked = 1; invView = false;
     for (var k = 2; k <= 6; k++) { var sec = document.getElementById('s' + k); if (sec) sec.classList.add('hidden'); }
     var en = $('#exportNote'); if (en) en.style.display = 'none';
     blocks.forEach(function (b) {
