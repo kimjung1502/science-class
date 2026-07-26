@@ -1,0 +1,2279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이상기체 상태 방정식 — 실린더 입자 운동 실험</title>
+<!-- 자립형 단일 HTML: 외부 CDN·상대경로 자산 0 (§9.2). 폰트·아이콘도 시스템/이모지/인라인 SVG만. -->
+<style>
+  /* ===== §7 디자인 토큰 (js/theme.js 값을 인라인 복사) ===== */
+  :root{
+    --paper:#FBFAF6; --paper2:#F4F2E9; --paper3:#ECE8DA;
+    --ink:#16213E; --ink2:#2C3A5E; --ink3:#5A6379;
+    --lime:#C4E000; --lime-soft:#EEF7B8;
+    --signal:#FF5B24; --signal-soft:#FFE1D5;
+    --surface:#ffffff;
+    --sans:system-ui,"Pretendard","Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",sans-serif;
+    --mono:"Space Mono",Consolas,ui-monospace,monospace;
+    --radius:16px; --shadow:0 6px 22px rgba(22,33,62,.08);
+    --rail-h:44px;              /* 상단 진행 띠 실측 높이 — 로드·리사이즈 때 JS가 실측값으로 갱신 */
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{transition:none!important;animation:none!important}}
+  body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);
+    background-image:linear-gradient(rgba(22,33,62,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(22,33,62,.035) 1px,transparent 1px);
+    background-size:26px 26px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+  /* ===== 상단 고정 진행 띠 ===== */
+  .topbar{position:sticky;top:0;z-index:50;background:rgba(251,250,246,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--paper3)}
+  .rail{height:6px;width:100%;background:var(--paper3);overflow:hidden}
+  .rail>span{display:block;height:100%;width:0%;background:var(--lime);transition:width .45s ease}
+  .topmeta{display:flex;align-items:center;gap:8px;padding:6px 14px;max-width:860px;margin:0 auto;font-size:12.5px;color:var(--ink3);min-height:32px}
+  .topmeta .step{font-family:var(--mono);font-weight:700;color:var(--ink);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+  .topmeta .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chip{margin-left:auto;background:var(--paper2);border:1px solid var(--paper3);border-radius:999px;padding:2px 10px;font-size:11.5px;color:var(--ink3);white-space:nowrap}
+  .chip.tbadge{background:var(--lime-soft);border-color:#d8e88a;color:#4a5a00;font-weight:700;margin-left:6px}
+  .chip.err{background:var(--signal-soft);border-color:#f3c3ae;color:#a5310c;font-weight:700;margin-left:6px}
+  .chip.ver{margin-left:6px;font-family:var(--mono)}
+
+  main{max-width:860px;margin:0 auto;padding:18px 14px 140px}
+  .stage.hidden{display:none}
+  .stagehead{display:flex;align-items:center;gap:11px;margin:26px 0 10px}
+  .num{flex:none;width:38px;height:38px;border-radius:12px;background:var(--paper2);border:1px solid var(--paper3);display:grid;place-items:center;font-weight:800;font-size:17px;font-family:var(--mono)}
+  .num.done{background:var(--lime);color:var(--ink);border-color:transparent}
+  .stagehead h2{margin:0;font-size:19px;letter-spacing:-.01em}
+  .stagehead .sub{font-size:12.5px;color:var(--ink3)}
+  .card{background:var(--surface);border:1px solid var(--paper3);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin:0 0 13px}
+  .card.tight{padding:13px}
+  .stage.locked-ro .card{background:#fdfdfb}
+  .ro-note{font-size:12px;color:var(--ink3);background:var(--paper2);border:1px dashed var(--paper3);border-radius:9px;padding:6px 10px;margin:0 0 10px;display:none}
+  .stage.locked-ro .ro-note{display:block}
+
+  .hero{display:flex;gap:14px;align-items:stretch}
+  .hero .bar{flex:none;width:8px;border-radius:6px;background:var(--lime)}
+  .hero .eyebrow{font-size:12px;font-weight:800;color:var(--signal);margin:0 0 5px;letter-spacing:.04em}
+  .hero h1{margin:0 0 4px;font-size:clamp(21px,4.2vw,29px);line-height:1.32;letter-spacing:-.015em}
+  .hero h1 em{font-style:normal;background:linear-gradient(transparent 62%,var(--lime-soft) 62%)}
+  .goals{margin:13px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+  .goals li{display:flex;gap:8px;font-size:14.5px;color:#3c4457}
+  .goals .g{flex:none;width:21px;height:21px;border-radius:7px;background:var(--lime-soft);color:#4a5a00;font-size:11px;font-weight:800;display:grid;place-items:center;font-family:var(--mono)}
+
+  label.fld{display:block;font-size:12.5px;color:var(--ink3);margin:0 0 4px}
+  input[type=text]{width:100%;font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--paper3);background:#fff;color:var(--ink)}
+  textarea{width:100%;font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--paper3);background:#fff;color:var(--ink);resize:vertical;min-height:62px;line-height:1.55}
+  input:focus-visible,textarea:focus-visible,button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--lime);outline-offset:1px;border-color:var(--ink)}
+  input:disabled,textarea:disabled{background:var(--paper2);color:var(--ink3)}
+  .btn{font:inherit;font-weight:700;cursor:pointer;border:none;border-radius:12px;padding:11px 18px;background:var(--ink);color:#fff;transition:filter .15s,transform .05s;min-height:44px}
+  .btn:hover{filter:brightness(1.12)} .btn:active{transform:translateY(1px)}
+  .btn:disabled{background:#cbc6ba;cursor:not-allowed;filter:none}
+  .btn.sm{padding:7px 14px;font-size:13.5px;min-height:44px}
+  .btn.ghost{background:var(--paper2);color:var(--ink);border:1px solid var(--paper3)}
+  .btn.ghost:disabled{background:var(--paper3);color:#9a9382;border-color:transparent}
+  .btn.lime{background:var(--lime);color:var(--ink)}
+  .btn.lime:disabled{background:var(--paper3);color:#9a9382}
+  .btn.next{width:100%;margin-top:4px}
+  .btn.next:disabled{background:#d9d3c6;color:#8d876f}
+  .lockmsg{font-size:12.5px;color:var(--signal);background:var(--signal-soft);border-radius:9px;padding:7px 10px;text-align:center;margin-top:8px;display:none}
+  .lockmsg.show{display:block}
+  .lockmsg.ok{color:#3d6b00;background:var(--lime-soft)}
+
+  .choices{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
+  .choice{position:relative}
+  .choice input{position:absolute;opacity:0;inset:0;cursor:pointer}
+  .choice span{display:block;padding:10px 15px;border:1.5px solid var(--paper3);border-radius:11px;background:#fff;font-size:14px;font-weight:600;min-height:44px;display:flex;align-items:center}
+  .choice input:checked+span{border-color:var(--ink);background:var(--lime-soft);color:var(--ink)}
+  .choice input:focus-visible+span{outline:3px solid var(--lime);outline-offset:1px}
+  .choice input:disabled+span{opacity:.65;cursor:default}
+
+  .q{margin:0 0 14px;padding:0 0 14px;border-bottom:1px dashed var(--paper3)}
+  .q:last-of-type{border-bottom:none;padding-bottom:0;margin-bottom:0}
+  .qtext{font-size:14.5px;margin:0 0 7px;font-weight:600}
+  .qhint{font-size:12.5px;color:var(--ink3);margin:0 0 6px}
+  .aimsg{display:none;font-size:12.5px;margin-top:6px;border-radius:9px;padding:6px 9px;font-weight:600}
+  .aimsg.show{display:block}
+  .aimsg.bad{background:var(--signal-soft);color:#a5310c}
+  .aimsg.ok{background:var(--lime-soft);color:#3d6b00}
+  .aimsg.wait{background:var(--paper2);color:var(--ink3)}
+  textarea.ai-bad{border-color:var(--signal)}
+  .note{font-size:13px;color:#3c4457;background:var(--paper2);border-radius:10px;padding:9px 11px;margin-top:8px}
+  .note.signal{background:var(--signal-soft);color:#8a3510}
+  .note.lime{background:var(--lime-soft);color:#3f4d00}
+  details.more{margin:8px 0 0;font-size:13.5px}
+  details.more summary{cursor:pointer;color:var(--ink2);font-weight:700;font-size:12.5px;padding:4px 0}
+  details.more .body{margin:7px 0 0;color:#3c4457;background:var(--paper2);border-radius:10px;padding:9px 11px;font-size:13px}
+  .divider{height:1px;background:var(--paper3);margin:16px 0}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+  .tag{font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--lime-soft);color:#4a5a00;border:1px solid #dbe98f;font-family:var(--mono)}
+  .verdict{display:none;align-items:center;gap:6px;font-size:13.5px;font-weight:700;margin-top:7px;border-radius:9px;padding:6px 10px}
+  .verdict.show{display:flex}
+  .verdict.good{background:var(--lime-soft);color:#3d6b00}
+  .verdict.bad{background:var(--signal-soft);color:#a5310c}
+
+  /* ===== 시뮬레이터 블록 ===== */
+  .simblock{margin:0 0 12px}
+  .simwrap{display:grid;grid-template-columns:auto 1fr;gap:13px;align-items:start;position:relative}
+  .canvasbox{position:relative;flex:none}
+  .simcanvas{display:block;width:320px;height:420px;background:var(--paper2);border-radius:13px;border:1px solid var(--paper3);touch-action:manipulation}
+  .lowbanner{display:none;background:var(--signal-soft);color:#8a3510;border-radius:12px;padding:14px;font-size:13.5px;font-weight:600;text-align:center}
+  .simblock.tooshort .simwrap{display:none}
+  .simblock.tooshort .lowbanner{display:block}
+
+  .gaugepanel{display:flex;flex-direction:column;gap:7px;min-width:0}
+  .gauges{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .gauge{background:var(--paper2);border:1px solid var(--paper3);border-radius:10px;padding:6px 9px;min-width:0}
+  .gauge .k{font-size:10.5px;color:var(--ink3);font-weight:700;letter-spacing:.02em}
+  .gauge .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gauge .u{font-size:10.5px;color:var(--ink3);font-family:var(--sans);font-weight:600}
+  .gauge.wide{grid-column:1/-1}
+  .gauge.meas{background:#fff;border-style:dashed}
+  .gauge.meas .v{font-size:13.5px;color:var(--ink2)}
+  .lockchip{display:inline-flex;align-items:center;gap:5px;background:var(--ink);color:#fff;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;align-self:flex-start}
+  .speedlegend{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink3)}
+  .speedlegend .bar{flex:1;height:8px;border-radius:5px;background:linear-gradient(90deg,#2f6fd0,#C4E000,#FF5B24);border:1px solid var(--paper3)}
+
+  /* §2.1 캔버스 바로 아래 sticky — 뷰포트를 잡아먹지 않도록 상한을 두고 그 안에서만 스크롤한다.
+       (핵심 컨트롤 = 잠금 라벨 + 조작 스테퍼 + 기록 버튼이 먼저 오도록 DOM 순서를 잡음) */
+  .simctl{position:sticky;bottom:0;z-index:5;background:rgba(251,250,246,.96);backdrop-filter:blur(6px);border-top:1px solid var(--paper3);padding:8px 0 6px;margin-top:8px;display:flex;flex-direction:column;gap:7px;
+    max-height:var(--ctl-reserve,none);overflow-y:auto;overscroll-behavior:contain}
+  .ctlrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ctlrow.core{gap:8px}
+  .ctlgrp{display:inline-flex;align-items:center;gap:6px}
+  .rowlbl{font-size:12px;font-weight:700;color:var(--ink3)}
+  [data-act="record"] .short{display:none}
+  .stepper{display:inline-flex;align-items:center;gap:0;border:1.5px solid var(--paper3);border-radius:12px;background:#fff;overflow:hidden}
+  .stepper button{font:inherit;font-weight:800;font-size:17px;cursor:pointer;border:none;background:#fff;color:var(--ink);width:46px;height:44px;line-height:1}
+  .stepper button:hover:not(:disabled){background:var(--lime-soft)}
+  .stepper button:disabled{color:#c3bfb2;cursor:not-allowed}
+  .stepper .val{padding:0 11px;font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;min-width:96px;text-align:center;border-left:1.5px solid var(--paper3);border-right:1.5px solid var(--paper3);height:44px;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+  .stepper .cap{font-size:11px;color:var(--ink3);font-weight:700;padding:0 9px;font-family:var(--sans)}
+  .whybadge{display:none;font-size:11.5px;font-weight:700;color:#a5310c;background:var(--signal-soft);border-radius:8px;padding:4px 8px}
+  .whybadge.show{display:inline-block}
+  .recstate{font-size:12px;color:var(--ink3);font-weight:600}
+  .minibtn{font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;background:var(--paper2);border:1px solid var(--paper3);border-radius:10px;padding:0 12px;min-height:44px;min-width:44px;color:var(--ink)}
+  .minibtn:hover{background:var(--lime-soft)}
+  .minibtn[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .modes{display:flex;gap:6px;flex-wrap:wrap}
+
+  .dtable{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .dtable th,.dtable td{border-bottom:1px solid var(--paper3);padding:5px 7px;text-align:right;white-space:nowrap}
+  .dtable th{background:var(--paper2);color:var(--ink3);font-size:11px;font-weight:700;text-align:right}
+  .dtable th:first-child,.dtable td:first-child{text-align:center;width:34px}
+  .dtable tbody tr:hover{background:var(--paper2)}
+  .dtable .del{font:inherit;font-size:13px;cursor:pointer;background:none;border:none;color:var(--signal);font-weight:800;min-width:44px;min-height:44px}
+  .dtable .del:disabled{color:#c3bfb2;cursor:not-allowed}
+  .tablescroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .datagrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+  @media (max-width:640px){.datagrid{grid-template-columns:1fr}}
+  .graphbox{min-width:0}
+  .graphcanvas{display:block;width:100%;height:auto;aspect-ratio:4/3;background:#fff;border:1px solid var(--paper3);border-radius:12px}
+  .graphhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .graphhead .t{font-size:12.5px;font-weight:800;color:var(--ink3)}
+  .triple{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  @media (max-width:720px){.triple{grid-template-columns:1fr}}
+
+  .kv{display:flex;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--ink3);margin-top:6px}
+  .kv b{color:var(--ink);font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  input.inlinein{display:inline-block;width:132px;padding:8px 10px;font:inherit;font-family:var(--mono);border-radius:10px;border:1px solid var(--paper3);background:#fff;color:var(--ink);min-height:44px}
+  .sronly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+  /* ===== §2.1 반응형 캐스케이드 =====
+     min-* 경계를 쓰면 소수 px(줌·DPR·% 레이아웃)에서 1px 공백 구간이 생기므로
+     전부 max-* 조건만 쓰고, 같은 특이도에서 '선언 순서'로 우선순위를 정한다.
+     뒤 규칙은 앞 규칙이 만지는 레이아웃·캔버스·계기판 속성을 전부 재지정한다.
+     검산: 800×600(내부≈480) → ②만 / 600폭·내부500 → ②③ 중 ③ / 640×360·800×360(내부≈288) → ④
+           내부 470.5px → ②(±③) / 폭 720.5px → ①·② — 어떤 조합에서도 정확히 하나로 결정됨. */
+  /* ① 기본 = 2열, 캔버스 320×420 (위 .simwrap/.simcanvas/.gauges 기본 규칙) */
+  /* ② 저높이(≤530px): 캔버스만 축소, 레이아웃은 2열 그대로 */
+  @media (max-height:530px){
+    .simwrap{grid-template-columns:auto 1fr}
+    /* 캔버스 높이 = 내부 높이 − 진행 띠 − 컨트롤 − 여백 24px (최소 300px, 비율 유지) */
+    .simblock{--ctl-reserve:96px}          /* 핵심 컨트롤 2줄(44px×2) 예약 — 캔버스 높이와 같은 상수를 쓴다 */
+    .simcanvas{height:max(300px,calc(100vh - var(--rail-h) - var(--ctl-reserve) - 24px));width:auto;aspect-ratio:320/420;margin:0}
+    .canvasbox{width:auto;margin:0}
+    .gauges{grid-template-columns:1fr 1fr}
+    /* 컨트롤을 한 줄로 흘려 높이를 아낀다(캔버스+핵심 컨트롤 동시 표시 확보) */
+    .simctl{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 0 4px}
+    .simctl .ctlrow{gap:6px}
+    .rowlbl{display:none}                              /* 줄 라벨 숨김 — 스테퍼에 단위·aria-label 이 있음 */
+    .lockchip{font-size:11.5px;padding:4px 10px}
+  }
+  /* ③ 좁은 폭(≤720px): 1열 접기 + 계기판(P·V·T·n)은 캔버스 위 오버레이 칩 */
+  @media (max-width:720px){
+    .simwrap{grid-template-columns:1fr}
+    .simblock{--ctl-reserve:140px}   /* 잠금 라벨 + 스테퍼·기록 + 재생 = 최대 3줄 */
+    /* 권장 크기 280×360 을 기본으로 쓰되, 내부 높이가 모자라면 비율을 지키며 줄여
+       '캔버스 + 핵심 컨트롤 동시 표시'(§2.1의 판정 기준)를 항상 만족시킨다. */
+    .simcanvas{height:min(360px,calc(100vh - var(--rail-h) - var(--ctl-reserve) - 16px));width:auto;aspect-ratio:280/360;margin:0 auto}
+    .canvasbox{width:auto;max-width:280px;margin:0 auto}
+    .recstate{font-size:11px;flex-basis:100%}
+    .stepper .cap{display:none}      /* 추 개수·입자 수는 계기판과 실린더 그림에 이미 있음 */
+    [data-act="record"] .long{display:none}
+    [data-act="record"] .short{display:inline}
+    .gauges{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:min(264px,86%);z-index:2;pointer-events:none;
+      grid-template-columns:repeat(4,minmax(0,1fr));background:rgba(251,250,246,.88);border:1px solid var(--paper3);border-radius:10px;padding:4px}
+    .gauges .gauge{background:transparent;border-color:transparent;padding:1px 3px}
+    .gauges .gauge .v{font-size:12px}
+    .gauges .gauge .k{font-size:9.5px}
+    .gauges .gauge.wide{grid-column:auto}
+  }
+  /* ④ 저높이 가로(≤470px): 저높이 2열 — ②③이 만진 속성을 전부 재지정
+        왼쪽 = 캔버스(내부 높이 − 진행 띠, 최소 180px), 오른쪽 = 계기판 칩 + 조작 컨트롤 세로 배치.
+        .simwrap 을 display:contents 로 풀어 캔버스·계기판·컨트롤을 .simblock 그리드에 직접 올린다. */
+  @media (max-height:470px){
+    .simblock{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:12px;align-items:start}
+    .simwrap{display:contents}
+    .canvasbox{grid-column:1;grid-row:1/3}
+    .gaugepanel{grid-column:2;grid-row:1;gap:4px}
+    .gaugepanel>.gauges:nth-of-type(2){display:none}   /* 측정 칩은 아래 스크롤로 — 높이 확보 */
+    .speedlegend{display:none}
+    .lowbanner{grid-column:1/-1;grid-row:1}
+    .simctl{grid-column:2;grid-row:2;gap:4px}
+    .ctlrow{gap:6px}
+    .simwrap{grid-template-columns:auto 1fr}
+    .simcanvas{height:max(180px,calc(100vh - var(--rail-h) - 12px));width:auto;aspect-ratio:320/420;margin:0}
+    /* 오른쪽 컨트롤 열은 내부 뷰포트를 넘지 않게 묶고, 넘치면 그 안에서만 스크롤 */
+    .simblock{--ctl-reserve:calc(100vh - var(--rail-h) - 12px)}
+    .simctl{flex-direction:column;flex-wrap:nowrap;align-items:stretch;padding:0;min-height:0}
+    .canvasbox{width:auto;margin:0}
+    .gauges{position:static;top:auto;left:auto;transform:none;width:auto;z-index:auto;pointer-events:auto;
+      grid-template-columns:1fr 1fr;background:none;border:0;border-radius:0;padding:0}
+    .gauges .gauge{background:var(--paper2);border-color:var(--paper3);padding:4px 7px}
+    .gauges .gauge .v{font-size:12.5px}
+    .gauges .gauge .k{font-size:10px}
+    .gauges .gauge.wide{grid-column:1/-1}
+    .simctl{position:static;padding:4px 0}
+    main{padding-top:8px}
+  }
+
+  img.printonly{display:none}
+  @media print{
+    .topbar,.simctl,.btn,.minibtn,.stepper,.lockmsg,.ro-note{display:none!important}
+    .graphcanvas{display:none!important}
+    img.printonly{display:block!important;width:100%;border:1px solid var(--paper3);border-radius:12px}
+    body{background:#fff;background-image:none}
+    .card{box-shadow:none;break-inside:avoid}
+    .stage.hidden{display:none}
+    main{max-width:none;padding:0}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="rail"><span id="railfill"></span></div>
+  <div class="topmeta">
+    <span class="step" id="stepnow">STEP 01</span>
+    <span class="lbl" id="steplabel">도입 · 목표</span>
+    <span class="chip" id="whochip">학번 · 이름</span>
+    <span class="chip ver">v1</span>
+    <span class="chip tbadge" id="tbadge" hidden>교사 미리보기</span>
+    <span class="chip err" id="savefail" hidden>저장 실패 — 내보내기로 백업</span>
+  </div>
+</header>
+<main id="main">
+
+  <!-- ============================ ① 도입 · 목표 ============================ -->
+  <section class="stage" id="s1">
+    <div class="stagehead"><div class="num" id="n1">1</div><div><h2>도입 · 목표</h2><div class="sub">입자 모형 복습</div></div></div>
+
+    <div class="card">
+      <div class="hero">
+        <div class="bar"></div>
+        <div>
+          <p class="eyebrow">STEP 01 · 오늘의 실험 목표</p>
+          <h1>실린더 속 기체 입자의 운동을 관찰해<br><em>압력·부피·온도의 관계</em>를 찾고,<br>이상기체 상태 방정식으로 설명한다.</h1>
+          <ul class="goals">
+            <li><span class="g">1</span><span>기체의 압력이 <b>입자가 벽에 부딪히는 것</b>에서 생긴다는 것을 설명할 수 있다.</span></li>
+            <li><span class="g">2</span><span>온도를 일정하게 두고 <b>압력과 부피가 반비례</b>함을 데이터로 찾아낸다.</span></li>
+            <li><span class="g">3</span><span>부피–온도 그래프에서 <b>절대영도(−273 ℃)</b>를 외삽으로 발견한다.</span></li>
+            <li><span class="g">4</span><span>모은 데이터에서 <b>PV/nT 가 항상 일정</b>함을 확인하고 <b>PV = nRT</b>를 세운다.</span></li>
+          </ul>
+          <div class="tags" style="margin-top:12px"><span class="tag">PV=nRT</span><span class="tag">보일</span><span class="tag">샤를</span><span class="tag">게이뤼삭</span><span class="tag">아보가드로</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="manualBox" hidden>
+      <div class="note signal" id="manualNote">⚠️ 로그인 정보가 없어요. 이름과 학번을 직접 입력해 주세요.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+        <div style="flex:1 1 150px"><label class="fld" for="mName">이름</label><input type="text" id="mName" autocomplete="off"></div>
+        <div style="flex:1 1 150px"><label class="fld" for="mSid">학번</label><input type="text" id="mSid" inputmode="numeric" autocomplete="off"></div>
+        <div style="align-self:flex-end"><button class="btn sm ghost" id="mSave">저장</button></div>
+      </div>
+      <div class="lockmsg" id="manualMsg"></div>
+    </div>
+
+    <div class="card tight">
+      <p class="qtext" style="margin-bottom:8px">💡 먼저 이 도구를 구경해 보자 — <b>조작은 아직 안 돼요</b></p>
+      <div class="simblock" data-sim="intro"></div>
+      <div class="note lime">기체 입자는 쉬지 않고 마구 움직여요(<b>열운동</b>). 그 입자들이 <b>벽과 피스톤에 부딪히는 것</b>이 바로 <b>압력</b>이에요.</div>
+      <details class="more">
+        <summary>이 화면이 쓰는 ‘이상기체’ 가정 3줄 — 더 자세히 ▾</summary>
+        <div class="body">
+          ① <b>입자 자체의 부피는 무시</b>합니다(점처럼 취급).<br>
+          ② <b>입자 사이에 작용하는 힘은 없다</b>고 봅니다 — 그래서 이 화면에서 <b>입자끼리는 서로 그냥 통과</b>합니다(부딪히지 않아요).<br>
+          ③ <b>벽·피스톤과의 충돌만 완전탄성</b>입니다(부딪혀도 속력이 줄지 않음).<br>
+          <span style="color:var(--ink3)">입자끼리의 충돌은 전체 운동량·에너지를 바꾸지 않으므로, 빼도 압력과 상태방정식의 결론은 같습니다.</span>
+        </div>
+      </details>
+    </div>
+
+    <button class="btn next" id="startBtn">시작하기 →</button>
+    <div class="lockmsg" id="lock1"></div>
+  </section>
+
+  <!-- ============================ ② 예상 ============================ -->
+  <section class="stage hidden" id="s2">
+    <div class="stagehead"><div class="num" id="n2">2</div><div><h2>예상</h2><div class="sub">조작하기 전에 먼저 생각해 보기</div></div></div>
+    <div class="card">
+      <p class="qhint">채점하지 않아요. 나중에 실제 결과와 비교할 거예요.</p>
+      <div class="q">
+        <p class="qtext">1. 온도를 그대로 두고 <b>세게 누르면</b> 부피는?</p>
+        <div class="choices" data-pred="pv">
+          <label class="choice"><input type="radio" name="pv" value="커진다"><span>커진다</span></label>
+          <label class="choice"><input type="radio" name="pv" value="작아진다"><span>작아진다</span></label>
+          <label class="choice"><input type="radio" name="pv" value="그대로"><span>그대로</span></label>
+        </div>
+      </div>
+      <div class="q">
+        <p class="qtext">2. 누르는 힘은 그대로 두고 <b>가열하면</b> 부피는?</p>
+        <div class="choices" data-pred="vt">
+          <label class="choice"><input type="radio" name="vt" value="커진다"><span>커진다</span></label>
+          <label class="choice"><input type="radio" name="vt" value="작아진다"><span>작아진다</span></label>
+          <label class="choice"><input type="radio" name="vt" value="그대로"><span>그대로</span></label>
+        </div>
+      </div>
+      <div class="q">
+        <p class="qtext">3. <b>부피를 못 변하게 막고</b> 가열하면 압력은?</p>
+        <div class="choices" data-pred="pt">
+          <label class="choice"><input type="radio" name="pt" value="커진다"><span>커진다</span></label>
+          <label class="choice"><input type="radio" name="pt" value="작아진다"><span>작아진다</span></label>
+          <label class="choice"><input type="radio" name="pt" value="그대로"><span>그대로</span></label>
+        </div>
+      </div>
+      <div class="q">
+        <p class="qtext">왜 그렇게 생각했나요?</p>
+        <textarea id="predReason" data-ai="predict.reason" placeholder="입자의 움직임으로 설명해 보세요."></textarea>
+        <div class="aimsg" id="ai-predict.reason"></div>
+      </div>
+    </div>
+    <button class="btn next" id="next2">다음으로 계속 ↓</button>
+    <div class="lockmsg" id="lock2"></div>
+  </section>
+
+  <!-- ============================ ③ 탐구1 · 등온 ============================ -->
+  <section class="stage hidden" id="s3">
+    <div class="stagehead"><div class="num" id="n3">3</div><div><h2>탐구 1 · 등온 — 압력과 부피</h2><div class="sub">보일 법칙 · 🔒 온도 고정</div></div></div>
+    <div class="card tight">
+      <div class="ro-note">🔒 이 단계는 완료되어 읽기 전용이에요. (고치려면 맨 아래 <b>처음부터 다시</b>)</div>
+      <div class="simblock" data-sim="boyle"></div>
+    </div>
+    <div class="card">
+      <div class="note lime">부피를 반으로 줄이면 → 피스톤까지 갔다 오는 거리가 반 → <b>피스톤 충돌 빈도 2배</b> → 압력 2배.
+        입자의 <b>속력은 그대로</b>예요(온도가 안 변했으니까). 계기판의 <b>평균 충격</b>이 변하지 않는지 확인해 보세요.</div>
+      <div class="datagrid" style="margin-top:12px">
+        <div class="tablescroll"><table class="dtable" data-table="boyle"><thead><tr><th>#</th><th>P<span style="font-weight:400">(atm)</span></th><th>V<span style="font-weight:400">(L)</span></th><th>P×V</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="graphbox">
+          <div class="graphhead"><span class="t">P–V 그래프</span><button class="minibtn" id="invToggle" aria-pressed="false">1/V 로 보기</button></div>
+          <canvas class="graphcanvas" data-graph="boyle" width="480" height="360" role="img" aria-label="압력과 부피 그래프"></canvas>
+        </div>
+      </div>
+      <div class="kv" id="boyleKv"></div>
+    </div>
+    <div class="card">
+      <div class="q">
+        <p class="qtext">Q1. 압력을 2배로 하면 부피는 어떻게 되나요?</p>
+        <textarea id="q_boyle_q1" data-ai="boyle.q1" placeholder="표의 숫자를 보고 써 보세요."></textarea>
+        <div class="aimsg" id="ai-boyle.q1"></div>
+      </div>
+      <div class="q">
+        <p class="qtext">Q2. 표의 <b>P×V</b> 열의 값은 어떻게 되나요?</p>
+        <textarea id="q_boyle_q2" data-ai="boyle.q2" placeholder="P×V 열을 위에서 아래로 읽어 보세요."></textarea>
+        <div class="aimsg" id="ai-boyle.q2"></div>
+      </div>
+      <div class="note" id="cmp3"></div>
+    </div>
+    <button class="btn next" id="next3">다음으로 계속 ↓</button>
+    <div class="lockmsg" id="lock3"></div>
+  </section>
+
+  <!-- ============================ ④ 탐구2 · 등압 ============================ -->
+  <section class="stage hidden" id="s4">
+    <div class="stagehead"><div class="num" id="n4">4</div><div><h2>탐구 2 · 등압 — 온도와 부피</h2><div class="sub">샤를 법칙 · 🔒 압력 고정</div></div></div>
+    <div class="card tight">
+      <div class="ro-note">🔒 이 단계는 완료되어 읽기 전용이에요.</div>
+      <div class="simblock" data-sim="charles"></div>
+    </div>
+    <div class="card">
+      <div class="note lime">압력이 고정이니 <b>평균 압력(꾸준히 미는 힘)</b>은 같아야 해요. 입자가 빨라져서 <b>한 번 부딪힐 때의 충격</b>은 커졌으니,
+        <b>공간을 넓혀 충돌 빈도를 낮춰야</b> 균형이 맞습니다.</div>
+      <div class="datagrid" style="margin-top:12px">
+        <div class="tablescroll"><table class="dtable" data-table="charles"><thead><tr><th>#</th><th>T<span style="font-weight:400">(K)</span></th><th>T<span style="font-weight:400">(℃)</span></th><th>V<span style="font-weight:400">(L)</span></th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="graphbox">
+          <div class="graphhead"><span class="t">V–T 그래프</span>
+            <span class="modes" role="group" aria-label="x축 단위">
+              <button class="minibtn" id="axC" aria-pressed="true">x축 ℃</button>
+              <button class="minibtn" id="axK" aria-pressed="false">x축 K</button>
+            </span>
+          </div>
+          <canvas class="graphcanvas" data-graph="charles" width="480" height="360" role="img" aria-label="부피와 온도 그래프"></canvas>
+        </div>
+      </div>
+      <div class="note" id="axisNote" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <div class="q">
+        <p class="qtext">℃ 로 그린 직선을 왼쪽으로 쭉 늘이면 <b>V = 0</b> 이 되는 x절편은 몇 ℃ 일까요?</p>
+        <p class="qhint">그래프의 점선을 따라가 보세요. (정수로, 예: <span class="mono">-273</span>)</p>
+        <input class="inlinein" type="text" id="interceptIn" inputmode="text" placeholder="예: -273" autocomplete="off"> <span style="font-weight:700">℃</span>
+        <div class="verdict" id="interceptVerdict"></div>
+      </div>
+      <div class="q">
+        <p class="qtext">Q. 온도를 올리면 왜 부피가 커질까요? <span style="font-weight:400;color:var(--ink3)">(입자의 운동으로 설명)</span></p>
+        <textarea id="q_charles_relation" data-ai="charles.relation" placeholder="입자의 속력·충돌로 설명해 보세요."></textarea>
+        <div class="aimsg" id="ai-charles.relation"></div>
+      </div>
+      <div class="note signal">⚠️ 실제로는 그 온도에 닿기 훨씬 전에 기체가 액체가 돼요. 그래서 이 값은 <b>외삽</b>(선을 늘여서 얻은 값)입니다.</div>
+      <div class="note" id="cmp4"></div>
+    </div>
+    <button class="btn next" id="next4">다음으로 계속 ↓</button>
+    <div class="lockmsg" id="lock4"></div>
+  </section>
+
+  <!-- ============================ ⑤ 탐구3 · 등적 ============================ -->
+  <section class="stage hidden" id="s5">
+    <div class="stagehead"><div class="num" id="n5">5</div><div><h2>탐구 3 · 등적 — 온도와 압력</h2><div class="sub">게이뤼삭 법칙 · 🔒 부피 고정(피스톤 잠김)</div></div></div>
+    <div class="card tight">
+      <div class="ro-note">🔒 이 단계는 완료되어 읽기 전용이에요.</div>
+      <div class="simblock" data-sim="gaylussac"></div>
+    </div>
+    <div class="card">
+      <div class="note lime">이 단계가 <b>압력의 두 요인을 분리</b>해 보여줍니다. 계기판의 <b>충돌 빈도</b>와 <b>평균 충격</b>을 둘 다 지켜보세요.</div>
+      <div class="datagrid" style="margin-top:12px">
+        <div class="tablescroll"><table class="dtable" data-table="gaylussac"><thead><tr><th>#</th><th>T<span style="font-weight:400">(K)</span></th><th>P<span style="font-weight:400">(atm)</span></th><th>P/T</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="graphbox">
+          <div class="graphhead"><span class="t">P–T 그래프</span></div>
+          <canvas class="graphcanvas" data-graph="gaylussac" width="480" height="360" role="img" aria-label="압력과 온도 그래프"></canvas>
+        </div>
+      </div>
+      <details class="more"><summary>③ 등온 결과와 비교하기 ▾</summary><div class="body" id="cmp35"></div></details>
+    </div>
+    <div class="card">
+      <div class="q">
+        <p class="qtext">Q. 부피가 못 변하는데 왜 압력이 오를까요?</p>
+        <p class="qhint">💡 힌트: <b>충돌 빈도</b>와 <b>평균 충격</b> 중 무엇이 변했나요?</p>
+        <textarea id="q_gaylussac_relation" data-ai="gaylussac.relation" placeholder="두 가지 중 무엇이 변했는지 써 보세요."></textarea>
+        <div class="aimsg" id="ai-gaylussac.relation"></div>
+      </div>
+      <div class="note" id="cmp5"></div>
+    </div>
+    <button class="btn next" id="next5">다음으로 계속 ↓</button>
+    <div class="lockmsg" id="lock5"></div>
+  </section>
+
+  <!-- ============================ ⑥ 통합 ============================ -->
+  <section class="stage hidden" id="s6">
+    <div class="stagehead"><div class="num" id="n6">6</div><div><h2>통합 · PV = nRT</h2><div class="sub">자유 모드 · 정리 · 평가</div></div></div>
+    <div class="card tight">
+      <div class="simblock" data-sim="combine"></div>
+    </div>
+    <div class="card">
+      <p class="qtext">③④⑤ 세 그래프를 나란히 놓고 보기</p>
+      <div class="triple">
+        <div class="graphbox"><div class="graphhead"><span class="t">P–V (등온)</span></div><canvas class="graphcanvas" data-graph="mini_boyle" width="360" height="270" role="img" aria-label="등온 P-V 그래프"></canvas></div>
+        <div class="graphbox"><div class="graphhead"><span class="t">V–T (등압)</span></div><canvas class="graphcanvas" data-graph="mini_charles" width="360" height="270" role="img" aria-label="등압 V-T 그래프"></canvas></div>
+        <div class="graphbox"><div class="graphhead"><span class="t">P–T (등적)</span></div><canvas class="graphcanvas" data-graph="mini_gaylussac" width="360" height="270" role="img" aria-label="등적 P-T 그래프"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="qtext">지금까지 기록한 <b>모든 점</b></p>
+      <div class="tablescroll"><table class="dtable" id="allTable"><thead><tr><th>#</th><th>탐구</th><th>P<span style="font-weight:400">(atm)</span></th><th>V<span style="font-weight:400">(L)</span></th><th>T<span style="font-weight:400">(K)</span></th><th>n<span style="font-weight:400">(mol)</span></th><th>PV/nT</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="q" style="margin-top:14px">
+        <p class="qtext">Q. <b>PV/nT</b> 열이 항상 같은 값이에요. 이 값의 이름은 무엇일까요?</p>
+        <input class="inlinein" type="text" id="rAnswer" placeholder="예: 기체 상수 R" autocomplete="off" style="width:200px">
+        <div class="verdict" id="rVerdict"></div>
+      </div>
+      <div class="note lime" id="pvnrtNote" style="font-size:15px;font-weight:800;text-align:center">💡 그래서 &nbsp; <span style="font-family:var(--mono)">PV = nRT</span></div>
+      <details class="more"><summary>이상기체의 한계 — 더 자세히 ▾</summary><div class="body">
+        아주 <b>낮은 온도</b>·아주 <b>높은 압력</b>에서는 분자 자체의 부피와 분자 사이의 인력을 더는 무시할 수 없어서 <b>PV = nRT 에서 어긋납니다</b>.
+        ④에서 −273 ℃ 를 <b>외삽</b>으로만 구했던 이유도 같아요 — 그 전에 기체가 액체가 되니까요.
+      </div></details>
+    </div>
+    <div class="card">
+      <p class="qtext" style="margin-bottom:10px">형성평가 3문항</p>
+      <div class="q">
+        <p class="qtext">1. 주사기 끝을 막고 누르면 왜 잘 안 눌릴까요? <span style="font-weight:400;color:var(--ink3)">(보일 + 입자 충돌로 설명)</span></p>
+        <textarea id="q_assess_a1" data-ai="assess.a1"></textarea><div class="aimsg" id="ai-assess.a1"></div>
+      </div>
+      <div class="q">
+        <p class="qtext">2. 여름에 자전거 타이어가 터질 수 있는 까닭은? <span style="font-weight:400;color:var(--ink3)">(등적 + 게이뤼삭)</span></p>
+        <textarea id="q_assess_a2" data-ai="assess.a2"></textarea><div class="aimsg" id="ai-assess.a2"></div>
+      </div>
+      <div class="q">
+        <p class="qtext">3. 온도를 올렸을 때 압력이 커지는 이유를 <b>‘빈도’</b>와 <b>‘세기’</b> 두 낱말을 써서 설명하세요.</p>
+        <textarea id="q_assess_a3" data-ai="assess.a3"></textarea>
+        <div class="aimsg" id="ai-assess.a3"></div>
+        <div class="verdict" id="a3Verdict"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="actions">
+        <button class="btn lime" id="exportBtn">결과 내보내기 (JSON)</button>
+        <button class="btn ghost" id="printBtn">인쇄 / PDF 보기</button>
+        <button class="btn ghost" id="resetBtn" style="margin-left:auto">처음부터 다시</button>
+      </div>
+      <div class="lockmsg" id="lock6"></div>
+      <div class="note" id="exportNote" style="display:none"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ===================== IDEALGAS ENGINE BEGIN =====================
+   §1.2 §1.3 §1.4 물리 엔진 — DOM·window·Date 를 전혀 쓰지 않는 순수 코드.
+   tests-idealgas/ 의 검증 스크립트가 이 HTML 에서 아래 BEGIN~END 블록을
+   그대로 잘라내 Node 에서 실행한다(= 테스트한 코드와 배포되는 코드가 동일).
+   ================================================================= */
+var IdealGasEngine = (function () {
+  'use strict';
+
+  /* ---------- §1.2 고정 논리 좌표계 (반응형 크기·DPR 과 완전 분리) ---------- */
+  var W0 = 320, H0 = 420;               // 논리 캔버스
+  var XL = 30, XR = 290;                // 실린더 내부 좌·우 벽
+  var W_INT = XR - XL;                  // 260 = 피스톤 길이 W (2D 압력의 분모)
+  var CEIL_Y = 20, FLOOR_Y = 400;       // 실린더 내부 천장·바닥
+  var PISTON_TH = 14;
+  var H_MAX = FLOOR_Y - CEIL_Y - PISTON_TH;  // 366 = V_MAX 일 때의 기체 기둥 높이
+
+  /* ---------- §1.4 단위·기본값·범위 ---------- */
+  var R_GAS = 0.0821;                   // L·atm/(mol·K)
+  var V_MIN = 5, V_MAX = 60;            // L
+  var T_MIN = 100, T_MAX = 600, T_STEP = 25;   // K
+  var P_IN_MIN = 1.0, P_IN_MAX = 4.0, P_STEP = 0.5;   // atm — 외부압력 '입력' 범위
+  var P_SHOW_MIN = 0.25, P_SHOW_MAX = 4.0;            // atm — 반응값 '표시' 범위
+  var N_MIN = 0.25, N_MAX = 2.0, N_STEP = 0.25;       // mol
+  var PARTICLES_PER_MOL = 40, BATCH = 10;             // 0.25 mol = 입자 10개
+  var H_PER_L = H_MAX / V_MAX;          // 6.1 논리단위/L (W 고정이므로 넓이 ∝ 높이)
+
+  /* ---------- 입자·압력 보정 (§1.2 해석적 유도 — 측정 기반 보정 금지) ----------
+     2D 운동론: 피스톤이 받는 시간평균 총 힘 F = N·m·⟨v_y²⟩ / H
+                압력(2D = 피스톤 단위 길이당 힘) P = F / W = N·m·⟨v_y²⟩ / (W·H)
+     N = PARTICLES_PER_MOL·n, ⟨v_y²⟩ = SIGMA2_PER_K·T, H = H_PER_L·V 이므로
+       CAL · (40n)(SIGMA2_PER_K·T) / (W_INT · H_PER_L · V) = R·n·T/V
+     ⇒ CAL = R·W_INT·H_PER_L / (PARTICLES_PER_MOL · SIGMA2_PER_K · m)   ← 닫힌 식
+     (W 가 상수에 들어간다. 기본 상태 n=1,T=273,P=1 → V=22.4133 L 에서 정확히 1.00 atm) */
+  var M_PART = 1;
+  var SIGMA2_PER_K = 155;               // ⟨v_x²⟩=⟨v_y²⟩=σ²=SIGMA2_PER_K·T (논리단위²/s²)
+  var PRESSURE_CAL = R_GAS * W_INT * H_PER_L / (PARTICLES_PER_MOL * SIGMA2_PER_K * M_PART);
+
+  /* ---------- §1.3 피스톤 · §8.2 시간 ---------- */
+  var DT = 1 / 120;                     // 고정 물리 시간격(초)
+  var OMEGA = 20, TAU = 1 / OMEGA;      // τ = 0.05 s, 임계감쇠
+  var SETTLE_POS = 1e-4, SETTLE_VEL = 1e-3;
+  var MAX_SUBSTEP = 8;
+
+  /* ---------- §1.2 표시 노이즈: 이동평균 창 2 s ---------- */
+  var WINDOW_SEC = 2, BIN_SEC = 1 / 12;
+  var NBINS = Math.round(WINDOW_SEC / BIN_SEC);  // 24
+  var FLASH_SEC = 0.1;                  // §7.1 충돌 플래시
+  var PART_R = 4;                       // 그리기 전용 반지름(물리는 점입자)
+
+  /* ---------- 결정론 난수 (seed 고정 — §10 검증용) ---------- */
+  function mulberry32(a) {
+    a = a >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function clamp(x, lo, hi) { return x < lo ? lo : (x > hi ? hi : x); }
+  function volumeOf(n, t, p) { return n * R_GAS * t / p; }
+  function sigmaOf(t) { return Math.sqrt(SIGMA2_PER_K * t); }
+
+  /* §1.4 T 끝점 스냅: 다음 스텝이 범위를 넘으면 정확히 100/600 K 로 스냅 */
+  function snapT(t, dir) {
+    var next = t + dir * T_STEP;
+    if (next > T_MAX) next = T_MAX;
+    if (next < T_MIN) next = T_MIN;
+    return next;
+  }
+
+  /* ---------- Sim ---------- */
+  function Sim(cfg) {
+    cfg = cfg || {};
+    this.rng = mulberry32(cfg.seed === undefined ? 12345 : cfg.seed);
+    this.mode = cfg.mode || 'isothermal';
+    this.T = cfg.t === undefined ? 273 : cfg.t;
+    this.n = cfg.n === undefined ? 1 : cfg.n;
+    this.pExt = cfg.p === undefined ? 1 : cfg.p;
+    this.V = cfg.v === undefined ? volumeOf(this.n, this.T, this.pExt) : cfg.v;
+    this.Veq = this.V; this.Vdot = 0; this.settled = true;
+    this.locked = (this.mode === 'isochoric');
+    this.x = []; this.y = []; this.vx = []; this.vy = [];
+    this.batches = 0;
+    this.time = 0;
+    this.flash = { piston: 0, left: 0, right: 0, floor: 0 };
+    this.bins = []; this.binImp = 0; this.binCnt = 0; this.binT = 0; this.filled = 0;
+    this.rawImp = 0; this.rawCnt = 0; this.rawT = 0;
+    this.syncBatches();
+    this.clearWindow();
+  }
+
+  Sim.prototype.gasTop = function () { return FLOOR_Y - H_PER_L * this.V; };
+  Sim.prototype.pTheory = function () { return this.n * R_GAS * this.T / this.V; };
+  Sim.prototype.vrms = function () { return Math.sqrt(2 * SIGMA2_PER_K * this.T); };
+  Sim.prototype.count = function () { return this.x.length; };
+
+  /* §1.2 입자는 항상 10개 배치 단위로 생성·제거.
+     각 배치는 2D 맥스웰–볼츠만에서 뽑은 뒤 (평균 0, ⟨vx²⟩=⟨vy²⟩=σ²) 로 '정확히' 정규화 →
+     어떤 배치 조합(=어떤 n)에서도 집단 ⟨vy²⟩ 가 목표값을 유지 → 해석적 보정이 그대로 성립. */
+  Sim.prototype.addBatch = function () {
+    var sigma = sigmaOf(this.T), i, u1, u2, r, th;
+    var bx = new Array(BATCH), by = new Array(BATCH);
+    for (i = 0; i < BATCH; i++) {
+      u1 = this.rng(); if (u1 < 1e-12) u1 = 1e-12;
+      u2 = this.rng();
+      r = Math.sqrt(-2 * Math.log(u1)); th = 2 * Math.PI * u2;
+      bx[i] = r * Math.cos(th); by[i] = r * Math.sin(th);   // 독립 표준정규 2개
+    }
+    var mx = 0, my = 0;
+    for (i = 0; i < BATCH; i++) { mx += bx[i]; my += by[i]; }
+    mx /= BATCH; my /= BATCH;
+    var sx = 0, sy = 0;
+    for (i = 0; i < BATCH; i++) { bx[i] -= mx; by[i] -= my; sx += bx[i] * bx[i]; sy += by[i] * by[i]; }
+    sx = Math.sqrt(sx / BATCH); sy = Math.sqrt(sy / BATCH);
+    if (sx < 1e-12) sx = 1e-12;
+    if (sy < 1e-12) sy = 1e-12;
+    var top = this.gasTop(), h = FLOOR_Y - top;
+    for (i = 0; i < BATCH; i++) {
+      this.vx.push(bx[i] * sigma / sx);
+      this.vy.push(by[i] * sigma / sy);
+      this.x.push(XL + this.rng() * W_INT);
+      this.y.push(top + this.rng() * h);
+    }
+    this.batches++;
+  };
+  Sim.prototype.removeBatch = function () {   // LIFO — 남는 배치는 그대로 정규화 상태 유지
+    for (var i = 0; i < BATCH; i++) { this.x.pop(); this.y.pop(); this.vx.pop(); this.vy.pop(); }
+    this.batches--;
+  };
+  Sim.prototype.syncBatches = function () {
+    var target = Math.round(this.n * PARTICLES_PER_MOL / BATCH);
+    while (this.batches < target) this.addBatch();
+    while (this.batches > target) this.removeBatch();
+  };
+
+  /* §1.2 모든 P·V·T·n 조작 시 P_측정 누산기를 즉시 비운다 */
+  Sim.prototype.clearWindow = function () {
+    this.bins = []; this.binImp = 0; this.binCnt = 0; this.binT = 0; this.filled = 0;
+  };
+  Sim.prototype.resetRaw = function () { this.rawImp = 0; this.rawCnt = 0; this.rawT = 0; };
+  Sim.prototype.rawStats = function () {
+    return {
+      impulse: this.rawImp, collisions: this.rawCnt, seconds: this.rawT,
+      pMeasured: this.rawT > 0 ? PRESSURE_CAL * this.rawImp / (W_INT * this.rawT) : null
+    };
+  };
+
+  Sim.prototype.retarget = function () {
+    if (this.locked) { this.Veq = this.V; this.Vdot = 0; this.settled = true; return; }
+    this.Veq = volumeOf(this.n, this.T, this.pExt);
+    if (Math.abs(this.V - this.Veq) / this.Veq >= SETTLE_POS || Math.abs(this.Vdot) / this.Veq >= SETTLE_VEL) this.settled = false;
+  };
+  /* §1.3 이동 중 재조작: V_eq 만 갱신하고 V·dV/dt 는 그대로 이어간다(속도 리셋·큐잉 없음) */
+  Sim.prototype.setPExternal = function (p) { this.pExt = p; this.retarget(); this.clearWindow(); };
+  Sim.prototype.setTemperature = function (t) {
+    if (t === this.T) return;
+    var f = Math.sqrt(t / this.T);        // v_rms ∝ √T — 분포 모양 유지
+    for (var i = 0; i < this.vx.length; i++) { this.vx[i] *= f; this.vy[i] *= f; }
+    this.T = t; this.retarget(); this.clearWindow();
+  };
+  Sim.prototype.setN = function (n) { this.n = n; this.syncBatches(); this.retarget(); this.clearWindow(); };
+  Sim.prototype.setMode = function (m) {
+    this.mode = m; this.locked = (m === 'isochoric');
+    this.retarget(); this.clearWindow();
+  };
+  Sim.prototype.setVolumeLocked = function (v) { this.V = v; this.Veq = v; this.Vdot = 0; this.settled = true; this.clearWindow(); };
+
+  /* 한 물리 스텝 = DT */
+  Sim.prototype.step = function () {
+    var i, N = this.x.length;
+    if (!this.locked) {
+      // §1.3 d²V/dt² = ω²(V_eq−V) − 2ω·dV/dt  — 세미-임플리시트 오일러
+      var a = OMEGA * OMEGA * (this.Veq - this.V) - 2 * OMEGA * this.Vdot;
+      this.Vdot += a * DT;
+      this.V += this.Vdot * DT;
+      if (this.V < 0.5) { this.V = 0.5; if (this.Vdot < 0) this.Vdot = 0; }
+      if (this.V > V_MAX * 1.5) { this.V = V_MAX * 1.5; if (this.Vdot > 0) this.Vdot = 0; }
+      if (!this.settled &&
+          Math.abs(this.V - this.Veq) / this.Veq < SETTLE_POS &&
+          Math.abs(this.Vdot) / this.Veq < SETTLE_VEL) {
+        this.V = this.Veq; this.Vdot = 0; this.settled = true;   // 정확한 평형값으로 스냅
+        this.clearWindow();                                       // → 새 2 s 창 충전 시작
+      }
+    }
+    var top = this.gasTop();
+    // 피스톤이 쓸고 지난 입자는 위치만 되돌린다(속도 불변 → 집단 ⟨v_y²⟩ 보존)
+    for (i = 0; i < N; i++) {
+      if (this.y[i] < top) this.y[i] = top;
+      else if (this.y[i] > FLOOR_Y) this.y[i] = FLOOR_Y;
+    }
+    var imp = 0, cnt = 0, px, py;
+    for (i = 0; i < N; i++) {
+      px = this.x[i] + this.vx[i] * DT;
+      py = this.y[i] + this.vy[i] * DT;
+      if (px < XL) { px = XL + (XL - px); this.vx[i] = -this.vx[i]; if (px > XR) px = XR; this.flash.left = FLASH_SEC; }
+      else if (px > XR) { px = XR - (px - XR); this.vx[i] = -this.vx[i]; if (px < XL) px = XL; this.flash.right = FLASH_SEC; }
+      if (py > FLOOR_Y) { py = FLOOR_Y - (py - FLOOR_Y); this.vy[i] = -this.vy[i]; if (py < top) py = top; this.flash.floor = FLASH_SEC; }
+      else if (py < top) {
+        py = top + (top - py); this.vy[i] = -this.vy[i]; if (py > FLOOR_Y) py = FLOOR_Y;
+        imp += 2 * M_PART * Math.abs(this.vy[i]); cnt++;          // §1.2 측정은 피스톤 면 한 곳에서만
+        this.flash.piston = FLASH_SEC;
+      }
+      this.x[i] = px; this.y[i] = py;
+    }
+    this.binImp += imp; this.binCnt += cnt; this.binT += DT;
+    while (this.binT >= BIN_SEC - 1e-12) {
+      this.bins.push({ i: this.binImp, c: this.binCnt });
+      if (this.bins.length > NBINS) this.bins.shift();
+      if (this.filled < NBINS) this.filled++;
+      this.binImp = 0; this.binCnt = 0; this.binT -= BIN_SEC;
+    }
+    this.rawImp += imp; this.rawCnt += cnt; this.rawT += DT;
+    this.time += DT;
+    if (this.flash.piston > 0) this.flash.piston -= DT;
+    if (this.flash.left > 0) this.flash.left -= DT;
+    if (this.flash.right > 0) this.flash.right -= DT;
+    if (this.flash.floor > 0) this.flash.floor -= DT;
+  };
+  Sim.prototype.advance = function (sec) {
+    var k = Math.round(sec / DT);
+    for (var i = 0; i < k; i++) this.step();
+    return this;
+  };
+  /* 정착까지 스텝 수 (테스트·UX 문구 근거용) */
+  Sim.prototype.stepsToSettle = function (limit) {
+    var k = 0, max = limit || 100000;
+    while (!this.settled && k < max) { this.step(); k++; }
+    return k;
+  };
+
+  Sim.prototype.windowFull = function () { return this.filled >= NBINS; };
+  Sim.prototype.measured = function () {
+    if (this.filled <= 0) return null;
+    var s = 0, c = 0, i;
+    for (i = 0; i < this.bins.length; i++) { s += this.bins[i].i; c += this.bins[i].c; }
+    var dur = this.filled * BIN_SEC;
+    return {
+      pMeasured: PRESSURE_CAL * s / (W_INT * dur),
+      freq: c / dur,
+      meanImpulse: c > 0 ? s / c : 0,
+      full: this.filled >= NBINS
+    };
+  };
+
+  /* ---------- §10 P_측정 검증용: 고정 상태에서 워밍업 후 순수 측정 ---------- */
+  function measure(cfg) {
+    var s = new Sim({ mode: 'isochoric', t: cfg.t, n: cfg.n, v: cfg.v, p: cfg.p, seed: cfg.seed });
+    s.advance(cfg.warmup === undefined ? 2 : cfg.warmup);
+    s.resetRaw();
+    s.advance(cfg.measure === undefined ? 25 : cfg.measure);
+    var raw = s.rawStats(), pt = s.pTheory();
+    return {
+      pMeasured: raw.pMeasured, pTheory: pt, ratio: raw.pMeasured / pt,
+      collisions: raw.collisions, seconds: raw.seconds,
+      freq: raw.collisions / raw.seconds,
+      meanImpulse: raw.collisions > 0 ? raw.impulse / raw.collisions : 0
+    };
+  }
+
+  return {
+    Sim: Sim, measure: measure, mulberry32: mulberry32,
+    snapT: snapT, clamp: clamp, volumeOf: volumeOf, sigmaOf: sigmaOf,
+    C: {
+      W0: W0, H0: H0, XL: XL, XR: XR, W_INT: W_INT, CEIL_Y: CEIL_Y, FLOOR_Y: FLOOR_Y,
+      PISTON_TH: PISTON_TH, H_MAX: H_MAX, H_PER_L: H_PER_L, PART_R: PART_R,
+      R_GAS: R_GAS, V_MIN: V_MIN, V_MAX: V_MAX, T_MIN: T_MIN, T_MAX: T_MAX, T_STEP: T_STEP,
+      P_IN_MIN: P_IN_MIN, P_IN_MAX: P_IN_MAX, P_STEP: P_STEP,
+      P_SHOW_MIN: P_SHOW_MIN, P_SHOW_MAX: P_SHOW_MAX,
+      N_MIN: N_MIN, N_MAX: N_MAX, N_STEP: N_STEP,
+      PARTICLES_PER_MOL: PARTICLES_PER_MOL, BATCH: BATCH,
+      M_PART: M_PART, SIGMA2_PER_K: SIGMA2_PER_K, PRESSURE_CAL: PRESSURE_CAL,
+      DT: DT, OMEGA: OMEGA, TAU: TAU, SETTLE_POS: SETTLE_POS, SETTLE_VEL: SETTLE_VEL,
+      MAX_SUBSTEP: MAX_SUBSTEP, WINDOW_SEC: WINDOW_SEC, BIN_SEC: BIN_SEC, NBINS: NBINS,
+      FLASH_SEC: FLASH_SEC
+    }
+  };
+})();
+/* ===================== IDEALGAS ENGINE END ===================== */
+</script>
+
+<script>
+(function () {
+'use strict';
+var E = IdealGasEngine, C = E.C;
+
+/* ===================== §4 교사 설정 ===================== */
+var CONFIG = {
+  HINT_PW: "1234",          // 힌트 잠금 비밀번호 (스펙트럼과 동일)
+  MIN_POINTS: 4,            // 각 탐구 데이터 점 최소 개수 — '서로 다른' 점만 카운트(§6)
+  AI_CHECK: true,           // 서술형 Gemini 1차 검수 사용 여부 (대상 키 8개는 §8.4)
+  REQUIRE_AI_PASS: false,   // true여도 '정상 응답의 ok=false'만 차단. 통신 실패는 항상 통과
+  GOAL: "실린더 속 기체 입자의 운동을 관찰해 압력·부피·온도의 관계를 찾고, 이상기체 상태 방정식으로 설명한다.",
+  SUPABASE_URL: "https://razxfewnttqbqaxgypju.supabase.co",
+  SUPABASE_ANON: "sb_publishable_I4a3qah7BkbvUr_NS1dHfA_fURwDbw9"
+};
+var AI_URL = CONFIG.SUPABASE_URL + "/functions/v1/check-experiment-response";
+var AI_TIMEOUT = 8000, AI_TOTAL_CAP = 16000;   // §8.4 8 s × 재시도 포함 2회 = 총 16 s
+
+/* ===================== §3.2 학생 정보 자동 주입 ===================== */
+var S = window.__SITE_STUDENT__ || null;
+var IS_ADMIN = !!(S && S.isAdmin === true);
+var $ = function (s, r) { return (r || document).querySelector(s); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+var KEY_PREFIX = 'ideal_gas_v1_';
+var activeKey = IS_ADMIN ? KEY_PREFIX + 'teacher' : (S && S.sid ? KEY_PREFIX + S.sid : KEY_PREFIX + 'anon');
+
+/* ===================== §3.1 상태 ===================== */
+function defaultState() {
+  return {
+    version: 'v1',
+    student: { name: (S && S.name) || '', sid: (S && S.sid) || '', fromSite: !!S },
+    updatedAt: null,
+    unlockedStep: 1,
+    intro: { started: false },
+    predict: { pv: '', vt: '', pt: '', reason: '' },
+    boyle: { points: [], q1: '', q2: '', inverseToggled: false },
+    charles: { points: [], axisToggled: false, intercept: '', relation: '' },
+    gaylussac: { points: [], relation: '' },
+    combine: { points: [], rAnswer: '' },
+    assess: { a1: '', a2: '', a3: '' },
+    aiCheck: {},
+    exportedAt: null,
+    exportedHash: null
+  };
+}
+var state = defaultState();
+var unlocked = 1;
+var saveFailed = false;
+
+/* ---------- 문자열 해시 (FNV-1a 32bit, 내보내기·AI textHash 공용) ---------- */
+function hash32(str) {
+  var h = 0x811c9dc5, i;
+  for (i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0; }
+  return ('0000000' + h.toString(16)).slice(-8);
+}
+/* §3.3 정규 직렬화 — 키 정렬, 제외 필드 명시 목록 */
+var HASH_EXCLUDE = ['updatedAt', 'unlockedStep', 'exportedAt', 'exportedHash'];
+function canonical(v) {
+  if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
+  if (v && typeof v === 'object') {
+    var ks = Object.keys(v).sort();
+    return '{' + ks.map(function (k) { return JSON.stringify(k) + ':' + canonical(v[k]); }).join(',') + '}';
+  }
+  return JSON.stringify(v === undefined ? null : v);
+}
+function payloadOf(st) {
+  var c = {}, k;
+  for (k in st) if (Object.prototype.hasOwnProperty.call(st, k) && HASH_EXCLUDE.indexOf(k) < 0) c[k] = st[k];
+  return c;
+}
+function payloadHash(st) { return hash32(canonical(payloadOf(st))); }
+
+/* ---------- 경로 접근 ---------- */
+function getPath(o, p) { var a = p.split('.'), i, x = o; for (i = 0; i < a.length; i++) { if (x == null) return undefined; x = x[a[i]]; } return x; }
+function setPath(o, p, v) { var a = p.split('.'), i, x = o; for (i = 0; i < a.length - 1; i++) x = x[a[i]]; x[a[a.length - 1]] = v; }
+function tx(v) { return typeof v === 'string' ? v.trim() : ''; }
+
+/* ===================== §3.1 저장 / 로드 ===================== */
+var saveTimer = null;
+function save(now) {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  if (!now) { saveTimer = setTimeout(function () { saveTimer = null; save(true); }, 400); return; }
+  try {
+    state.updatedAt = new Date().toISOString();
+    state.unlockedStep = unlocked;
+    localStorage.setItem(activeKey, JSON.stringify(state));
+    if (saveFailed) { saveFailed = false; $('#savefail').hidden = true; }
+  } catch (e) {
+    saveFailed = true; $('#savefail').hidden = false;
+  }
+}
+function isNum(x) { return typeof x === 'number' && isFinite(x); }
+function inRange(x, lo, hi) { return isNum(x) && x >= lo - 1e-6 && x <= hi + 1e-6; }
+function validPoint(pt) {
+  if (!pt || typeof pt !== 'object') return false;
+  if (!inRange(pt.pExternal, C.P_IN_MIN, C.P_IN_MAX)) return false;
+  if (!inRange(pt.pTheory, C.P_SHOW_MIN, C.P_SHOW_MAX)) return false;
+  if (!inRange(pt.v, C.V_MIN, C.V_MAX)) return false;
+  if (!inRange(pt.t, C.T_MIN, C.T_MAX)) return false;
+  if (!inRange(pt.n, C.N_MIN, C.N_MAX)) return false;
+  // pMeasured 는 통계 측정값 — 유한한 비음수 또는 null 만 검사(§3.1)
+  if (pt.pMeasured !== null && !(isNum(pt.pMeasured) && pt.pMeasured >= 0)) return false;
+  return true;
+}
+function validState(o) {
+  if (!o || typeof o !== 'object') return false;
+  if (o.version !== 'v1') return false;
+  if (!o.student || typeof o.student !== 'object') return false;
+  if (typeof o.student.sid !== 'string' || typeof o.student.name !== 'string') return false;
+  if (!o.intro || typeof o.intro.started !== 'boolean') return false;
+  var strs = ['predict.pv', 'predict.vt', 'predict.pt', 'predict.reason', 'boyle.q1', 'boyle.q2',
+    'charles.intercept', 'charles.relation', 'gaylussac.relation', 'combine.rAnswer',
+    'assess.a1', 'assess.a2', 'assess.a3'], i;
+  for (i = 0; i < strs.length; i++) if (typeof getPath(o, strs[i]) !== 'string') return false;
+  if (typeof o.boyle.inverseToggled !== 'boolean' || typeof o.charles.axisToggled !== 'boolean') return false;
+  var arrs = ['boyle.points', 'charles.points', 'gaylussac.points', 'combine.points'], j, arr;
+  for (i = 0; i < arrs.length; i++) {
+    arr = getPath(o, arrs[i]);
+    if (!Array.isArray(arr)) return false;
+    for (j = 0; j < arr.length; j++) if (!validPoint(arr[j])) return false;
+  }
+  if (!o.aiCheck || typeof o.aiCheck !== 'object') return false;
+  if (o.exportedAt !== null && typeof o.exportedAt !== 'string') return false;
+  if (o.exportedHash !== null && typeof o.exportedHash !== 'string') return false;
+  return true;   // unlockedStep 은 신뢰하지 않는 캐시 — 손상 판정에서 제외
+}
+function readKey(k) {
+  var raw;
+  try { raw = localStorage.getItem(k); } catch (e) { return { empty: true }; }
+  if (!raw) return { empty: true };
+  var o;
+  try { o = JSON.parse(raw); } catch (e) { return { broken: true, raw: raw }; }
+  if (!validState(o)) return { broken: true, raw: raw };
+  return { data: o };
+}
+function backup(k, raw) { try { localStorage.setItem(k + '_bak', raw); } catch (e) { } }
+
+/* ===================== §8.4 AI 검수 ===================== */
+var AI_KEYS_BY_STEP = {
+  2: ['predict.reason'],
+  3: ['boyle.q1', 'boyle.q2'],
+  4: ['charles.relation'],
+  5: ['gaylussac.relation'],
+  6: ['assess.a1', 'assess.a2', 'assess.a3']
+};
+var AI_ALL = ['predict.reason', 'boyle.q1', 'boyle.q2', 'charles.relation', 'gaylussac.relation', 'assess.a1', 'assess.a2', 'assess.a3'];
+var aiInflight = {};      // key → {ctrl, promise}
+
+function aiText(key) { return tx(getPath(state, key)); }
+function aiSettled(key) {
+  var r = state.aiCheck[key];
+  if (!r || !r.status) return false;
+  if (r.textHash !== hash32(aiText(key))) return false;              // 낡은 판정
+  return r.status === 'ok' || r.status === 'unavailable' || r.status === 'fail';
+}
+function aiPassed(key) {
+  var r = state.aiCheck[key];
+  if (!r || r.textHash !== hash32(aiText(key))) return false;
+  return r.status === 'ok' || r.status === 'unavailable';
+}
+function clearAi(key) {
+  if (state.aiCheck[key]) { delete state.aiCheck[key]; }
+  if (aiInflight[key]) { try { aiInflight[key].ctrl.abort(); } catch (e) { } delete aiInflight[key]; }
+  paintAi(key);
+}
+function paintAi(key) {
+  var box = document.getElementById('ai-' + key);
+  if (!box) return;
+  var ta = $('[data-ai="' + key + '"]');
+  var r = state.aiCheck[key], cur = hash32(aiText(key));
+  box.className = 'aimsg';
+  if (ta) ta.classList.remove('ai-bad');
+  if (aiInflight[key]) { box.className = 'aimsg show wait'; box.textContent = '⏳ 확인 중…'; return; }
+  if (!r || r.textHash !== cur) { box.textContent = ''; return; }
+  if (r.status === 'fail') {
+    box.className = 'aimsg show bad';
+    box.textContent = '⚠️ ' + (r.reason || '실험과 관련된 내용인지 다시 확인해 보세요.') + (CONFIG.REQUIRE_AI_PASS ? '' : ' (그래도 다음으로 넘어갈 수 있어요)');
+    if (ta) ta.classList.add('ai-bad');
+  } else if (r.status === 'unavailable') {
+    box.className = 'aimsg show wait'; box.textContent = 'ℹ️ 지금은 자동 확인을 못 했어요 — 그대로 진행돼요.';
+  } else if (r.status === 'ok') {
+    box.className = 'aimsg show ok'; box.textContent = '✔ 확인됨';
+  }
+}
+function fetchWithTimeout(body, ms) {
+  var ctrl = new AbortController();
+  var to = setTimeout(function () { ctrl.abort(); }, ms);
+  var p = fetch(AI_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'apikey': CONFIG.SUPABASE_ANON },
+    body: JSON.stringify(body),
+    signal: ctrl.signal
+  }).then(function (r) { clearTimeout(to); if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+    .catch(function (e) { clearTimeout(to); throw e; });
+  return { ctrl: ctrl, promise: p };
+}
+/* keys 를 한 번에 검수. 이미 종결·진행 중인 키는 건너뜀. 항상 resolve(fail-open). */
+function runAiCheck(keys, force) {
+  if (!CONFIG.AI_CHECK || IS_ADMIN) return Promise.resolve();
+  var todo = keys.filter(function (k) {
+    if (aiInflight[k]) return false;
+    if (!aiText(k)) return false;
+    return force ? true : !aiSettled(k);
+  });
+  if (!todo.length) return Promise.resolve();
+  var sent = {}, items = todo.map(function (k) {
+    var t = aiText(k); sent[k] = hash32(t);
+    return { key: k, kind: 'text', text: t };
+  });
+  var body = { contextId: 'ideal_gas', items: items };
+  var attempt = 0, holder = {};
+  function apply(status, byKey) {
+    todo.forEach(function (k) {
+      if (hash32(aiText(k)) !== sent[k]) return;   // 입력이 바뀌었으면 반영하지 않음(§8.4)
+      var r = byKey && byKey[k];
+      state.aiCheck[k] = r
+        ? { status: r.ok ? 'ok' : 'fail', reason: r.ok ? '' : String(r.reason || '').slice(0, 60), textHash: sent[k] }
+        : { status: status, reason: '', textHash: sent[k] };
+    });
+    todo.forEach(function (k) { delete aiInflight[k]; paintAi(k); });
+    save();
+  }
+  function go() {
+    attempt++;
+    var h = fetchWithTimeout(body, AI_TIMEOUT);
+    holder.ctrl = h.ctrl;
+    todo.forEach(function (k) { aiInflight[k] = holder; paintAi(k); });
+    return h.promise.then(function (out) {
+      var byKey = null;
+      if (out && Array.isArray(out.results)) {
+        byKey = {};
+        out.results.forEach(function (r) {
+          if (r && typeof r.key === 'string' && typeof r.ok === 'boolean' && todo.indexOf(r.key) >= 0) byKey[r.key] = r;
+        });
+        // §8.4 응답 검증: 요청 items 와 key·개수가 안 맞으면 그 항목은 unavailable
+        if (Object.keys(byKey).length !== todo.length) {
+          todo.forEach(function (k) { if (!byKey[k]) byKey[k] = null; });
+        }
+      }
+      apply('unavailable', byKey);
+    }).catch(function () {
+      if (attempt < 2) return go();          // 재시도 1회 → 총 대기 상한 16 s
+      apply('unavailable', null);
+    });
+  }
+  holder.promise = go();
+  return holder.promise;
+}
+/* 종결까지 대기(총 상한 AI_TOTAL_CAP). 상한을 넘으면 unavailable 로 종결하고 진행. */
+function waitAi(keys) {
+  if (!CONFIG.AI_CHECK || IS_ADMIN) return Promise.resolve();
+  var p = runAiCheck(keys);
+  return Promise.race([
+    p,
+    new Promise(function (res) {
+      setTimeout(function () {
+        keys.forEach(function (k) {
+          if (aiInflight[k]) { try { aiInflight[k].ctrl.abort(); } catch (e) { } delete aiInflight[k]; }
+          if (!aiSettled(k) && aiText(k)) state.aiCheck[k] = { status: 'unavailable', reason: '', textHash: hash32(aiText(k)) };
+          paintAi(k);
+        });
+        save(); res();
+      }, AI_TOTAL_CAP);
+    })
+  ]);
+}
+
+/* ===================== §6 게이트 ===================== */
+function distinctVals(pts, field) {
+  var out = [], i, v, j, dup;
+  for (i = 0; i < pts.length; i++) {
+    v = pts[i][field]; dup = false;
+    for (j = 0; j < out.length; j++) {
+      if (Math.abs(out[j] - v) / Math.max(Math.abs(out[j]), Math.abs(v)) < 0.01) { dup = true; break; }
+    }
+    if (!dup) out.push(v);
+  }
+  return out;
+}
+function a3WordsOk(s) {
+  var t = String(s || '').replace(/\s+/g, '');
+  return t.indexOf('빈도') >= 0 && (t.indexOf('세기') >= 0 || t.indexOf('충격') >= 0);
+}
+function rNameOk(s) {
+  var t = String(s || '').replace(/\s+/g, '');
+  return t.indexOf('기체상수') >= 0 || /(^|[^a-zA-Z])R([^a-zA-Z]|$)/.test(t) || t === 'R';
+}
+function interceptOk(s) {
+  var t = String(s || '').replace(/\s+/g, '').replace(/[℃°CcＣ]/g, '').replace(/[−–—]/g, '-');
+  var v = parseFloat(t);
+  return isFinite(v) && Math.abs(v - (-273)) <= 5;
+}
+/* AI 게이트: REQUIRE_AI_PASS=true 일 때만 단계 조건에 포함(§3.1 재평가·§6 배선) */
+function aiGateOk(step) {
+  if (!CONFIG.AI_CHECK || !CONFIG.REQUIRE_AI_PASS || IS_ADMIN) return true;
+  var ks = AI_KEYS_BY_STEP[step] || [], i;
+  for (i = 0; i < ks.length; i++) if (!aiPassed(ks[i])) return false;
+  return true;
+}
+function gate(step) {
+  if (IS_ADMIN) return { ok: true, why: '' };   // §3.2 교사 미리보기 = 전 단계 우회
+  var s = state, d, span, need = CONFIG.MIN_POINTS;
+  if (step === 1) return s.intro.started ? { ok: true, why: '' } : { ok: false, why: '‘시작하기’를 눌러 주세요.' };
+  if (step === 2) {
+    if (!s.predict.pv || !s.predict.vt || !s.predict.pt) return { ok: false, why: '예상 3문항을 모두 골라 주세요.' };
+    if (!tx(s.predict.reason)) return { ok: false, why: '왜 그렇게 생각했는지 써 주세요.' };
+    if (!aiGateOk(2)) return { ok: false, why: 'AI 확인이 끝나지 않았어요.' };
+    return { ok: true, why: '' };
+  }
+  if (step === 3) {
+    d = distinctVals(s.boyle.points, 'pExternal');
+    if (d.length < need) return { ok: false, why: 'P가 서로 다른 점을 ' + need + '개 찍어야 열려요 — 지금 ' + d.length + '개' };
+    if (Math.max.apply(null, d) < Math.min.apply(null, d) * 2 - 1e-9)
+      return { ok: false, why: '가장 큰 P가 가장 작은 P의 2배 이상이 되게 더 눌러 보세요 — 지금 ' + (Math.max.apply(null, d) / Math.min.apply(null, d)).toFixed(2) + '배' };
+    if (!s.boyle.inverseToggled) return { ok: false, why: '‘1/V 로 보기’를 한 번 눌러 보세요.' };
+    if (!tx(s.boyle.q1) || !tx(s.boyle.q2)) return { ok: false, why: 'Q1·Q2 를 모두 써 주세요.' };
+    if (!aiGateOk(3)) return { ok: false, why: 'AI 확인이 끝나지 않았어요.' };
+    return { ok: true, why: '' };
+  }
+  if (step === 4) {
+    d = distinctVals(s.charles.points, 't');
+    if (d.length < need) return { ok: false, why: 'T가 서로 다른 점을 ' + need + '개 찍어야 열려요 — 지금 ' + d.length + '개' };
+    span = d.length ? Math.max.apply(null, d) - Math.min.apply(null, d) : 0;
+    if (span < 150 - 1e-9) return { ok: false, why: '온도 범위가 150 K 이상이어야 해요 — 지금 ' + Math.round(span) + ' K' };
+    if (!s.charles.axisToggled) return { ok: false, why: 'x축을 K 로 바꿔서도 봐야 해요.' };
+    if (!interceptOk(s.charles.intercept)) return { ok: false, why: 'x절편(℃)을 맞혀 주세요.' };
+    if (!tx(s.charles.relation)) return { ok: false, why: '서술 문항을 써 주세요.' };
+    if (!aiGateOk(4)) return { ok: false, why: 'AI 확인이 끝나지 않았어요.' };
+    return { ok: true, why: '' };
+  }
+  if (step === 5) {
+    d = distinctVals(s.gaylussac.points, 't');
+    if (d.length < need) return { ok: false, why: 'T가 서로 다른 점을 ' + need + '개 찍어야 열려요 — 지금 ' + d.length + '개' };
+    span = d.length ? Math.max.apply(null, d) - Math.min.apply(null, d) : 0;
+    if (span < 150 - 1e-9) return { ok: false, why: '온도 범위가 150 K 이상이어야 해요 — 지금 ' + Math.round(span) + ' K' };
+    if (!tx(s.gaylussac.relation)) return { ok: false, why: '서술 문항을 써 주세요.' };
+    if (!aiGateOk(5)) return { ok: false, why: 'AI 확인이 끝나지 않았어요.' };
+    return { ok: true, why: '' };
+  }
+  if (step === 6) {
+    if (!rNameOk(s.combine.rAnswer)) return { ok: false, why: 'PV/nT 값의 이름을 맞혀 주세요.' };
+    if (!tx(s.assess.a1) || !tx(s.assess.a2) || !tx(s.assess.a3)) return { ok: false, why: '형성평가 3문항을 모두 써 주세요.' };
+    if (!a3WordsOk(s.assess.a3)) return { ok: false, why: '3번은 ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.' };
+    d = distinctVals(s.combine.points, 'n');
+    if (d.length < 2) return { ok: false, why: '⑥에서 n(기체 양)이 서로 다른 점을 2개 이상 기록해 주세요 — 지금 ' + d.length + '개' };
+    if (!s.exportedAt || s.exportedHash !== payloadHash(s)) return { ok: false, why: '마지막으로 ‘결과 내보내기’를 눌러야 완료돼요.' };
+    return { ok: true, why: '' };
+  }
+  return { ok: false, why: '' };
+}
+/* §3.1 unlockedStep 재평가 — 저장값 무시, ①부터 순서대로 */
+function recomputeUnlocked() {
+  var s = 1, k;
+  for (k = 1; k <= 5; k++) { if (gate(k).ok) s = k + 1; else break; }
+  return Math.min(6, Math.max(1, s));
+}
+
+/* ===================== 화면 진행 ===================== */
+var TOTAL = 6;
+var LABELS = { 1: '도입 · 목표', 2: '예상', 3: '탐구1 · 등온', 4: '탐구2 · 등압', 5: '탐구3 · 등적', 6: '통합 · 정리' };
+function paintProgress() {
+  $('#railfill').style.width = (unlocked / TOTAL * 100) + '%';
+  $('#stepnow').textContent = 'STEP ' + String(unlocked).padStart(2, '0');
+  $('#steplabel').textContent = LABELS[unlocked] || '';
+  for (var k = 1; k <= 6; k++) {
+    var n = document.getElementById('n' + k);
+    if (n) n.classList.toggle('done', k < unlocked || (k === 6 && gate(6).ok));
+  }
+}
+function applyReadOnly() {
+  for (var k = 1; k <= 6; k++) {
+    var sec = document.getElementById('s' + k);
+    if (!sec) continue;
+    var ro = (k < unlocked);
+    sec.classList.toggle('locked-ro', ro);
+    // §6 이전 단계는 읽기 전용 — 답 수정·점 기록/삭제만 잠그고 시뮬레이터 관찰은 계속 허용
+    $$('textarea, input[type=text], input[type=radio]', sec).forEach(function (el) { el.disabled = ro; });
+    $$('[data-act="record"], .dtable .del, #invToggle, #axC, #axK', sec).forEach(function (el) { el.disabled = ro; });
+  }
+}
+function revealTo(step, smooth) {
+  for (var k = 1; k <= step; k++) {
+    var sec = document.getElementById('s' + k);
+    if (sec) sec.classList.remove('hidden');
+  }
+  paintProgress(); applyReadOnly();
+  if (smooth) {
+    var t = document.getElementById('s' + step);
+    if (t) t.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+}
+function paintLock(step) {
+  var el = document.getElementById('lock' + step);
+  var btn = document.getElementById(step === 1 ? 'startBtn' : (step === 6 ? 'exportBtn' : 'next' + step));
+  if (!el) return;
+  if (step >= unlocked && step < 6) {
+    var g = gate(step);
+    if (btn && step !== 1) btn.disabled = false;   // 눌러야 AI 재검수가 도는 배선(§6)
+    el.className = 'lockmsg' + (g.ok ? ' show ok' : (g.why ? ' show' : ''));
+    el.textContent = g.ok ? '✔ 조건을 다 채웠어요 — 다음으로 넘어갈 수 있어요.' : g.why;
+  } else if (step === 6) {
+    var g6 = gate(6);
+    el.className = 'lockmsg' + (g6.ok ? ' show ok' : (g6.why ? ' show' : ''));
+    el.textContent = g6.ok ? '✔ 모두 완료했어요! 수고했어요.' : g6.why;
+  } else { el.className = 'lockmsg'; el.textContent = ''; }
+}
+function paintAllLocks() { for (var k = 1; k <= 6; k++) paintLock(k); }
+
+/* ===================== 시뮬레이터 블록 (§5 ③④⑤⑥ 공용 SimBlock) ===================== */
+var KINDS = {
+  intro:     { mode: 'isothermal', ctl: [], record: false, store: null },
+  boyle:     { mode: 'isothermal', ctl: ['p'], record: true, store: 'boyle', step: 3 },
+  charles:   { mode: 'isobaric',   ctl: ['t'], record: true, store: 'charles', step: 4 },
+  gaylussac: { mode: 'isochoric',  ctl: ['t'], record: true, store: 'gaylussac', step: 5 },
+  combine:   { mode: 'isothermal', ctl: ['p', 't', 'n'], modes: true, record: true, store: 'combine', step: 6 }
+};
+var MODE_LABEL = { isothermal: '등온', isobaric: '등압', isochoric: '등적', amount: '입자 주입' };
+var blocks = [];
+var docHidden = false;
+
+function fmt(x, d) { return (Math.round(x * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d); }
+function celsius(k) { return k - 273; }
+function weightsOf(p) { return Math.round((p - C.P_IN_MIN) / C.P_STEP); }
+
+function blockTemplate(kind) {
+  var k = KINDS[kind], rows = '', i;
+  var g = function (cls, key, label, unit) {
+    return '<div class="gauge ' + cls + '"><div class="k">' + label + '</div><div class="v" data-g="' + key + '">—' +
+      (unit ? '<span class="u"> ' + unit + '</span>' : '') + '</div></div>';
+  };
+  var core = '';
+  if (k.modes) {
+    rows += '<div class="ctlrow sec"><span class="rowlbl">모드</span><span class="modes" role="group" aria-label="조작 모드">' +
+      '<button class="minibtn" data-mode="isothermal" aria-pressed="true">등온</button>' +
+      '<button class="minibtn" data-mode="isobaric" aria-pressed="false">등압</button>' +
+      '<button class="minibtn" data-mode="isochoric" aria-pressed="false">등적</button>' +
+      '<button class="minibtn" data-mode="amount" aria-pressed="false">입자 주입</button>' +
+      '</span><span class="whybadge" data-why="mode"></span></div>';
+  }
+  core += '<span class="lockchip" data-lock>🔒</span>';
+  if (k.ctl.indexOf('p') >= 0) {
+    core += '<span class="ctlgrp" data-row="p"><span class="rowlbl">추</span>' +
+      '<span class="stepper" data-step="p"><button type="button" data-act="p-" aria-label="추 빼기 (압력 0.5 기압 감소)">−</button>' +
+      '<span class="val" data-v="p">1.00 atm</span>' +
+      '<button type="button" data-act="p+" aria-label="추 얹기 (압력 0.5 기압 증가)">+</button>' +
+      '<span class="cap" data-cap="p">추 0개</span></span><span class="whybadge" data-why="p"></span></span>';
+  }
+  if (k.ctl.indexOf('t') >= 0) {
+    core += '<span class="ctlgrp" data-row="t"><span class="rowlbl">온도</span>' +
+      '<span class="stepper" data-step="t"><button type="button" data-act="t-" aria-label="냉각 (온도 25 켈빈 감소)">❄️</button>' +
+      '<span class="val" data-v="t">273 K (0 ℃)</span>' +
+      '<button type="button" data-act="t+" aria-label="가열 (온도 25 켈빈 증가)">🔥</button></span>' +
+      '<span class="whybadge" data-why="t"></span></span>';
+  }
+  if (k.ctl.indexOf('n') >= 0) {
+    core += '<span class="ctlgrp" data-row="n"><span class="rowlbl">펌프</span>' +
+      '<span class="stepper" data-step="n"><button type="button" data-act="n-" aria-label="입자 10개 빼기 (0.25 몰 감소)">−</button>' +
+      '<span class="val" data-v="n">1.00 mol</span>' +
+      '<button type="button" data-act="n+" aria-label="입자 10개 넣기 (0.25 몰 증가)">+</button>' +
+      '<span class="cap" data-cap="n">40개</span></span><span class="whybadge" data-why="n"></span></span>';
+  }
+  if (k.record) {
+    core += '<button type="button" class="btn sm lime" data-act="record">' +
+      '<span class="long">● 지금 상태를 표에 기록</span><span class="short">● 기록</span></button>' +
+      '<span class="recstate" data-rec>측정 준비 중…</span>';
+  }
+  rows = '<div class="ctlrow core">' + core + '</div>' + rows;
+  rows += '<div class="ctlrow sec"><button type="button" class="minibtn" data-act="play">⏸ 일시정지</button>' +
+    '<span style="font-size:11.5px;color:var(--ink3);font-weight:700">속도</span>' +
+    '<button type="button" class="minibtn" data-sp="0.5" aria-pressed="false">0.5×</button>' +
+    '<button type="button" class="minibtn" data-sp="1" aria-pressed="true">1×</button>' +
+    '<button type="button" class="minibtn" data-sp="2" aria-pressed="false">2×</button></div>';
+
+  return '<div class="lowbanner">화면 높이가 너무 낮아요 — 기기를 <b>세로로 돌리거나</b> 위쪽 <b>‘새 탭에서 크게 보기’</b>로 열어 주세요.</div>' +
+    '<div class="simwrap">' +
+      '<div class="canvasbox"><canvas class="simcanvas" role="img" aria-label="실린더 입자 시뮬레이터"></canvas></div>' +
+      '<div class="gaugepanel">' +
+        '<div class="gauges">' +
+          g('', 'p', 'P 압력', 'atm') + g('', 'v', 'V 부피', 'L') +
+          g('', 't', 'T 온도', '') + g('', 'n', 'n 기체 양', 'mol') +
+        '</div>' +
+        '<div class="gauges" style="margin-top:6px">' +
+          g('meas', 'palt', 'P 이론 nRT/V', 'atm') + g('meas', 'pmeas', 'P 측정(충돌)', 'atm') +
+          g('meas', 'freq', '피스톤 충돌', '회/s') + g('meas', 'imp', '평균 충격', '') +
+          g('meas wide', 'vrms', 'v_rms (속력 척도)', '') +
+        '</div>' +
+        '<div class="speedlegend"><span>느림</span><span class="bar"></span><span>빠름</span>' +
+          '<span style="margin-left:auto" data-status></span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="simctl">' + rows + '</div>';
+}
+
+function buildBlock(el) {
+  var kind = el.getAttribute('data-sim'), k = KINDS[kind];
+  el.innerHTML = blockTemplate(kind);
+  var b = {
+    el: el, kind: kind, k: k,
+    canvas: $('.simcanvas', el), ctx: null,
+    sim: null, running: !reduceMotion, speed: 1, acc: 0, visible: true,
+    gauges: {}, tick: 0, lastAria: 0
+  };
+  b.ctx = b.canvas.getContext('2d');
+  $$('.gauge .v', el).forEach(function (v) { b.gauges[v.getAttribute('data-g')] = v; });
+
+  var v0 = E.volumeOf(1, 273, 1);
+  b.sim = new E.Sim({ mode: k.mode, t: 273, n: 1, p: 1.0, v: k.mode === 'isochoric' ? v0 : undefined, seed: 20250726 + kind.length });
+
+  /* 조작 핸들러 ------------------------------------------------------- */
+  function guardP(dir) {
+    var np = Math.round((b.sim.pExt + dir * C.P_STEP) * 100) / 100;
+    if (np < C.P_IN_MIN - 1e-9) return { ok: false, why: '추를 다 뺐어요 (1.0 atm이 최소)' };
+    if (np > C.P_IN_MAX + 1e-9) return { ok: false, why: '추를 더 얹을 수 없어요 (4.0 atm이 최대)' };
+    if (b.sim.locked) {
+      return { ok: false, why: '피스톤이 잠겨 있어요' };
+    }
+    var nv = E.volumeOf(b.sim.n, b.sim.T, np);
+    if (nv > C.V_MAX + 1e-9) return { ok: false, why: 'V가 60 L을 넘어요' };
+    if (nv < C.V_MIN - 1e-9) return { ok: false, why: 'V가 5 L보다 작아져요' };
+    return { ok: true, val: np };
+  }
+  function guardT(dir) {
+    var nt = E.snapT(b.sim.T, dir);
+    if (nt === b.sim.T) return { ok: false, why: dir > 0 ? '600 K가 최대예요' : '100 K가 최소예요' };
+    if (b.sim.locked) {
+      var np = b.sim.n * C.R_GAS * nt / b.sim.V;
+      if (np > C.P_SHOW_MAX + 1e-9) return { ok: false, why: 'P가 4 atm을 넘어요' };
+      if (np < C.P_SHOW_MIN - 1e-9) return { ok: false, why: 'P가 0.25 atm보다 작아져요' };
+    } else {
+      var nv = E.volumeOf(b.sim.n, nt, b.sim.pExt);
+      if (nv > C.V_MAX + 1e-9) return { ok: false, why: 'V가 60 L을 넘어요' };
+      if (nv < C.V_MIN - 1e-9) return { ok: false, why: 'V가 5 L보다 작아져요' };
+    }
+    return { ok: true, val: nt };
+  }
+  function guardN(dir) {
+    var nn = Math.round((b.sim.n + dir * C.N_STEP) * 100) / 100;
+    if (nn < C.N_MIN - 1e-9) return { ok: false, why: '0.25 mol(입자 10개)이 최소예요' };
+    if (nn > C.N_MAX + 1e-9) return { ok: false, why: '2.0 mol(입자 80개)이 최대예요' };
+    if (b.sim.locked) {
+      var np = nn * C.R_GAS * b.sim.T / b.sim.V;
+      if (np > C.P_SHOW_MAX + 1e-9) return { ok: false, why: 'P가 4 atm을 넘어요' };
+      if (np < C.P_SHOW_MIN - 1e-9) return { ok: false, why: 'P가 0.25 atm보다 작아져요' };
+    } else {
+      var nv = E.volumeOf(nn, b.sim.T, b.sim.pExt);
+      if (nv > C.V_MAX + 1e-9) return { ok: false, why: 'V가 60 L을 넘어요' };
+      if (nv < C.V_MIN - 1e-9) return { ok: false, why: 'V가 5 L보다 작아져요' };
+    }
+    return { ok: true, val: nn };
+  }
+  function guardMode(m) {
+    if (m === 'isochoric') {
+      var np = b.sim.n * C.R_GAS * b.sim.T / b.sim.V;
+      if (np > C.P_SHOW_MAX + 1e-9 || np < C.P_SHOW_MIN - 1e-9) return { ok: false, why: '지금 상태로 잠그면 P가 표시 범위를 벗어나요' };
+      return { ok: true };
+    }
+    var nv = E.volumeOf(b.sim.n, b.sim.T, b.sim.pExt);
+    if (nv > C.V_MAX + 1e-9) return { ok: false, why: '잠금을 풀면 V가 60 L을 넘어요' };
+    if (nv < C.V_MIN - 1e-9) return { ok: false, why: '잠금을 풀면 V가 5 L보다 작아져요' };
+    return { ok: true };
+  }
+  b.guards = { p: guardP, t: guardT, n: guardN, mode: guardMode };
+
+  function act(which, dir) {
+    if (el.closest('.locked-ro') && which !== 'view') return;
+    var g = b.guards[which](dir);
+    if (!g.ok) { showWhy(which, g.why); return; }
+    if (which === 'p') b.sim.setPExternal(g.val);
+    else if (which === 't') b.sim.setTemperature(g.val);
+    else if (which === 'n') b.sim.setN(g.val);
+    showWhy(which, '');
+    paintCtl(b); paintGauges(b, true);
+  }
+  function showWhy(which, msg) {
+    var w = $('[data-why="' + which + '"]', el);
+    if (!w) return;
+    msg = msg || '';
+    if (w.textContent === msg) return;                 // 매 프레임 재기록 방지
+    w.textContent = msg;
+    w.className = 'whybadge' + (msg ? ' show' : '');
+  }
+  b.showWhy = showWhy;
+
+  /* 길게 누르면 4회/s 반복 (§1.4) */
+  function bindRepeat(btn, which, dir) {
+    var t1 = null, t2 = null;
+    function stop() { if (t1) clearTimeout(t1); if (t2) clearInterval(t2); t1 = t2 = null; }
+    btn.addEventListener('pointerdown', function (e) {
+      if (btn.disabled) return;
+      act(which, dir);
+      t1 = setTimeout(function () { t2 = setInterval(function () { act(which, dir); }, 250); }, 420);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel', 'blur'].forEach(function (ev) { btn.addEventListener(ev, stop); });
+    btn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(which, dir); } });
+  }
+  ['p', 't', 'n'].forEach(function (which) {
+    var minus = $('[data-act="' + which + '-"]', el), plus = $('[data-act="' + which + '+"]', el);
+    if (minus) bindRepeat(minus, which, -1);
+    if (plus) bindRepeat(plus, which, +1);
+    var st = $('[data-step="' + which + '"]', el);
+    if (st) st.addEventListener('keydown', function (e) {           // §8.3 ←→ 로 값 변경
+      if (e.key === 'ArrowLeft') { e.preventDefault(); act(which, -1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); act(which, +1); }
+    });
+  });
+  $$('[data-mode]', el).forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (el.closest('.locked-ro')) return;
+      var m = btn.getAttribute('data-mode');
+      var g = guardMode(m === 'amount' ? 'isothermal' : m);
+      if (!g.ok) { showWhy('mode', g.why); return; }
+      showWhy('mode', '');
+      b.uiMode = m;
+      b.sim.setMode(m === 'amount' ? 'isothermal' : m);
+      paintCtl(b); paintGauges(b, true);
+    });
+  });
+  var playBtn = $('[data-act="play"]', el);
+  playBtn.addEventListener('click', function () {
+    b.running = !b.running;
+    playBtn.textContent = b.running ? '⏸ 일시정지' : '▶ 시뮬레이션 시작';
+    if (b.running) { b.acc = 0; b.sim.clearWindow(); }
+    updateRecordState(b);
+  });
+  if (!b.running) playBtn.textContent = '▶ 시뮬레이션 시작';
+  $$('[data-sp]', el).forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      b.speed = parseFloat(btn.getAttribute('data-sp'));
+      $$('[data-sp]', el).forEach(function (o) { o.setAttribute('aria-pressed', String(o === btn)); });
+    });
+  });
+  var recBtn = $('[data-act="record"]', el);
+  if (recBtn) recBtn.addEventListener('click', function () { recordPoint(b); });
+
+  b.uiMode = k.modes ? 'isothermal' : k.mode;
+  blocks.push(b);
+  paintCtl(b); paintGauges(b, true);
+  return b;
+}
+
+/* ---------- 컨트롤·잠금 라벨 ---------- */
+function paintCtl(b) {
+  var el = b.el, s = b.sim;
+  var pv = $('[data-v="p"]', el), tv = $('[data-v="t"]', el), nv = $('[data-v="n"]', el);
+  if (pv) pv.textContent = fmt(s.pExt, 2) + ' atm';
+  if (tv) tv.textContent = Math.round(s.T) + ' K (' + Math.round(celsius(s.T)) + ' ℃)';
+  if (nv) nv.textContent = fmt(s.n, 2) + ' mol';
+  var pc = $('[data-cap="p"]', el), nc = $('[data-cap="n"]', el);
+  if (pc) pc.textContent = '추 ' + weightsOf(s.pExt) + '개';
+  if (nc) nc.textContent = s.count() + '개';
+  // §1.4 범위 정합 규칙: 결과 V·P_이론이 범위를 벗어나는 방향은 비활성 + 사유 배지
+  ['p', 't', 'n'].forEach(function (w) {
+    var m = $('[data-act="' + w + '-"]', el), p = $('[data-act="' + w + '+"]', el);
+    var gm = b.guards[w](-1), gp = b.guards[w](+1), why = [];
+    if (m) m.disabled = !gm.ok;
+    if (p) p.disabled = !gp.ok;
+    if (!gp.ok && gp.why) why.push(gp.why);
+    if (!gm.ok && gm.why && gm.why !== gp.why) why.push(gm.why);
+    b.showWhy(w, why.join(' · '));
+  });
+  // ⑥ 자유 모드: 지금 조작 가능한 컨트롤만 활성
+  if (b.k.modes) {
+    var m = b.uiMode;
+    var enable = { p: m === 'isothermal', t: (m === 'isobaric' || m === 'isochoric'), n: m === 'amount' };
+    ['p', 't', 'n'].forEach(function (w) {
+      var row = $('[data-row="' + w + '"]', el);
+      if (row) row.style.display = enable[w] ? '' : 'none';   // 이 모드에서 못 쓰는 컨트롤은 접는다
+      if (!enable[w]) $$('[data-act="' + w + '-"], [data-act="' + w + '+"]', el).forEach(function (x) { x.disabled = true; });
+    });
+    $$('[data-mode]', el).forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.getAttribute('data-mode') === m));
+    });
+  }
+  var lock = $('[data-lock]', el);
+  if (lock) {
+    var m2 = b.k.modes ? b.uiMode : b.k.mode;
+    if (m2 === 'isothermal') lock.textContent = '🔒 온도 고정 ' + Math.round(s.T) + ' K (' + Math.round(celsius(s.T)) + ' ℃)';
+    else if (m2 === 'isobaric') lock.textContent = '🔒 압력 고정 ' + fmt(s.pExt, 2) + ' atm';
+    else if (m2 === 'isochoric') lock.textContent = '🔒 부피 고정 ' + fmt(s.V, 1) + ' L (피스톤 잠김)';
+    else lock.textContent = '🔒 압력 ' + fmt(s.pExt, 2) + ' atm · 온도 ' + Math.round(s.T) + ' K 고정';
+    if (b.kind === 'intro') lock.textContent = '👀 관찰만 — 조작은 다음 단계부터';
+  }
+}
+
+/* ---------- 계기판 ---------- */
+function paintGauges(b, force) {
+  if (!force) { b.tick++; if (b.tick % 8 !== 0) return; }
+  var s = b.sim, g = b.gauges, m = s.measured();
+  var mode = b.k.modes ? b.uiMode : b.k.mode;
+  var coherent = (mode === 'isochoric') ? s.pTheory() : s.pExt;
+  var alt = (mode === 'isochoric') ? s.pExt : s.pTheory();
+  g.p.innerHTML = fmt(coherent, 2) + '<span class="u"> atm</span>';
+  g.p.parentNode.querySelector('.k').textContent = (mode === 'isochoric') ? 'P 이론 nRT/V' : 'P 외부(추)';
+  g.palt.innerHTML = fmt(alt, 2) + '<span class="u"> atm</span>';
+  g.palt.parentNode.querySelector('.k').textContent = (mode === 'isochoric') ? 'P 외부(추)' : 'P 이론 nRT/V';
+  g.v.innerHTML = fmt(s.V, 1) + '<span class="u"> L</span>';
+  g.t.innerHTML = Math.round(s.T) + '<span class="u"> K / ' + Math.round(celsius(s.T)) + ' ℃</span>';
+  g.n.innerHTML = fmt(s.n, 2) + '<span class="u"> mol · ' + s.count() + '개</span>';
+  g.vrms.innerHTML = Math.round(s.vrms()) + '<span class="u"> (임의 단위)</span>';
+  if (m && m.full) {
+    g.pmeas.innerHTML = fmt(m.pMeasured, 2) + '<span class="u"> atm</span>';
+    g.freq.innerHTML = fmt(m.freq, 1) + '<span class="u"> 회/s</span>';
+    g.imp.innerHTML = fmt(m.meanImpulse / 100, 2) + '<span class="u"> (임의 단위)</span>';
+  } else {
+    g.pmeas.innerHTML = '측정 준비 중…';
+    g.freq.innerHTML = '—<span class="u"> 회/s</span>';
+    g.imp.innerHTML = '—';
+  }
+  var st = $('[data-status]', b.el);
+  if (st) st.textContent = !s.settled ? '피스톤 이동 중…' : (m && m.full ? '평형' : '측정 준비 중…');
+  updateRecordState(b);
+}
+
+/* ---------- §1.2 §8.2 기록 가능 조건 ---------- */
+function updateRecordState(b) {
+  var btn = $('[data-act="record"]', b.el), lab = $('[data-rec]', b.el);
+  if (!btn || !lab) return;
+  var ro = !!b.el.closest('.locked-ro');
+  var s = b.sim, m = s.measured(), why = '';
+  if (ro) why = '완료된 단계예요';
+  else if (!b.visible || docHidden) why = '시뮬레이션이 보일 때만 기록';
+  else if (!b.running) why = '일시정지 중 — 재생하면 기록할 수 있어요';
+  else if (!s.settled) why = '이동 중…';
+  else if (!m || !m.full) why = '측정 준비 중… (2초)';
+  btn.disabled = !!why;
+  lab.textContent = why || '평형 — 기록할 수 있어요';
+}
+
+/* ---------- 데이터 점 기록 ---------- */
+function recordPoint(b) {
+  var s = b.sim, m = s.measured(), store = b.k.store;
+  if (!store) return;
+  var pt = {
+    pExternal: s.pExt, pTheory: s.pTheory(), pMeasured: m ? m.pMeasured : null,
+    v: s.V, t: s.T, n: s.n
+  };
+  state[store].points.push(pt);
+  save();
+  renderStore(store);
+  paintAllLocks(); paintProgress(); invalidateExport();
+}
+function deletePoint(store, idx) {
+  state[store].points.splice(idx, 1);
+  save(); renderStore(store); paintAllLocks(); paintProgress(); invalidateExport();
+}
+function coherentP(store, pt) { return (store === 'gaylussac' || store === 'combine') ? pt.pTheory : pt.pExternal; }
+
+/* ---------- 표 ---------- */
+function renderStore(store) {
+  renderTable(store); renderGraphs(); renderAllTable();
+  if (store === 'charles') paintAxisNote();
+}
+function renderTable(store) {
+  var tbl = $('[data-table="' + store + '"]');
+  if (!tbl) return;
+  var tb = tbl.querySelector('tbody'), pts = state[store].points, ro = !!tbl.closest('.locked-ro');
+  var html = '', i, p;
+  for (i = 0; i < pts.length; i++) {
+    p = pts[i];
+    if (store === 'boyle') {
+      html += '<tr><td>' + (i + 1) + '</td><td>' + fmt(p.pExternal, 2) + '</td><td>' + fmt(p.v, 2) + '</td><td>' + fmt(p.pExternal * p.v, 2) + '</td>' +
+        '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
+    } else if (store === 'charles') {
+      html += '<tr><td>' + (i + 1) + '</td><td>' + Math.round(p.t) + '</td><td>' + Math.round(celsius(p.t)) + '</td><td>' + fmt(p.v, 2) + '</td>' +
+        '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
+    } else if (store === 'gaylussac') {
+      html += '<tr><td>' + (i + 1) + '</td><td>' + Math.round(p.t) + '</td><td>' + fmt(p.pTheory, 3) + '</td><td>' + fmt(p.pTheory / p.t, 5) + '</td>' +
+        '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
+    }
+  }
+  tb.innerHTML = html || '<tr><td colspan="5" style="text-align:center;color:var(--ink3)">아직 기록한 점이 없어요</td></tr>';
+  if (store === 'boyle') {
+    var kv = $('#boyleKv'), pts2 = state.boyle.points;
+    if (kv) {
+      if (pts2.length >= 2) {
+        var prods = pts2.map(function (q) { return q.pExternal * q.v; });
+        var mean = prods.reduce(function (a, c) { return a + c; }, 0) / prods.length;
+        var dev = Math.max.apply(null, prods.map(function (x) { return Math.abs(x - mean) / mean; }));
+        kv.innerHTML = 'P×V 평균 <b>' + fmt(mean, 2) + '</b> · 최대 편차 <b>' + fmt(dev * 100, 2) + '%</b> → ' +
+          (dev < 0.03 ? '거의 <b>일정</b>해요!' : '점을 더 찍어 보세요');
+      } else kv.innerHTML = '';
+    }
+  }
+}
+function renderAllTable() {
+  var tb = $('#allTable tbody');
+  if (!tb) return;
+  var rows = [], html = '';
+  [['boyle', '③ 등온'], ['charles', '④ 등압'], ['gaylussac', '⑤ 등적'], ['combine', '⑥ 자유']].forEach(function (pair) {
+    state[pair[0]].points.forEach(function (p, i) { rows.push({ store: pair[0], label: pair[1], p: p, i: i }); });
+  });
+  var ro6 = !!$('#s6') && !!$('#s6').closest('.locked-ro');
+  rows.forEach(function (r, idx) {
+    var P = coherentP(r.store, r.p), R = P * r.p.v / (r.p.n * r.p.t);
+    html += '<tr><td>' + (idx + 1) + '</td><td style="text-align:left;font-family:var(--sans);font-size:12px">' + r.label + '</td>' +
+      '<td>' + fmt(P, 2) + '</td><td>' + fmt(r.p.v, 2) + '</td><td>' + Math.round(r.p.t) + '</td><td>' + fmt(r.p.n, 2) + '</td>' +
+      '<td><b>' + fmt(R, 4) + '</b></td>' +
+      '<td>' + (r.store === 'combine' ? '<button class="del" data-del="combine" data-i="' + r.i + '"' + (ro6 ? ' disabled' : '') + ' aria-label="점 삭제">✕</button>' : '') + '</td></tr>';
+  });
+  tb.innerHTML = html || '<tr><td colspan="8" style="text-align:center;color:var(--ink3)">아직 기록한 점이 없어요</td></tr>';
+}
+document.addEventListener('click', function (e) {
+  var t = e.target.closest ? e.target.closest('[data-del]') : null;
+  if (!t || t.disabled) return;
+  deletePoint(t.getAttribute('data-del'), parseInt(t.getAttribute('data-i'), 10));
+});
+
+/* ===================== 그래프 ===================== */
+function drawGraph(cv, cfg) {
+  if (!cv) return;
+  var LW = 480, LH = 360;
+  var cssW = cv.clientWidth || LW, dpr = Math.min(2, window.devicePixelRatio || 1);
+  var pw = Math.round(cssW * dpr), ph = Math.round(cssW * LH / LW * dpr);
+  if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+  var x = cv.getContext('2d'), s = pw / LW;
+  x.setTransform(s, 0, 0, s, 0, 0);
+  x.clearRect(0, 0, LW, LH);
+  x.fillStyle = '#fff'; x.fillRect(0, 0, LW, LH);
+  var L = 54, R = 16, T = 14, B = 40, GW = LW - L - R, GH = LH - T - B;
+  var pts = cfg.pts || [];
+  var xs = pts.map(function (p) { return p.x; }), ys = pts.map(function (p) { return p.y; });
+  if (cfg.forceX) cfg.forceX.forEach(function (v) { xs.push(v); });
+  if (cfg.forceY) cfg.forceY.forEach(function (v) { ys.push(v); });
+  if (!xs.length) { xs = [0, 1]; ys = [0, 1]; }
+  var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+  var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  if (cfg.includeZeroY) { y0 = Math.min(y0, 0); }
+  if (cfg.includeZeroX) { x0 = Math.min(x0, 0); }
+  var padX = (x1 - x0) * 0.12 || 1, padY = (y1 - y0) * 0.14 || 1;
+  x0 -= padX; x1 += padX; y0 -= padY; y1 += padY;
+  if (cfg.clampY0 && y0 > 0) y0 = 0;
+  var PX = function (v) { return L + (v - x0) / (x1 - x0) * GW; };
+  var PY = function (v) { return T + GH - (v - y0) / (y1 - y0) * GH; };
+  // 격자
+  x.strokeStyle = '#ECE8DA'; x.lineWidth = 1; x.font = '11px ' + 'monospace'; x.fillStyle = '#5A6379';
+  var i, tv;
+  for (i = 0; i <= 4; i++) {
+    tv = x0 + (x1 - x0) * i / 4;
+    x.beginPath(); x.moveTo(PX(tv), T); x.lineTo(PX(tv), T + GH); x.stroke();
+    x.textAlign = 'center'; x.fillText(cfg.fx ? cfg.fx(tv) : tv.toFixed(1), PX(tv), T + GH + 15);
+    tv = y0 + (y1 - y0) * i / 4;
+    x.beginPath(); x.moveTo(L, PY(tv)); x.lineTo(L + GW, PY(tv)); x.stroke();
+    x.textAlign = 'right'; x.fillText(cfg.fy ? cfg.fy(tv) : tv.toFixed(1), L - 6, PY(tv) + 4);
+  }
+  // 축
+  x.strokeStyle = '#16213E'; x.lineWidth = 1.6;
+  x.beginPath(); x.moveTo(L, T); x.lineTo(L, T + GH); x.lineTo(L + GW, T + GH); x.stroke();
+  if (x0 < 0 && x1 > 0) { x.strokeStyle = '#5A6379'; x.lineWidth = 1; x.beginPath(); x.moveTo(PX(0), T); x.lineTo(PX(0), T + GH); x.stroke(); }
+  if (y0 < 0 && y1 > 0) { x.strokeStyle = '#5A6379'; x.lineWidth = 1; x.beginPath(); x.moveTo(L, PY(0)); x.lineTo(L + GW, PY(0)); x.stroke(); }
+  x.fillStyle = '#16213E'; x.font = 'bold 12px sans-serif';
+  x.textAlign = 'center'; x.fillText(cfg.xl || '', L + GW / 2, LH - 8);
+  x.save(); x.translate(13, T + GH / 2); x.rotate(-Math.PI / 2); x.fillText(cfg.yl || '', 0, 0); x.restore();
+  // 추세선
+  if (pts.length >= 2 && cfg.fit) {
+    var n = pts.length, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (i = 0; i < n; i++) { sx += pts[i].x; sy += pts[i].y; sxx += pts[i].x * pts[i].x; sxy += pts[i].x * pts[i].y; }
+    if (cfg.fit === 'line' || cfg.fit === 'lineThroughData') {
+      var den = n * sxx - sx * sx;
+      if (Math.abs(den) > 1e-12) {
+        var a = (n * sxy - sx * sy) / den, c0 = (sy - a * sx) / n;
+        var dxs = pts.map(function (p) { return p.x; });
+        var dmin = Math.min.apply(null, dxs), dmax = Math.max.apply(null, dxs);
+        x.strokeStyle = '#16213E'; x.lineWidth = 2; x.setLineDash([]);
+        x.beginPath(); x.moveTo(PX(dmin), PY(a * dmin + c0)); x.lineTo(PX(dmax), PY(a * dmax + c0)); x.stroke();
+        if (cfg.extrapolate && Math.abs(a) > 1e-12) {
+          var xi = -c0 / a;                                   // V=0 이 되는 x절편
+          x.strokeStyle = '#FF5B24'; x.lineWidth = 1.8; x.setLineDash([6, 5]);
+          x.beginPath(); x.moveTo(PX(dmin), PY(a * dmin + c0)); x.lineTo(PX(xi), PY(0)); x.stroke();
+          x.setLineDash([]);
+          x.fillStyle = '#FF5B24'; x.beginPath(); x.arc(PX(xi), PY(0), 4.5, 0, 7); x.fill();
+          x.font = 'bold 12px monospace'; x.textAlign = 'left';
+          x.fillText('x절편 ' + xi.toFixed(0), Math.min(PX(xi) + 7, L + GW - 76), PY(0) - 8);
+        }
+      }
+    } else if (cfg.fit === 'hyperbola') {
+      var kk = 0; for (i = 0; i < n; i++) kk += pts[i].x * pts[i].y; kk /= n;
+      x.strokeStyle = '#16213E'; x.lineWidth = 2; x.beginPath();
+      var started = false;
+      for (i = 0; i <= 90; i++) {
+        var vx2 = x0 + (x1 - x0) * i / 90;
+        if (vx2 <= 0.001) continue;
+        var vy2 = kk / vx2;
+        if (vy2 < y0 || vy2 > y1) { started = false; continue; }
+        if (!started) { x.moveTo(PX(vx2), PY(vy2)); started = true; } else x.lineTo(PX(vx2), PY(vy2));
+      }
+      x.stroke();
+    }
+  }
+  // 점
+  pts.forEach(function (p) {
+    x.beginPath(); x.arc(PX(p.x), PY(p.y), 5, 0, 7);
+    x.fillStyle = '#C4E000'; x.fill();
+    x.strokeStyle = '#16213E'; x.lineWidth = 1.8; x.stroke();
+  });
+  if (!pts.length) {
+    x.fillStyle = '#5A6379'; x.font = '13px sans-serif'; x.textAlign = 'center';
+    x.fillText('데이터 점을 기록하면 여기에 그려져요', L + GW / 2, T + GH / 2);
+  }
+}
+function renderGraphs() {
+  var bp = state.boyle.points, inv = invView;
+  drawGraph($('[data-graph="boyle"]'), {
+    pts: bp.map(function (p) { return inv ? { x: 1 / p.v, y: p.pExternal } : { x: p.v, y: p.pExternal }; }),
+    xl: inv ? '1/V (1/L)' : 'V 부피 (L)', yl: 'P 압력 (atm)',
+    fit: inv ? 'line' : 'hyperbola', includeZeroY: inv, includeZeroX: inv,
+    fx: function (v) { return inv ? v.toFixed(3) : v.toFixed(0); }
+  });
+  var cp = state.charles.points, useK = axisK;
+  drawGraph($('[data-graph="charles"]'), {
+    pts: cp.map(function (p) { return { x: useK ? p.t : celsius(p.t), y: p.v }; }),
+    xl: useK ? 'T 온도 (K)' : 'T 온도 (℃)', yl: 'V 부피 (L)',
+    fit: 'line', extrapolate: !useK, includeZeroY: true, clampY0: true,
+    forceX: useK ? [0] : [-290], fx: function (v) { return v.toFixed(0); }
+  });
+  var gp = state.gaylussac.points;
+  drawGraph($('[data-graph="gaylussac"]'), {
+    pts: gp.map(function (p) { return { x: p.t, y: p.pTheory }; }),
+    xl: 'T 온도 (K)', yl: 'P 압력 (atm)', fit: 'line', includeZeroY: true, includeZeroX: true,
+    forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
+  });
+  drawGraph($('[data-graph="mini_boyle"]'), {
+    pts: bp.map(function (p) { return { x: p.v, y: p.pExternal }; }), xl: 'V (L)', yl: 'P (atm)', fit: 'hyperbola', fx: function (v) { return v.toFixed(0); }
+  });
+  drawGraph($('[data-graph="mini_charles"]'), {
+    pts: cp.map(function (p) { return { x: p.t, y: p.v }; }), xl: 'T (K)', yl: 'V (L)', fit: 'line', includeZeroY: true, includeZeroX: true, forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
+  });
+  drawGraph($('[data-graph="mini_gaylussac"]'), {
+    pts: gp.map(function (p) { return { x: p.t, y: p.pTheory }; }), xl: 'T (K)', yl: 'P (atm)', fit: 'line', includeZeroY: true, includeZeroX: true, forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
+  });
+}
+
+/* ===================== 캔버스 렌더 ===================== */
+function speedColor(r) {
+  var a, b2, t;
+  if (r < 0.5) { a = [47, 111, 208]; b2 = [196, 224, 0]; t = r / 0.5; }
+  else { a = [196, 224, 0]; b2 = [255, 91, 36]; t = Math.min(1, (r - 0.5) / 0.5); }
+  return 'rgb(' + Math.round(a[0] + (b2[0] - a[0]) * t) + ',' + Math.round(a[1] + (b2[1] - a[1]) * t) + ',' + Math.round(a[2] + (b2[2] - a[2]) * t) + ')';
+}
+function draw(b) {
+  var cv = b.canvas, x = b.ctx, s = b.sim;
+  var cssW = cv.clientWidth, cssH = cv.clientHeight;
+  if (!cssW || !cssH) return;
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  var pw = Math.round(cssW * dpr), ph = Math.round(cssH * dpr);
+  if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+  x.setTransform(1, 0, 0, 1, 0, 0);
+  x.clearRect(0, 0, pw, ph);
+  var sc = Math.min(pw / C.W0, ph / C.H0);
+  x.setTransform(sc, 0, 0, sc, (pw - C.W0 * sc) / 2, (ph - C.H0 * sc) / 2);
+  var top = s.gasTop();
+  // 실린더 안쪽(기체)
+  x.fillStyle = '#F4F2E9';
+  x.fillRect(C.XL, top, C.W_INT, C.FLOOR_Y - top);
+  // 피스톤 위 빈 공간
+  x.fillStyle = '#FBFAF6';
+  x.fillRect(C.XL, C.CEIL_Y, C.W_INT, top - C.PISTON_TH - C.CEIL_Y);
+  // 부피 눈금(왼쪽 벽)
+  x.strokeStyle = '#C9C3B2'; x.lineWidth = 1; x.fillStyle = '#5A6379'; x.font = '9px monospace'; x.textAlign = 'right';
+  for (var L = 10; L <= C.V_MAX; L += 10) {
+    var yy = C.FLOOR_Y - C.H_PER_L * L;
+    x.beginPath(); x.moveTo(C.XL, yy); x.lineTo(C.XL + 8, yy); x.stroke();
+    x.fillText(L + 'L', C.XL - 3, yy + 3);
+  }
+  // 벽
+  x.strokeStyle = '#16213E'; x.lineWidth = 2;
+  x.beginPath();
+  x.moveTo(C.XL, C.CEIL_Y); x.lineTo(C.XL, C.FLOOR_Y); x.lineTo(C.XR, C.FLOOR_Y); x.lineTo(C.XR, C.CEIL_Y);
+  x.stroke();
+  // 충돌 플래시(§7.1)
+  if (!reduceMotion) {
+    var fl = s.flash;
+    x.strokeStyle = '#C4E000'; x.lineWidth = 3;
+    if (fl.left > 0) { x.globalAlpha = fl.left / C.FLASH_SEC; x.beginPath(); x.moveTo(C.XL, top); x.lineTo(C.XL, C.FLOOR_Y); x.stroke(); }
+    if (fl.right > 0) { x.globalAlpha = fl.right / C.FLASH_SEC; x.beginPath(); x.moveTo(C.XR, top); x.lineTo(C.XR, C.FLOOR_Y); x.stroke(); }
+    if (fl.floor > 0) { x.globalAlpha = fl.floor / C.FLASH_SEC; x.beginPath(); x.moveTo(C.XL, C.FLOOR_Y); x.lineTo(C.XR, C.FLOOR_Y); x.stroke(); }
+    if (fl.piston > 0) { x.globalAlpha = fl.piston / C.FLASH_SEC; x.beginPath(); x.moveTo(C.XL, top); x.lineTo(C.XR, top); x.stroke(); }
+    x.globalAlpha = 1;
+  }
+  // 입자
+  var vr = s.vrms(), i, sp, r;
+  for (i = 0; i < s.x.length; i++) {
+    sp = Math.sqrt(s.vx[i] * s.vx[i] + s.vy[i] * s.vy[i]);
+    r = Math.min(1, sp / (1.6 * vr));
+    x.fillStyle = speedColor(r);
+    x.beginPath();
+    x.arc(Math.max(C.XL + C.PART_R, Math.min(C.XR - C.PART_R, s.x[i])),
+          Math.max(top + C.PART_R, Math.min(C.FLOOR_Y - C.PART_R, s.y[i])), C.PART_R, 0, 7);
+    x.fill();
+  }
+  // 피스톤
+  x.fillStyle = s.locked ? '#5A6379' : '#16213E';
+  x.fillRect(C.XL, top - C.PISTON_TH, C.W_INT, C.PISTON_TH);
+  x.fillStyle = s.locked ? '#5A6379' : '#C4E000';
+  x.fillRect(C.W0 / 2 - 16, top - C.PISTON_TH - 18, 32, 18);
+  if (s.locked) {
+    x.fillStyle = '#fff'; x.font = '13px sans-serif'; x.textAlign = 'center';
+    x.fillText('🔒', C.W0 / 2, top - C.PISTON_TH + 11);
+  } else {
+    // 추
+    var w = weightsOf(s.pExt);
+    x.fillStyle = '#16213E';
+    for (i = 0; i < w; i++) x.fillRect(C.W0 / 2 - 26 + (i % 3) * 18, top - C.PISTON_TH - 24 - Math.floor(i / 3) * 11, 15, 9);
+  }
+  if (!s.settled) {
+    x.fillStyle = 'rgba(255,91,36,.92)'; x.font = 'bold 12px sans-serif'; x.textAlign = 'center';
+    x.fillRect(C.W0 / 2 - 42, C.CEIL_Y + 4, 84, 18);
+    x.fillStyle = '#fff'; x.fillText('이동 중…', C.W0 / 2, C.CEIL_Y + 17);
+  }
+  // 스크린리더용 요약(§8.3)
+  b.lastAria++;
+  if (b.lastAria % 45 === 0) {
+    var m = s.measured();
+    cv.setAttribute('aria-label',
+      '실린더 시뮬레이터. 압력 ' + fmt(s.pExt, 2) + ' 기압, 부피 ' + fmt(s.V, 1) + ' 리터, 온도 ' + Math.round(s.T) +
+      ' 켈빈(섭씨 ' + Math.round(celsius(s.T)) + '도), 기체 양 ' + fmt(s.n, 2) + ' 몰, 입자 ' + s.count() + '개' +
+      (m && m.full ? ', 피스톤 충돌 초당 ' + fmt(m.freq, 1) + '회' : ', 측정 준비 중') +
+      (s.locked ? ', 피스톤 잠김' : (s.settled ? ', 평형 상태' : ', 피스톤 이동 중')) + '.');
+  }
+}
+
+/* ===================== 뷰 토글 상태 ===================== */
+var invView = false;     // ③ 1/V 보기
+var axisK = false;       // ④ x축 K 보기
+
+/* ===================== §8.2 루프 · 가시성 ===================== */
+var lastTs = 0;
+function frame(ts) {
+  var dt = lastTs ? (ts - lastTs) / 1000 : 0;
+  lastTs = ts;
+  if (dt > 0.5) dt = 0;                                  // 장시간 정지 후 따라잡기 금지
+  for (var i = 0; i < blocks.length; i++) {
+    var b = blocks[i];
+    if (b.visible && b.running && !docHidden && !b.el.classList.contains('tooshort')) {
+      b.acc += dt * b.speed;
+      var nsub = Math.floor(b.acc / C.DT);
+      if (nsub > C.MAX_SUBSTEP) { nsub = C.MAX_SUBSTEP; b.acc = 0; }   // 프레임당 substep 상한 8
+      else b.acc -= nsub * C.DT;
+      for (var j = 0; j < nsub; j++) b.sim.step();
+      if (b.k.ctl.length) paintCtl(b);
+    }
+    if (b.visible && !b.el.classList.contains('tooshort')) { draw(b); paintGauges(b); }
+  }
+  requestAnimationFrame(frame);
+}
+function resetTiming(b) { b.acc = 0; b.sim.clearWindow(); lastTs = 0; }
+var io = ('IntersectionObserver' in window) ? new IntersectionObserver(function (es) {
+  es.forEach(function (e) {
+    var b = null, i;
+    for (i = 0; i < blocks.length; i++) if (blocks[i].el === e.target) b = blocks[i];
+    if (!b) return;
+    var was = b.visible;
+    b.visible = e.isIntersecting;
+    if (!was && b.visible) resetTiming(b);               // §8.2 복귀 시 타임스탬프·누산기 리셋
+    updateRecordState(b);
+  });
+}, { threshold: 0.12 }) : null;
+document.addEventListener('visibilitychange', function () {
+  docHidden = document.hidden;
+  if (!docHidden) { blocks.forEach(resetTiming); }
+  blocks.forEach(updateRecordState);
+});
+function measureChrome() {
+  // §2.1 캔버스 높이 예산을 '실측'으로 맞춘다 — 진행 띠·핵심 컨트롤의 실제 높이를 CSS 변수로 되돌려 준다.
+  // (미디어쿼리 구조는 그대로 max-* 캐스케이드. 여기서는 ②가 쓰는 값만 정확하게 만든다.)
+  var bar = $('.topbar');
+  if (bar) document.documentElement.style.setProperty('--rail-h', Math.ceil(bar.getBoundingClientRect().height) + 'px');
+}
+function checkLow() {
+  var tooShort = window.innerHeight < 220;               // §2.1 220px 미만이면 배너
+  $$('.simblock').forEach(function (el) { el.classList.toggle('tooshort', tooShort); });
+  measureChrome();
+  requestAnimationFrame(measureChrome);                  // 레이아웃 확정 후 1회 더
+  blocks.forEach(function (b) { if (!tooShort) resetTiming(b); updateRecordState(b); });
+  renderGraphs();
+}
+window.addEventListener('resize', checkLow);
+window.addEventListener('orientationchange', checkLow);
+
+/* ===================== 안내 문구 ===================== */
+var PRED_LABEL = { pv: '① 세게 누르면 부피', vt: '② 가열하면 부피', pt: '③ 부피를 막고 가열하면 압력' };
+function paintCompare() {
+  var p = state.predict;
+  var mk = function (key, real) {
+    if (!p[key]) return '';
+    var same = (p[key] === real);
+    return '<b>② 에서 네 예상은 “' + p[key] + '”</b> 였어. 실제 결과는 <b>“' + real + '”</b> — ' +
+      (same ? '예상이 맞았어! 👍' : '예상과 달랐네. 왜 그런지 위 관찰로 설명해 보자.');
+  };
+  var c3 = $('#cmp3'), c4 = $('#cmp4'), c5 = $('#cmp5');
+  if (c3) c3.innerHTML = mk('pv', '작아진다');
+  if (c4) c4.innerHTML = mk('vt', '커진다');
+  if (c5) c5.innerHTML = mk('pt', '커진다');
+  var c35 = $('#cmp35');
+  if (c35) c35.innerHTML =
+    '<b>③ 등온(압축)</b> — 입자 속력은 그대로라 <b>1회 충격은 변하지 않고</b>, 갈 거리가 짧아져 <b>충돌 빈도만</b> 올라갔어.<br>' +
+    '<b>⑤ 등적(가열)</b> — 입자가 빨라져서 <b>1회 충격도 커지고</b> 더 자주 부딪혀 <b>빈도도</b> 올라갔어.<br>' +
+    '→ 압력은 <b>빈도 × 1회 충격</b> 두 가지가 정하는 값이야.';
+}
+function paintAxisNote() {
+  var el = $('#axisNote');
+  if (!el) return;
+  el.innerHTML = axisK
+    ? '✔ <b>K(절대온도)</b> 로 보면 직선이 <b>원점을 지나는 정비례</b>가 돼요. 그래서 기체 계산에는 절대온도를 씁니다.'
+    : 'ℹ️ <b>℃</b> 로 그리면 직선이 <b>원점을 지나지 않아요</b>. 왼쪽으로 늘여 보면 V=0 이 되는 x절편이 보여요 — 몇 도일까요?';
+}
+
+/* ===================== §3.3 내보내기 ===================== */
+function exportReadyWhy() {
+  if (IS_ADMIN) return '';
+  if (!rNameOk(state.combine.rAnswer)) return 'PV/nT 값의 이름을 먼저 맞혀 주세요.';
+  if (!tx(state.assess.a1) || !tx(state.assess.a2) || !tx(state.assess.a3)) return '형성평가 3문항을 모두 써 주세요.';
+  if (!a3WordsOk(state.assess.a3)) return '3번은 ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.';
+  if (distinctVals(state.combine.points, 'n').length < 2) return '⑥에서 n이 서로 다른 점을 2개 이상 기록해 주세요 — 지금 ' + distinctVals(state.combine.points, 'n').length + '개';
+  return '';
+}
+function invalidateExport() {
+  var note = $('#exportNote');
+  if (state.exportedAt && state.exportedHash !== payloadHash(state)) {
+    state.exportedAt = null;
+    if (note) { note.style.display = 'block'; note.className = 'note signal'; note.textContent = '⚠️ 내용을 수정했어요 — 다시 내보내야 완료돼요.'; }
+    save();
+  }
+  var btn = $('#exportBtn');
+  if (btn) btn.disabled = !!exportReadyWhy();
+  paintLock(6); paintProgress();
+}
+function fileStamp() {
+  var d = new Date();
+  return '' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+}
+function downloadJson() {
+  state.exportedAt = new Date().toISOString();
+  state.exportedHash = payloadHash(state);              // 해시 입력에서 exportedAt/Hash 는 제외됨
+  save(true);
+  var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');                   // §9.2 window.open 금지 → <a download>
+  a.href = url;
+  a.download = '이상기체_' + (state.student.sid || 'anon') + '_' + (state.student.name || '이름없음') + '_' + fileStamp() + '.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+  var note = $('#exportNote');
+  if (note) { note.style.display = 'block'; note.className = 'note lime'; note.textContent = '✔ 내보내기 완료 — ' + a.download; }
+  paintLock(6); paintProgress(); applyReadOnly();
+}
+function doExport() {
+  var why = exportReadyWhy();
+  var note = $('#exportNote');
+  if (why) {
+    if (note) { note.style.display = 'block'; note.className = 'note signal'; note.textContent = '⚠️ ' + why; }
+    return;
+  }
+  var btn = $('#exportBtn');
+  if (!CONFIG.AI_CHECK || IS_ADMIN) { downloadJson(); return; }
+  // §3.3 내보내기 시도 = ⑥의 AI 검수 트리거. AI_CHECK=true 면 종결까지 대기(상한 16 s).
+  btn.disabled = true;
+  var old = btn.textContent; btn.textContent = '확인 중…';
+  if (note) { note.style.display = 'block'; note.className = 'note'; note.textContent = '⏳ 서술 응답을 확인하는 중이에요… (최대 16초)'; }
+  waitAi(AI_KEYS_BY_STEP[6]).then(function () {
+    btn.textContent = old; btn.disabled = false;
+    var failed = AI_KEYS_BY_STEP[6].filter(function (k) {
+      var r = state.aiCheck[k];
+      return r && r.status === 'fail' && r.textHash === hash32(aiText(k));
+    });
+    if (failed.length && CONFIG.REQUIRE_AI_PASS) {
+      if (note) { note.style.display = 'block'; note.className = 'note signal'; note.textContent = '⚠️ 확인이 필요한 답이 있어요 — 위 경고를 보고 고친 뒤 다시 눌러 주세요.'; }
+      return;
+    }
+    if (failed.length && note) { note.style.display = 'block'; note.className = 'note signal'; note.textContent = 'ℹ️ 확인이 필요한 답이 있지만 그대로 내보냈어요(기록에 남아요).'; }
+    downloadJson();
+  });
+}
+function doPrint() {
+  var imgs = [];
+  $$('.graphcanvas').forEach(function (cv) {
+    try {
+      var img = document.createElement('img');
+      img.src = cv.toDataURL('image/png');
+      img.className = 'printonly';
+      cv.parentNode.insertBefore(img, cv.nextSibling);
+      imgs.push(img);
+    } catch (e) { }
+  });
+  var clean = function () { imgs.forEach(function (i) { i.remove(); }); };
+  if ('onafterprint' in window) window.addEventListener('afterprint', function h() { window.removeEventListener('afterprint', h); clean(); });
+  else setTimeout(clean, 2000);
+  setTimeout(function () { window.print(); }, 60);
+}
+
+/* ===================== §3.2 수동 학번 입력·이관 ===================== */
+function applyManual() {
+  var name = tx($('#mName').value), sid = tx($('#mSid').value);
+  var msg = $('#manualMsg');
+  var show = function (t, ok) { msg.className = 'lockmsg show' + (ok ? ' ok' : ''); msg.textContent = t; };
+  if (!sid) {
+    state.student.name = name; save(true);
+    $('#whochip').textContent = (state.student.sid || '학번') + ' · ' + (name || '이름');
+    show('이름을 저장했어요. 학번도 입력하면 학번별로 저장돼요.', true);
+    return;
+  }
+  var target = KEY_PREFIX + sid;
+  if (target === getActiveKeyName()) {
+    state.student.name = name; state.student.sid = sid; save(true);
+    $('#whochip').textContent = sid + ' · ' + (name || '이름');
+    show('저장했어요.', true); return;
+  }
+  var res = readKey(target);
+  if (res.broken) { backup(target, res.raw); res = { empty: true }; }
+  if (res.empty) {
+    // ② 대상이 비었음 — 순서 고정: 메모리 갱신 → 대상 저장 → 재확인 → 활성 키 교체 → _anon 삭제
+    var prevName = state.student.name, prevSid = state.student.sid;
+    state.student.name = name; state.student.sid = sid; state.student.fromSite = false;
+    state.updatedAt = new Date().toISOString(); state.unlockedStep = unlocked;
+    try { localStorage.setItem(target, JSON.stringify(state)); } catch (e) {
+      state.student.name = prevName; state.student.sid = prevSid;
+      show('저장에 실패했어요. 잠시 뒤 다시 시도해 주세요.'); return;
+    }
+    var back = readKey(target);
+    if (!back.data) {
+      state.student.name = prevName; state.student.sid = prevSid;
+      show('저장 확인에 실패했어요. 다시 시도해 주세요.'); return;
+    }
+    var oldKey = getActiveKeyName();
+    setActiveKeyName(target);                              // 이후 자동저장은 대상 키에만
+    try { if (oldKey !== target) localStorage.removeItem(oldKey); } catch (e) { }
+    $('#whochip').textContent = sid + ' · ' + (name || '이름');
+    show('학번 ' + sid + ' 로 저장을 옮겼어요.', true);
+    return;
+  }
+  // ③ 대상에 유효 데이터가 있음 — 덮어쓰지 않고 선택
+  var pick = window.confirm('이 학번(' + sid + ')의 저장 데이터가 이미 있어요.\n\n[확인] 이어하기 — 저장된 데이터를 불러옵니다. 지금 화면의 내용은 버려집니다.\n[취소] 새로 시작 — 이 학번의 기존 데이터를 지우고 새로 시작합니다.');
+  if (pick) {
+    state = res.data;
+    state.student.name = name || state.student.name;
+    state.student.sid = sid;
+    setActiveKeyName(target);                              // _anon 은 삭제하지 않고 그대로 둠
+    unlocked = recomputeUnlocked();
+    hydrate(); save(true);
+    show('저장된 데이터를 불러왔어요. (이전 화면의 내용은 버려졌어요)', true);
+  } else {
+    var fresh = defaultState();
+    fresh.student.name = name; fresh.student.sid = sid; fresh.student.fromSite = false;
+    state = fresh;
+    setActiveKeyName(target);
+    unlocked = 1; hydrate(); save(true);
+    show('새로 시작합니다.', true);
+  }
+  $('#whochip').textContent = sid + ' · ' + (name || '이름');
+}
+
+/* ===================== 하이드레이션 ===================== */
+function hydrate() {
+  ['pv', 'vt', 'pt'].forEach(function (k) {
+    $$('input[name="' + k + '"]').forEach(function (r) { r.checked = (r.value === state.predict[k]); });
+  });
+  var map = {
+    '#predReason': 'predict.reason', '#q_boyle_q1': 'boyle.q1', '#q_boyle_q2': 'boyle.q2',
+    '#q_charles_relation': 'charles.relation', '#q_gaylussac_relation': 'gaylussac.relation',
+    '#q_assess_a1': 'assess.a1', '#q_assess_a2': 'assess.a2', '#q_assess_a3': 'assess.a3',
+    '#interceptIn': 'charles.intercept', '#rAnswer': 'combine.rAnswer'
+  };
+  Object.keys(map).forEach(function (sel) { var el = $(sel); if (el) el.value = getPath(state, map[sel]) || ''; });
+  invView = state.boyle.inverseToggled ? invView : false;
+  $('#invToggle').setAttribute('aria-pressed', String(invView));
+  $('#invToggle').textContent = invView ? 'P–V 로 보기' : '1/V 로 보기';
+  $('#axC').setAttribute('aria-pressed', String(!axisK));
+  $('#axK').setAttribute('aria-pressed', String(axisK));
+  ['boyle', 'charles', 'gaylussac'].forEach(renderTable);
+  renderAllTable(); renderGraphs(); paintCompare(); paintAxisNote();
+  paintIntercept(); paintR(); paintA3();
+  AI_ALL.forEach(paintAi);
+  revealTo(unlocked, false);
+  paintAllLocks(); paintProgress();
+  var btn = $('#exportBtn'); if (btn) btn.disabled = !!exportReadyWhy();
+  var note = $('#exportNote');
+  if (note && state.exportedAt) { note.style.display = 'block'; note.className = 'note lime'; note.textContent = '✔ 내보내기 완료 (' + String(state.exportedAt).slice(0, 10) + ')'; }
+}
+function paintIntercept() {
+  var v = $('#interceptVerdict'), val = state.charles.intercept;
+  if (!v) return;
+  if (!tx(val)) { v.className = 'verdict'; v.textContent = ''; return; }
+  if (interceptOk(val)) {
+    v.className = 'verdict show good';
+    v.textContent = '✔ 맞았어요 — 이 온도에서 입자 운동이 멈춘다고 외삽한 값이 절대영도(−273 ℃ = 0 K)예요.';
+  } else { v.className = 'verdict show bad'; v.textContent = '✕ 아직 아니에요 — 그래프의 주황 점선이 V=0 과 만나는 곳을 읽어 보세요.'; }
+}
+function paintR() {
+  var v = $('#rVerdict'), val = state.combine.rAnswer;
+  if (!v) return;
+  if (!tx(val)) { v.className = 'verdict'; v.textContent = ''; return; }
+  if (rNameOk(val)) { v.className = 'verdict show good'; v.textContent = '✔ 맞아요 — 기체 상수 R = 0.0821 L·atm/(mol·K)'; }
+  else { v.className = 'verdict show bad'; v.textContent = '✕ 다시 생각해 보세요 (힌트: 기호는 R)'; }
+}
+function paintA3() {
+  var v = $('#a3Verdict'), val = state.assess.a3;
+  if (!v) return;
+  if (!tx(val)) { v.className = 'verdict'; v.textContent = ''; return; }
+  if (a3WordsOk(val)) { v.className = 'verdict show good'; v.textContent = '✔ 두 낱말을 모두 썼어요.'; }
+  else { v.className = 'verdict show bad'; v.textContent = '✕ ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.'; }
+}
+
+/* ===================== 입력 바인딩 ===================== */
+function bindText(sel, path) {
+  var el = $(sel);
+  if (!el) return;
+  el.addEventListener('input', function () {
+    setPath(state, path, el.value);
+    var aiKey = el.getAttribute('data-ai');
+    if (aiKey) clearAi(aiKey);                             // §8.4 입력 수정 시 판정 폐기·요청 취소
+    if (path === 'charles.intercept') paintIntercept();
+    if (path === 'combine.rAnswer') paintR();
+    if (path === 'assess.a3') paintA3();
+    save(); paintAllLocks(); paintProgress(); invalidateExport();
+  });
+}
+function bindAll() {
+  ['pv', 'vt', 'pt'].forEach(function (k) {
+    $$('input[name="' + k + '"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        state.predict[k] = r.value; save(); paintAllLocks(); paintCompare(); invalidateExport();
+      });
+    });
+  });
+  bindText('#predReason', 'predict.reason');
+  bindText('#q_boyle_q1', 'boyle.q1'); bindText('#q_boyle_q2', 'boyle.q2');
+  bindText('#q_charles_relation', 'charles.relation');
+  bindText('#q_gaylussac_relation', 'gaylussac.relation');
+  bindText('#q_assess_a1', 'assess.a1'); bindText('#q_assess_a2', 'assess.a2'); bindText('#q_assess_a3', 'assess.a3');
+  bindText('#interceptIn', 'charles.intercept'); bindText('#rAnswer', 'combine.rAnswer');
+
+  $('#invToggle').addEventListener('click', function () {
+    invView = !invView;
+    if (invView) state.boyle.inverseToggled = true;
+    this.setAttribute('aria-pressed', String(invView));
+    this.textContent = invView ? 'P–V 로 보기' : '1/V 로 보기';
+    renderGraphs(); save(); paintAllLocks(); invalidateExport();
+  });
+  $('#axC').addEventListener('click', function () { axisK = false; $('#axC').setAttribute('aria-pressed', 'true'); $('#axK').setAttribute('aria-pressed', 'false'); renderGraphs(); paintAxisNote(); });
+  $('#axK').addEventListener('click', function () {
+    axisK = true; state.charles.axisToggled = true;
+    $('#axC').setAttribute('aria-pressed', 'false'); $('#axK').setAttribute('aria-pressed', 'true');
+    renderGraphs(); paintAxisNote(); save(); paintAllLocks(); invalidateExport();
+  });
+
+  $('#startBtn').addEventListener('click', function () {
+    state.intro.started = true; save(); proceed(1);
+  });
+  [2, 3, 4, 5].forEach(function (step) {
+    var btn = document.getElementById('next' + step);
+    if (!btn) return;
+    btn.addEventListener('click', function () { onNext(step, btn); });
+  });
+  $('#exportBtn').addEventListener('click', doExport);
+  $('#printBtn').addEventListener('click', doPrint);
+  $('#resetBtn').addEventListener('click', function () {
+    if (!window.confirm('지금까지 기록한 데이터와 답이 모두 지워지고 처음부터 다시 시작해요.\n계속할까요?')) return;
+    try { localStorage.removeItem(getActiveKeyName()); } catch (e) { }
+    state = defaultState();
+    if (S) { state.student.name = S.name || ''; state.student.sid = S.sid || ''; state.student.fromSite = true; }
+    unlocked = 1; invView = false; axisK = false;
+    for (var k = 2; k <= 6; k++) { var sec = document.getElementById('s' + k); if (sec) sec.classList.add('hidden'); }
+    var en = $('#exportNote'); if (en) en.style.display = 'none';
+    blocks.forEach(function (b) {
+      b.sim = new E.Sim({ mode: b.k.mode, t: 273, n: 1, p: 1.0, v: b.k.mode === 'isochoric' ? E.volumeOf(1, 273, 1) : undefined, seed: 20250726 + b.kind.length });
+      b.uiMode = b.k.modes ? 'isothermal' : b.k.mode;
+      paintCtl(b);
+    });
+    hydrate(); save(true);
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+  });
+  var ms = $('#mSave'); if (ms) ms.addEventListener('click', applyManual);
+}
+
+/* ===================== §6 단계 진행 배선 ===================== */
+function proceed(step) {
+  var g = gate(step);
+  if (!g.ok) { paintLock(step); return; }
+  if (unlocked < step + 1) { unlocked = Math.min(6, step + 1); save(); }
+  revealTo(unlocked, true);
+  paintAllLocks(); paintProgress(); renderGraphs();
+}
+function onNext(step, btn) {
+  var keys = AI_KEYS_BY_STEP[step] || [];
+  if (!CONFIG.AI_CHECK || IS_ADMIN || !keys.length) { proceed(step); return; }
+  if (!CONFIG.REQUIRE_AI_PASS) { runAiCheck(keys); proceed(step); return; }   // 백그라운드 검수 후 즉시 진행
+  var old = btn.textContent;
+  btn.disabled = true; btn.textContent = '확인 중…';
+  var lock = document.getElementById('lock' + step);
+  if (lock) { lock.className = 'lockmsg show'; lock.textContent = '⏳ 서술 응답을 확인하는 중이에요… (최대 16초)'; }
+  waitAi(keys).then(function () {
+    btn.disabled = false; btn.textContent = old;
+    paintAllLocks();
+    proceed(step);
+  });
+}
+
+/* ===================== 활성 키 헬퍼 ===================== */
+function getActiveKeyName() { return activeKey; }
+function setActiveKeyName(k) { activeKey = k; }
+
+/* ===================== 초기화 ===================== */
+function init() {
+  // 상단 칩·배지
+  if (IS_ADMIN) $('#tbadge').hidden = false;
+  $('#whochip').textContent = ((S && S.sid) || '학번') + ' · ' + ((S && S.name) || (IS_ADMIN ? '교사' : '이름'));
+  if (!S) {
+    $('#manualBox').hidden = false;
+  } else if (IS_ADMIN) {
+    $('#whochip').textContent = '교사 미리보기';
+  } else if (!S.sid) {
+    $('#manualBox').hidden = false;
+    $('#manualNote').innerHTML = 'ℹ️ 학번이 없어요. 학번을 입력하면 학번별로 저장됩니다.';
+  } else if (!S.name) {
+    $('#manualBox').hidden = false;
+    $('#manualNote').innerHTML = 'ℹ️ 이름이 없어요. 이름을 입력해 주세요.';
+  }
+
+  // 저장 불러오기 (§3.1)
+  var res = readKey(activeKey);
+  if (res.broken) { backup(activeKey, res.raw); state = defaultState(); }
+  else if (res.data) {
+    var injected = (S && S.sid) || '';
+    // 공용 태블릿 대비 — 저장된 sid ≠ 주입 학번이면 자동 복원·병합 금지
+    if (injected && res.data.student && res.data.student.sid && res.data.student.sid !== injected) state = defaultState();
+    else state = res.data;
+  } else state = defaultState();
+  if (S) {
+    if (S.name) state.student.name = S.name;
+    if (S.sid) state.student.sid = S.sid;
+    state.student.fromSite = true;
+  }
+  if ($('#mName')) $('#mName').value = state.student.name || '';
+  if ($('#mSid')) $('#mSid').value = state.student.sid || '';
+
+  // 시뮬레이터 생성
+  $$('.simblock').forEach(function (el) { var b = buildBlock(el); if (io) io.observe(el); });
+  // ⑤ 등적: 부피 고정 22.4 L
+  blocks.forEach(function (b) {
+    if (b.kind === 'gaylussac') b.sim.setVolumeLocked(E.volumeOf(1, 273, 1));
+  });
+
+  bindAll();
+  unlocked = recomputeUnlocked();                       // §3.1 저장된 unlockedStep 은 신뢰하지 않음
+  hydrate();
+  checkLow();
+  save(true);
+  requestAnimationFrame(frame);
+
+  // prefers-reduced-motion: 자동 시작하지 않고 큰 시작 버튼을 먼저 보여줌(§8.1)
+  if (reduceMotion) {
+    blocks.forEach(function (b) {
+      var p = $('[data-act="play"]', b.el);
+      if (p) { p.textContent = '▶ 시뮬레이션 시작'; p.className = 'btn sm lime'; }
+    });
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+})();
+</script>
+</body>
+</html>
