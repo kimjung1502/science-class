@@ -200,7 +200,7 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260726a"></script>
+<script src="js/db.js?v=20260726b"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile } = window.DB;
@@ -586,7 +586,9 @@
               let stored = null;
               if (!isHtml) {
                 saveBtn.textContent = '드라이브 업로드 중…';
-                try { stored = await uploadMaterialToDrive(up, (path[0] && path[0].name) || ''); }
+                // path 브레드크럼 = [과목, 대단원, 중단원, 소단원] → 과목›대단원›중단원 폴더로
+                const folderPath = [path[0] && path[0].name, path[1] && path[1].name, path[2] && path[2].name];
+                try { stored = await uploadMaterialToDrive(up, folderPath); }
                 catch (e2) { driveWarn = e2.message || String(e2); }
               }
               if (!stored) {

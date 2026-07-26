@@ -119,7 +119,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260726a"></script>
+<script src="js/db.js?v=20260726b"></script>
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
@@ -601,6 +601,14 @@
       picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 링크로 등록';
     } catch (e) { picked.textContent = '공유 설정 실패: ' + e.message; }
   }
+  // 소단원 id → [대단원명, 중단원명] (드라이브 폴더 경로용)
+  function unitPathNames(subId) {
+    const t = state.tree || {};
+    for (const u of (t.units || [])) for (const m of (u.mid_units || [])) for (const su of (m.subunits || [])) {
+      if (su.id === subId) return [u.name || '', m.name || ''];
+    }
+    return [];
+  }
   async function onMatSubmit(e) {
     e.preventDefault();
     const form = e.target;
@@ -634,7 +642,8 @@
           let stored = null;
           if (!isHtml) {
             saveBtn.textContent = '드라이브 업로드 중…';
-            try { stored = await uploadMaterialToDrive(up, (state.tree && state.tree.name) || ''); }
+            const folderPath = [(state.tree && state.tree.name) || ''].concat(unitPathNames(editing ? editing.subunit_id : state.addingSubId));
+            try { stored = await uploadMaterialToDrive(up, folderPath); }
             catch (e) { driveWarn = e.message || String(e); }
           }
           if (!stored) {

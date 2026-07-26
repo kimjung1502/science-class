@@ -508,14 +508,15 @@
     if (!up.ok) throw new Error('드라이브 업로드 실패: ' + ((d.error && d.error.message) || up.status));
     return { id: d.id, url: d.webViewLink || `https://drive.google.com/file/d/${d.id}/view` };
   }
-  // 수업자료 파일을 선생님 드라이브(학교›년도›수업자료›과목)에 올리고 학생 열람 공유까지.
+  // 수업자료 파일을 선생님 드라이브(학교›년도›수업자료›과목›대단원›중단원)에 올리고 학생 열람 공유까지.
+  // subPath: '수업자료' 아래로 이어질 폴더 이름 배열(예: [과목, 대단원, 중단원]) — 빈 값은 건너뜀.
   // 반환: { url, storage_path: 'gdrive:<id>', original_filename }
   // 드라이브 미연결이면 driveAccessToken()에서 throw → 호출부가 버킷 업로드로 폴백한다.
-  async function uploadMaterialToDrive(file, subjectName) {
+  async function uploadMaterialToDrive(file, subPath) {
     const { access_token } = await driveAccessToken();
     const s = await driveStatus().catch(() => ({}));
     const names = [s.school || '학교', s.year || '년도', '수업자료'];
-    if (subjectName) names.push(subjectName);
+    (Array.isArray(subPath) ? subPath : [subPath]).forEach((n) => { if (n) names.push(String(n)); });
     let parent = 'root';
     for (const n of names) parent = await driveEnsureFolder(access_token, n, parent);
     const up = await driveUploadBytes(access_token, parent, file.name, file);
