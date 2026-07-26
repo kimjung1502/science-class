@@ -1217,7 +1217,7 @@ function applyReadOnly() {
     var sec = document.getElementById('s' + k);
     if (!sec) continue;
     $$('textarea, input[type=text], input[type=radio]', sec).forEach(function (el) { el.disabled = false; });
-    $('.dtable .del, #invToggle', sec).forEach(function (el) { el.disabled = false; });
+    $$('.dtable .del, #invToggle', sec).forEach(function (el) { el.disabled = false; });
   }
   paintBrokenWarnings();
 }
@@ -2426,12 +2426,15 @@ function init() {
     if (b.kind === 'gaylussac') b.sim.setVolumeLocked(E.volumeOf(1, 273, 1));
   });
 
+  // 렌더 루프를 '먼저' 띄운다 — 아래 초기화 중 어디서 예외가 나더라도
+  // 시뮬레이터가 통째로 빈 화면이 되는 일은 없게(한 번 겪은 회귀).
+  requestAnimationFrame(frame);
+
   bindAll();
   unlocked = recomputeUnlocked();                       // §3.1 저장된 unlockedStep 은 신뢰하지 않음
   hydrate();
   checkLow();
   save(true);
-  requestAnimationFrame(frame);
 
   // prefers-reduced-motion: 자동 시작하지 않고 큰 시작 버튼을 먼저 보여줌(§8.1)
   if (reduceMotion) {
