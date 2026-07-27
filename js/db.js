@@ -158,6 +158,138 @@
 
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  // ---------- 공용 포맷 헬퍼 (페이지마다 중복 정의하던 것) ----------
+  const _p2 = (n) => String(n).padStart(2, '0');
+  const _dt = (iso) => { if (!iso) return null; const d = new Date(iso); return isNaN(d) ? null : d; };
+  const fmtDate = (iso) => { const d = _dt(iso); return d ? `${d.getFullYear()}.${_p2(d.getMonth() + 1)}.${_p2(d.getDate())}` : ''; };
+  const fmtDateTime = (iso) => { const d = _dt(iso); return d ? `${fmtDate(iso)} ${_p2(d.getHours())}:${_p2(d.getMinutes())}` : ''; };
+  // ISO(UTC) → <input type="datetime-local"> 값(로컬 시각)
+  const toLocalInput = (iso) => { const d = _dt(iso); return d ? `${d.getFullYear()}-${_p2(d.getMonth() + 1)}-${_p2(d.getDate())}T${_p2(d.getHours())}:${_p2(d.getMinutes())}` : ''; };
+  const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
+  // Supabase Storage 키는 ASCII 안전 문자만 허용 → 한글·로마숫자(Ⅰ)·공백 등은 _ 로 치환
+  function safeStorageName(fn) {
+    fn = String(fn || '');
+    const dot = fn.lastIndexOf('.');
+    const ext = (dot > 0 ? fn.slice(dot + 1) : '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+    let base = (dot > 0 ? fn.slice(0, dot) : fn).replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_').replace(/^[_.-]+|[_.-]+$/g, '');
+    if (!base) base = 'file';
+    return ext ? `${base}.${ext}` : base;
+  }
+  const fillSelect = (sel, items, placeholder) => {
+    sel.innerHTML = `<option value="">${placeholder}</option>` + (items || []).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  };
+
+  // ---------- 학생 페이지 공통 UI ----------
+  // 모바일 사이드바 서랍(#sidebar/#sidebar-backdrop/#menu-btn/#sidebar-close) + 미구현 링크(.fixed-link) 무력화.
+  // 반환값 = closeSidebar (소단원 클릭 시 서랍 닫기 등에 사용)
+  function wireSidebar() {
+    const $id = (id) => document.getElementById(id);
+    const open = () => { $id('sidebar').classList.add('drawer-open'); $id('sidebar-backdrop').classList.remove('hidden'); };
+    const close = () => { $id('sidebar').classList.remove('drawer-open'); $id('sidebar-backdrop').classList.add('hidden'); };
+    $id('menu-btn').addEventListener('click', open);
+    $id('sidebar-close').addEventListener('click', close);
+    $id('sidebar-backdrop').addEventListener('click', close);
+    document.querySelectorAll('.fixed-link').forEach((a) => a.addEventListener('click', (e) => e.preventDefault()));
+    return close;
+  }
+  // 사이드바 '단원 바로가기' 아코디언 (대단원 > 중단원 > 소단원 링크 → 단원-상세)
+  function renderUnitNav(nav, subjectId, units, sb) {
+    const subLink = (s) => `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 p-2 rounded-lg text-[12.5px] text-ink hover:bg-paper3 transition-all">
+      <span class="material-symbols-outlined text-[16px] text-ink3">radio_button_unchecked</span><span>${esc(s.name)}</span></a>`;
+    if (!units.length) { nav.innerHTML = '<p class="text-[12px] text-ink3 px-3 py-2">등록된 단원이 없습니다.</p>'; return; }
+    nav.innerHTML = units.map((u) => {
+      const unitOpen = u.id === sb.openUnit;
+      const midsHtml = unitOpen ? (u.mid_units || []).map((m) => {
+        const on = m.id === sb.openMid;
+        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-[12px] text-ink3 p-2">소단원이 없습니다.</p>';
+        return `<div>
+          <button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between p-2.5 rounded-lg text-left transition-all ${on ? 'bg-ink text-paper font-bold' : 'text-ink3 hover:bg-paper3'}">
+            <span class="text-[13px]">${esc(m.name)}</span>
+            <span class="material-symbols-outlined text-[18px] arrow ${on ? 'rotate-180 text-lime' : ''}">expand_more</span>
+          </button>
+          ${on ? `<div class="mt-1 ml-4 space-y-0.5 swap-in">${subs}</div>` : ''}
+        </div>`;
+      }).join('') : '';
+      return `<div>
+        <button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-paper3 text-left transition-all">
+          <span class="text-[13px] font-bold ${unitOpen ? 'text-signal' : 'text-ink'}">${esc(u.name)}</span>
+          <span class="material-symbols-outlined arrow text-ink3 ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
+        </button>
+        ${unitOpen ? `<div class="mt-1 space-y-1 swap-in">${midsHtml}</div>` : ''}
+      </div>`;
+    }).join('');
+    nav.querySelectorAll('.sb-unit').forEach((btn) => btn.addEventListener('click', () => {
+      sb.openUnit = (sb.openUnit === btn.dataset.unit) ? null : btn.dataset.unit;
+      sb.openMid = null;
+      renderUnitNav(nav, subjectId, units, sb);
+    }));
+    nav.querySelectorAll('.sb-mid').forEach((btn) => btn.addEventListener('click', () => {
+      sb.openMid = (sb.openMid === btn.dataset.mid) ? null : btn.dataset.mid;
+      renderUnitNav(nav, subjectId, units, sb);
+    }));
+  }
+  // 필터 칩(.filter-chip) 선택 스타일 전환 + 콜백
+  function wireFilterChips(onPick) {
+    document.querySelectorAll('.filter-chip').forEach((chip) => chip.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip').forEach((c) => {
+        const on = c === chip;
+        ['border-ink', 'bg-ink', 'text-paper', 'font-bold'].forEach((k) => c.classList.toggle(k, on));
+        ['border-faint', 'text-ink3'].forEach((k) => c.classList.toggle(k, !on));
+      });
+      onPick(chip.dataset.filter);
+    }));
+  }
+  // 단원 트리 인덱스: id → 단원 조회 + 항목(unit_id/mid_unit_id/subunit_id)의 경로·칩 HTML
+  function topicIndex(tree) {
+    const units = new Map(), mids = new Map(), subs = new Map();
+    (tree.units || []).forEach((u) => {
+      units.set(u.id, u);
+      (u.mid_units || []).forEach((m) => {
+        mids.set(m.id, m);
+        (m.subunits || []).forEach((s) => subs.set(s.id, s));
+      });
+    });
+    const path = (x) => [units.get(x.unit_id), mids.get(x.mid_unit_id), subs.get(x.subunit_id)].filter(Boolean).map((t) => t.name);
+    const chip = (x) => {
+      const parts = path(x);
+      return parts.length ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-paper2 text-ink3 font-mono text-[11px] rounded-full max-w-full">
+        <span class="material-symbols-outlined text-[15px] text-signal shrink-0">account_tree</span>
+        <span class="truncate">${parts.map(esc).join(' › ')}</span></span>` : '';
+    };
+    return { units, mids, subs, path, chip };
+  }
+
+  // ---------- 구글 드라이브 Picker (교사) ----------
+  function loadPickerApi() {
+    return new Promise((resolve, reject) => {
+      if (window.google && window.google.picker) return resolve();
+      const finish = () => window.gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('Picker 모듈 로드 실패')) });
+      if (window.gapi) return finish();
+      const s = document.createElement('script');
+      s.src = 'https://apis.google.com/js/api.js';
+      s.onload = finish;
+      s.onerror = () => reject(new Error('구글 API를 불러오지 못했습니다 (네트워크/차단 확인). 대신 파일 업로드를 쓰세요.'));
+      document.head.appendChild(s);
+    });
+  }
+  // Picker를 열어 파일 1개 선택 → { id, name, url, token } (취소 시 null)
+  async function pickDriveFile() {
+    const { access_token, api_key, app_id } = await driveAccessToken();
+    await loadPickerApi();
+    return new Promise((resolve) => {
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(false).setSelectFolderEnabled(false).setMode(google.picker.DocsViewMode.LIST);
+      new google.picker.PickerBuilder().setAppId(app_id).setOAuthToken(access_token).setDeveloperKey(api_key)
+        .setTitle('수업 자료로 넣을 파일 선택').addView(view)
+        .setCallback((data) => {
+          if (data.action === google.picker.Action.CANCEL) return resolve(null);
+          if (data.action !== google.picker.Action.PICKED) return;
+          const doc = (data.docs || [])[0];
+          resolve(doc ? { id: doc.id, name: doc.name || '', url: doc.url || `https://drive.google.com/file/d/${doc.id}/view`, token: access_token } : null);
+        })
+        .build().setVisible(true);
+    });
+  }
+
   async function fetchSubjects() {
     const { data, error } = await supabase.from('subjects').select('*').eq('is_active', true).order('sort_order');
     if (error) throw error;
@@ -314,9 +446,6 @@
     return { id: data };
   }
 
-  async function createAssessment(a) { return saveAssessment(null, a); }
-  async function updateAssessment(id, a) { await saveAssessment(id, a); }
-
   async function deleteAssessment(id) {
     const { error } = await supabase.from('assessments').delete().eq('id', id);
     if (error) throw error;
@@ -346,11 +475,22 @@
     if (error) throw error;
     return data || [];
   }
+  // 과목에 연결된 분반 목록 (교사 전용 — classes RLS가 관리자만 허용)
+  async function fetchSubjectClasses(subjectId) {
+    const { data, error } = await supabase
+      .from('class_subjects')
+      .select('classes ( id, name, sort_order )')
+      .eq('subject_id', subjectId);
+    if (error) throw error;
+    return (data || []).map((r) => r.classes).filter(Boolean)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
+  }
   async function saveAnnouncement(id, a) {
     const payload = {
       subject_id: a.subjectId, title: a.title, body: a.body || '', level: a.level || 'general', is_active: a.isActive !== false,
       publish_from: a.publishFrom || null, publish_until: a.publishUntil || null,
       attachments: Array.isArray(a.attachments) ? a.attachments : [],
+      target_class_ids: a.targetClassIds?.length ? a.targetClassIds : null,
     };
     if (id) { const { error } = await supabase.from('announcements').update(payload).eq('id', id); if (error) throw error; return { id }; }
     const { data, error } = await supabase.from('announcements').insert(payload).select('id').single();
@@ -658,10 +798,12 @@
     studentSignIn, currentStudent, requireLogin, signOut, callManageStudents,
     uploadToBucket, removeFromBucket,
     MATERIAL_TYPES, ACCENTS, esc, fetchSubjects, fetchSubjectTree,
+    fmtDate, fmtDateTime, toLocalInput, nl2br, safeStorageName, fillSelect,
+    wireSidebar, renderUnitNav, wireFilterChips, topicIndex, pickDriveFile,
     fetchSubjectMeta, fetchQuestions, fetchQuestion, fetchAnswers,
     createQuestion, createAnswer, deleteQuestion, deleteAnswer, incrementQuestionViews,
-    fetchAssessments, createAssessment, updateAssessment, deleteAssessment,
-    fetchAnnouncements, saveAnnouncement, deleteAnnouncement,
+    fetchAssessments, saveAssessment, deleteAssessment,
+    fetchAnnouncements, saveAnnouncement, deleteAnnouncement, fetchSubjectClasses,
     fetchSubmissionAssignments, saveSubmissionAssignment, deleteSubmissionAssignment,
     fetchSubmissionsByAssignments, fetchSubmissionsForAssignment,
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,

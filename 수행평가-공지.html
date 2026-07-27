@@ -245,12 +245,13 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260726d"></script>
+<script src="js/db.js?v=20260727b"></script>
 <script>
 (function () {
   const {
     supabase, requireLogin, signOut, esc,
-    fetchSubjectTree, fetchAssessments, createAssessment, updateAssessment, deleteAssessment,
+    fmtDate, nl2br, fillSelect, wireSidebar, renderUnitNav, wireFilterChips, topicIndex,
+    fetchSubjectTree, fetchAssessments, saveAssessment, deleteAssessment,
     extractAssessmentFromPdf,
   } = window.DB;
 
@@ -266,86 +267,10 @@
   const statusInfo = (s) => STATUS[s] || STATUS.ongoing;
 
   const state = { subject: null, isAdmin: false, viewerName: '', viewerId: null, filter: 'all', assessments: [], selectedId: null, editingId: null };
-  const topic = { units: new Map(), mids: new Map(), subs: new Map() };
+  let topic = null; // 단원 조회용 인덱스 (topicIndex)
   const sb = { openUnit: null, openMid: null };
+  const renderSidebarNav = () => renderUnitNav($('sidebar-nav'), subjectId, state.subject.units || [], sb);
 
-  function indexTree(tree) {
-    (tree.units || []).forEach((u) => {
-      topic.units.set(u.id, u);
-      (u.mid_units || []).forEach((m) => {
-        topic.mids.set(m.id, Object.assign({ unit: u }, m));
-        (m.subunits || []).forEach((s) => topic.subs.set(s.id, Object.assign({ unit: u, mid: m }, s)));
-      });
-    });
-  }
-
-  function topicPath(a) {
-    const parts = [];
-    if (a.unit_id && topic.units.has(a.unit_id)) parts.push(topic.units.get(a.unit_id).name);
-    if (a.mid_unit_id && topic.mids.has(a.mid_unit_id)) parts.push(topic.mids.get(a.mid_unit_id).name);
-    if (a.subunit_id && topic.subs.has(a.subunit_id)) parts.push(topic.subs.get(a.subunit_id).name);
-    return parts;
-  }
-  function topicChip(a) {
-    const parts = topicPath(a);
-    if (!parts.length) return '';
-    return `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-paper2 text-ink3 font-mono text-[11px] rounded-full max-w-full">
-      <span class="material-symbols-outlined text-[15px] text-signal shrink-0">account_tree</span>
-      <span class="truncate">${parts.map(esc).join(' › ')}</span>
-    </span>`;
-  }
-
-  // ---------- 사이드바 단원 트리 ----------
-  function subLink(s) {
-    return `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 p-2 rounded-lg text-[12.5px] text-ink hover:bg-paper3 transition-all">
-      <span class="material-symbols-outlined text-[16px] text-ink3">radio_button_unchecked</span><span>${esc(s.name)}</span>
-    </a>`;
-  }
-  function renderSidebarNav() {
-    const nav = $('sidebar-nav');
-    const units = state.subject.units || [];
-    nav.innerHTML = units.map((u) => {
-      const unitOpen = u.id === sb.openUnit;
-      const midsHtml = unitOpen ? (u.mid_units || []).map((m) => {
-        const on = m.id === sb.openMid;
-        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-[12px] text-ink3 p-2">소단원이 없습니다.</p>';
-        return `<div>
-          <button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between p-2.5 rounded-lg text-left transition-all ${on ? 'bg-ink text-paper font-bold' : 'text-ink3 hover:bg-paper3'}">
-            <span class="text-[13px]">${esc(m.name)}</span>
-            <span class="material-symbols-outlined text-[18px] arrow ${on ? 'rotate-180' : ''}">expand_more</span>
-          </button>
-          ${on ? `<div class="mt-1 ml-4 space-y-0.5 swap-in">${subs}</div>` : ''}
-        </div>`;
-      }).join('') : '';
-      return `<div>
-        <button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-paper3 text-left transition-all">
-          <span class="text-[13px] font-bold ${unitOpen ? 'text-signal' : 'text-ink'}">${esc(u.name)}</span>
-          <span class="material-symbols-outlined arrow text-ink3 ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
-        </button>
-        ${unitOpen ? `<div class="mt-1 space-y-1 swap-in">${midsHtml}</div>` : ''}
-      </div>`;
-    }).join('');
-    nav.querySelectorAll('.sb-unit').forEach((btn) => btn.addEventListener('click', () => {
-      const id = btn.dataset.unit;
-      if (sb.openUnit === id) { sb.openUnit = null; sb.openMid = null; }
-      else { sb.openUnit = id; sb.openMid = null; }
-      renderSidebarNav();
-    }));
-    nav.querySelectorAll('.sb-mid').forEach((btn) => btn.addEventListener('click', () => {
-      const id = btn.dataset.mid;
-      sb.openMid = (sb.openMid === id) ? null : id;
-      renderSidebarNav();
-    }));
-  }
-
-  const fmtDate = (iso) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d)) return '';
-    const p = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
-  };
-  const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
   const today = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 
   // 평가 기간(시작일~마감일) 텍스트
@@ -440,7 +365,7 @@
       return `<div class="card rounded-xl border-2 border-dashed border-faint p-8 text-center text-ink3">왼쪽에서 공지를 선택하세요.</div>`;
     }
     const st = statusInfo(a.status);
-    const chip = topicChip(a);
+    const chip = topic.chip(a);
     const range = dateRangeText(a);
     const admin = state.isAdmin ? `
       <div class="flex items-center gap-1 shrink-0">
@@ -595,9 +520,6 @@
   }
 
   // ---------- 작성/수정 모달 ----------
-  function fillSelect(sel, items, placeholder) {
-    sel.innerHTML = `<option value="">${placeholder}</option>` + (items || []).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
-  }
   function setUnitSelectors(unitId, midId, subId) {
     fillSelect($('f-unit'), state.subject.units || [], '대단원 전체');
     $('f-unit').value = unitId || '';
@@ -752,7 +674,7 @@
       $('board').innerHTML = '<p class="lg:col-span-12 text-center text-ink3 py-16">이 과목에 접근할 권한이 없습니다.</p>';
       return;
     }
-    indexTree(state.subject);
+    topic = topicIndex(state.subject);
     document.title = `수행평가 공지 · ${state.subject.name}`;
     $('subject-title').textContent = state.subject.name;
     $('crumb-subject').textContent = state.subject.name;
@@ -811,8 +733,8 @@
         const editingId = state.editingId;
         $('edit-submit-label').textContent = '저장 중…';
         try {
-          if (editingId) { await updateAssessment(editingId, payload); state.selectedId = editingId; }
-          else { const { id } = await createAssessment(payload); state.selectedId = id; }
+          const { id } = await saveAssessment(editingId, payload);
+          state.selectedId = id || editingId;
           closeEdit();
           await loadBoard();
         } catch (err) {
@@ -824,30 +746,9 @@
       });
     }
 
-    document.querySelectorAll('.fixed-link').forEach((el) => el.addEventListener('click', (e) => e.preventDefault())); // 미구현 링크
-    // 모바일 사이드바 서랍
-    const openSidebar = () => { $('sidebar').classList.add('drawer-open'); $('sidebar-backdrop').classList.remove('hidden'); };
-    const closeSidebar = () => { $('sidebar').classList.remove('drawer-open'); $('sidebar-backdrop').classList.add('hidden'); };
-    $('menu-btn').addEventListener('click', openSidebar);
-    $('sidebar-close').addEventListener('click', closeSidebar);
-    $('sidebar-backdrop').addEventListener('click', closeSidebar);
-    // 소단원 클릭 시 서랍 닫기(모바일)
-    $('sidebar-nav').addEventListener('click', (e) => { if (e.target.closest('a')) closeSidebar(); });
-
-    // 필터 칩
-    document.querySelectorAll('.filter-chip').forEach((chip) => chip.addEventListener('click', () => {
-      state.filter = chip.dataset.filter;
-      document.querySelectorAll('.filter-chip').forEach((c) => {
-        const on = c === chip;
-        c.classList.toggle('bg-ink', on);
-        c.classList.toggle('text-paper', on);
-        c.classList.toggle('border-ink', on);
-        c.classList.toggle('font-bold', on);
-        c.classList.toggle('border-faint', !on);
-        c.classList.toggle('text-ink3', !on);
-      });
-      renderBoard();
-    }));
+    const closeSidebar = wireSidebar(); // 모바일 서랍 + 미구현 링크
+    $('sidebar-nav').addEventListener('click', (e) => { if (e.target.closest('a')) closeSidebar(); }); // 소단원 클릭 시 서랍 닫기
+    wireFilterChips((f) => { state.filter = f; renderBoard(); });
 
     await loadBoard();
   })();

@@ -200,27 +200,13 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260727a"></script>
+<script src="js/db.js?v=20260727b"></script>
 <script>
 (function () {
-  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile } = window.DB;
+  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone } = window.DB;
 
   const $ = (id) => document.getElementById(id);
   const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2200); };
-
-  // Supabase Storage 키는 ASCII 안전 문자만 허용 → 한글·로마숫자(Ⅰ)·공백 등은 _ 로 치환.
-  // (화면에 보이는 자료 이름은 별도 필드라 영향 없음)
-  function safeStorageName(fn) {
-    fn = String(fn || '');
-    const dot = fn.lastIndexOf('.');
-    const ext = (dot > 0 ? fn.slice(dot + 1) : '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
-    let base = (dot > 0 ? fn.slice(0, dot) : fn)
-      .replace(/[^A-Za-z0-9._-]+/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^[_.-]+|[_.-]+$/g, '');
-    if (!base) base = 'file';
-    return ext ? `${base}.${ext}` : base;
-  }
 
   // 계층 정의
   const LEVELS = [
@@ -404,12 +390,6 @@
     return `<input name="${f.k}" type="text" ${f.required ? 'required' : ''} value="${v}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="${esc(f.placeholder||'')}">`;
   }
 
-  // ISO(UTC) → <input type="datetime-local"> 값(로컬 시각)
-  function toLocalInput(iso) {
-    if (!iso) return '';
-    const d = new Date(iso); const p = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-  }
   function materialForm(item) {
     const type = item?.type || 'print';
     const typeOpts = Object.entries(MATERIAL_TYPES).map(([k, t]) => `<option value="${k}" ${type === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('');
@@ -499,51 +479,21 @@
   }
 
   // ---------------- 구글 드라이브 파일 선택기(Picker) ----------------
-  function loadPickerApi() {
-    return new Promise((resolve, reject) => {
-      if (window.google && window.google.picker) return resolve();
-      const finish = () => window.gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('Picker 모듈 로드 실패')) });
-      if (window.gapi) return finish();
-      const s = document.createElement('script');
-      s.src = 'https://apis.google.com/js/api.js';
-      s.onload = finish;
-      s.onerror = () => reject(new Error('구글 API를 불러오지 못했습니다 (네트워크/차단 확인). 대신 파일 업로드를 쓰세요.'));
-      document.head.appendChild(s);
-    });
-  }
   async function openDrivePicker() {
     const btn = $('drive-pick-btn'); const old = btn.innerHTML; btn.disabled = true; btn.textContent = '여는 중…';
-    try {
-      const { access_token, api_key, app_id } = await window.DB.driveAccessToken();
-      await loadPickerApi();
-      const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
-        .setIncludeFolders(false).setSelectFolderEnabled(false).setMode(google.picker.DocsViewMode.LIST);
-      const picker = new google.picker.PickerBuilder()
-        .setAppId(app_id)
-        .setOAuthToken(access_token)
-        .setDeveloperKey(api_key)
-        .setTitle('수업 자료로 넣을 파일 선택')
-        .addView(view)
-        .setCallback((data) => onDrivePicked(data, access_token))
-        .build();
-      picker.setVisible(true);
-    } catch (e) {
-      alert('드라이브 선택기 열기 실패: ' + e.message);
-    } finally {
-      btn.disabled = false; btn.innerHTML = old;
-    }
-  }
-  async function onDrivePicked(data, token) {
-    if (!window.google || data.action !== google.picker.Action.PICKED) return;
-    const doc = (data.docs || [])[0]; if (!doc) return;
+    let doc = null;
+    try { doc = await pickDriveFile(); }
+    catch (e) { alert('드라이브 선택기 열기 실패: ' + e.message); }
+    btn.disabled = false; btn.innerHTML = old;
+    if (!doc) return;
     const picked = $('drive-picked'); if (!picked) return;
     picked.classList.remove('hidden'); picked.textContent = '공유 설정 중…';
     try {
-      await window.DB.driveShareAnyone(doc.id, token);
-      $('drive-url').value = doc.url || ('https://drive.google.com/file/d/' + doc.id + '/view');
-      $('drive-name').value = doc.name || '';
+      await driveShareAnyone(doc.id, doc.token);
+      $('drive-url').value = doc.url;
+      $('drive-name').value = doc.name;
       const nameInput = document.querySelector('[name="name"]');
-      if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name || '';
+      if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name;
       const fi = document.querySelector('[name="file"]'); if (fi) fi.value = '';
       const sb = $('m-split'); if (sb) { sb.classList.add('hidden'); $('m-range').value = ''; }
       picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 링크로 등록됩니다.';

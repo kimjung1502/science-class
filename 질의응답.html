@@ -168,11 +168,12 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260726d"></script>
+<script src="js/db.js?v=20260727b"></script>
 <script>
 (function () {
   const {
     supabase, requireLogin, signOut, esc,
+    fmtDate, nl2br, fillSelect, wireSidebar, renderUnitNav, wireFilterChips, topicIndex,
     fetchSubjectTree, fetchQuestions, fetchQuestion, fetchAnswers,
     createQuestion, createAnswer, deleteQuestion, deleteAnswer, incrementQuestionViews,
   } = window.DB;
@@ -182,91 +183,10 @@
   const subjectId = params.get('subject');
 
   const state = { subject: null, isAdmin: false, viewerName: '', viewerId: null, filter: 'all', search: '', questions: [] };
-  // 단원 조회용 인덱스 (id → {name, 부모})
-  const topic = { units: new Map(), mids: new Map(), subs: new Map() };
+  let topic = null; // 단원 조회용 인덱스 (topicIndex)
   // 사이드바 아코디언 펼침 상태
   const sb = { openUnit: null, openMid: null };
-
-  function indexTree(tree) {
-    (tree.units || []).forEach((u) => {
-      topic.units.set(u.id, u);
-      (u.mid_units || []).forEach((m) => {
-        topic.mids.set(m.id, Object.assign({ unit: u }, m));
-        (m.subunits || []).forEach((s) => topic.subs.set(s.id, Object.assign({ unit: u, mid: m }, s)));
-      });
-    });
-  }
-
-  // 질문에 연결된 단원 경로 이름 배열 (활성 단원만)
-  function topicPath(q) {
-    const parts = [];
-    if (q.unit_id && topic.units.has(q.unit_id)) parts.push(topic.units.get(q.unit_id).name);
-    if (q.mid_unit_id && topic.mids.has(q.mid_unit_id)) parts.push(topic.mids.get(q.mid_unit_id).name);
-    if (q.subunit_id && topic.subs.has(q.subunit_id)) parts.push(topic.subs.get(q.subunit_id).name);
-    return parts;
-  }
-
-  function topicChip(q) {
-    const parts = topicPath(q);
-    if (!parts.length) return '';
-    return `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-paper2 text-ink3 font-mono text-[11px] rounded-full max-w-full">
-      <span class="material-symbols-outlined text-[15px] text-signal shrink-0">account_tree</span>
-      <span class="truncate">${parts.map(esc).join(' › ')}</span>
-    </span>`;
-  }
-
-  // ---------- 사이드바 단원 트리 ----------
-  function subLink(s) {
-    return `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 p-2 rounded-lg text-[12.5px] text-ink hover:bg-paper3 transition-all">
-      <span class="material-symbols-outlined text-[16px] text-ink3/70">radio_button_unchecked</span><span>${esc(s.name)}</span>
-    </a>`;
-  }
-
-  function renderSidebarNav() {
-    const nav = $('sidebar-nav');
-    const units = state.subject.units || [];
-    nav.innerHTML = units.map((u) => {
-      const unitOpen = u.id === sb.openUnit;
-      const midsHtml = unitOpen ? (u.mid_units || []).map((m) => {
-        const on = m.id === sb.openMid;
-        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-[12px] text-ink3 p-2">소단원이 없습니다.</p>';
-        return `<div>
-          <button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all ${on ? 'bg-ink text-paper font-bold' : 'text-ink3 hover:bg-paper3'}">
-            <span class="text-[13.5px]">${esc(m.name)}</span>
-            <span class="material-symbols-outlined text-[17px] arrow ${on ? 'rotate-180 text-lime' : ''}">expand_more</span>
-          </button>
-          ${on ? `<div class="mt-1 ml-4 space-y-0.5 swap-in">${subs}</div>` : ''}
-        </div>`;
-      }).join('') : '';
-      return `<div>
-        <button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-paper3 text-left transition-all">
-          <span class="text-[13.5px] font-bold ${unitOpen ? 'text-signal' : 'text-ink'}">${esc(u.name)}</span>
-          <span class="material-symbols-outlined text-[17px] arrow text-ink3/70 ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
-        </button>
-        ${unitOpen ? `<div class="mt-1 space-y-1 swap-in">${midsHtml}</div>` : ''}
-      </div>`;
-    }).join('');
-
-    nav.querySelectorAll('.sb-unit').forEach((btn) => btn.addEventListener('click', () => {
-      const id = btn.dataset.unit;
-      if (sb.openUnit === id) { sb.openUnit = null; sb.openMid = null; }
-      else { sb.openUnit = id; sb.openMid = null; }
-      renderSidebarNav();
-    }));
-    nav.querySelectorAll('.sb-mid').forEach((btn) => btn.addEventListener('click', () => {
-      const id = btn.dataset.mid;
-      sb.openMid = (sb.openMid === id) ? null : id;
-      renderSidebarNav();
-    }));
-  }
-
-  const fmtDate = (iso) => {
-    const d = new Date(iso);
-    if (isNaN(d)) return '';
-    const p = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
-  };
-  const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
+  const renderSidebarNav = () => renderUnitNav($('sidebar-nav'), subjectId, state.subject.units || [], sb);
 
   // ---------- 목록 ----------
   function statusPill(answered) {
@@ -279,7 +199,7 @@
     const answered = q.answer_count > 0;
     return `<div data-qid="${q.id}" class="q-card lift-hover group card p-5 rounded-xl shadow-note hover:shadow-lift ${answered ? 'border-l-[3px] border-l-lime' : 'border-l-[3px] border-l-signal'} cursor-pointer">
       <div class="flex justify-between items-start gap-3 mb-2">
-        <div class="flex flex-wrap items-center gap-2 min-w-0">${statusPill(answered)}${topicChip(q)}</div>
+        <div class="flex flex-wrap items-center gap-2 min-w-0">${statusPill(answered)}${topic.chip(q)}</div>
         <span class="font-mono text-[11px] text-ink3 shrink-0">${fmtDate(q.created_at)}</span>
       </div>
       <h3 class="text-lg font-extrabold tracking-tight text-ink mb-3 group-hover:text-signal transition-colors break-words">${esc(q.title)}</h3>
@@ -387,7 +307,7 @@
 
       <article class="card rounded-xl shadow-note p-6 md:p-8 mb-6 swap-in border-l-[3px] ${answered ? 'border-l-lime' : 'border-l-signal'}">
         <div class="flex items-center justify-between gap-3 mb-3">
-          <div class="flex flex-wrap items-center gap-2 min-w-0">${statusPill(answered)}${topicChip(q)}</div>
+          <div class="flex flex-wrap items-center gap-2 min-w-0">${statusPill(answered)}${topic.chip(q)}</div>
           ${canDeleteQ ? '<button id="q-del" class="font-mono text-[11px] text-ink3 hover:text-error flex items-center gap-1 shrink-0"><span class="material-symbols-outlined text-[16px]">delete</span>질문 삭제</button>' : ''}
         </div>
         <h2 class="text-2xl font-extrabold tracking-tightest text-ink mb-3 break-words">${esc(q.title)}</h2>
@@ -457,9 +377,6 @@
   window.addEventListener('popstate', route);
 
   // ---------- 작성 모달 · 단원 드롭다운 ----------
-  function fillSelect(sel, items, placeholder) {
-    sel.innerHTML = `<option value="">${placeholder}</option>` + (items || []).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
-  }
   function populateUnits() {
     fillSelect($('q-unit'), state.subject.units || [], '대단원 전체');
     resetMidSub();
@@ -500,7 +417,7 @@
       $('list-view').innerHTML = '<p class="text-center text-ink3 py-16">이 과목에 접근할 권한이 없습니다.</p>';
       return;
     }
-    indexTree(state.subject);
+    topic = topicIndex(state.subject);
     populateUnits();
     document.title = `질의응답 · ${state.subject.name}`;
     $('subject-title').textContent = state.subject.name;
@@ -521,13 +438,7 @@
     $('write-close').addEventListener('click', closeWrite);
     $('write-cancel').addEventListener('click', closeWrite);
     $('write-backdrop').addEventListener('click', closeWrite);
-    document.querySelectorAll('.fixed-link').forEach((a) => a.addEventListener('click', (e) => e.preventDefault())); // 미구현 링크
-    // 모바일 사이드바 서랍
-    const openSidebar = () => { $('sidebar').classList.add('drawer-open'); $('sidebar-backdrop').classList.remove('hidden'); };
-    const closeSidebar = () => { $('sidebar').classList.remove('drawer-open'); $('sidebar-backdrop').classList.add('hidden'); };
-    $('menu-btn').addEventListener('click', openSidebar);
-    $('sidebar-close').addEventListener('click', closeSidebar);
-    $('sidebar-backdrop').addEventListener('click', closeSidebar);
+    wireSidebar(); // 모바일 서랍 + 미구현 링크
     // 단원 연쇄 드롭다운
     $('q-unit').addEventListener('change', () => {
       const u = topic.units.get($('q-unit').value);
@@ -539,19 +450,7 @@
       fillSelect($('q-sub'), m && m.subunits, '소단원 전체'); $('q-sub').disabled = !m;
     });
     $('search-input').addEventListener('input', (e) => { state.search = e.target.value; renderList(); });
-    document.querySelectorAll('.filter-chip').forEach((chip) => chip.addEventListener('click', () => {
-      state.filter = chip.dataset.filter;
-      document.querySelectorAll('.filter-chip').forEach((c) => {
-        const on = c === chip;
-        c.classList.toggle('border-ink', on);
-        c.classList.toggle('bg-ink', on);
-        c.classList.toggle('text-paper', on);
-        c.classList.toggle('font-bold', on);
-        c.classList.toggle('border-faint', !on);
-        c.classList.toggle('text-ink3', !on);
-      });
-      renderList();
-    }));
+    wireFilterChips((f) => { state.filter = f; renderList(); });
     $('write-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const title = $('q-title').value.trim();

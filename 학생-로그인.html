@@ -147,14 +147,12 @@
     location.replace(s && s.must_change_password ? '비밀번호-변경.html' : '과목-선택.html');
   })();
 
-  // 비밀번호 표시 토글
-  const EYE = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
-  const EYE_OFF = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M6.61 6.61A18.5 18.5 0 0 0 2 12s3.5 7 10 7a9.1 9.1 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/></svg>';
+  // 비밀번호 표시 토글 (아이콘은 theme.js 것 재사용)
   $('toggle-pw').addEventListener('click', function () {
     const input = $('student-password');
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
-    $('pw-eye').innerHTML = show ? EYE_OFF : EYE;
+    $('pw-eye').innerHTML = window.LabTheme.icon(show ? 'visibility_off' : 'visibility');
     $('pw-eye-txt').textContent = show ? '숨김' : '표시';
   });
 

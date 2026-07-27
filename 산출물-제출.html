@@ -213,12 +213,13 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260726d"></script>
+<script src="js/db.js?v=20260727b"></script>
 <script src="js/mindmap.js?v=20260724a"></script>
 <script>
 (function () {
   const {
     supabase, requireLogin, signOut, esc, fetchSubjectTree,
+    fmtDate, fmtDateTime, toLocalInput, nl2br, wireSidebar, renderUnitNav,
     fetchSubmissionAssignments, saveSubmissionAssignment, deleteSubmissionAssignment,
     fetchSubmissionsByAssignments, fetchSubmissionsForAssignment,
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
@@ -229,11 +230,8 @@
   const subjectId = params.get('subject');
   const state = { subject: null, isAdmin: false, viewerName: '', assignments: [], mySubs: {}, editingId: null, openPanel: {}, rosterCache: {}, subsCache: {} };
   const sb = { openUnit: null, openMid: null };
+  const renderSidebarNav = () => renderUnitNav($('sidebar-nav'), subjectId, state.subject.units || [], sb);
 
-  const p2 = (n) => String(n).padStart(2, '0');
-  const fmtDate = (iso) => { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; return `${d.getFullYear()}.${p2(d.getMonth()+1)}.${p2(d.getDate())}`; };
-  const fmtDateTime = (iso) => { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; return `${d.getFullYear()}.${p2(d.getMonth()+1)}.${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
-  const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
   const uid = () => 'f' + Math.random().toString(36).slice(2, 9);
 
   // ---------- 마감/폼 유틸 ----------
@@ -253,25 +251,6 @@
     if (f.type === 'file') return !(v && (v.storage_path || v.drive_id));
     if (f.type === 'mindmap') return !(v && (v.storage_path || v.drive_id));
     return v == null || String(v).trim() === '';
-  }
-
-  // ---------- 사이드바 단원 트리 ----------
-  function subLink(s) {
-    return `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 p-2 rounded-lg text-[13px] text-ink hover:bg-paper3 transition-all"><span class="text-[18px] text-ink3/70"><span class="material-symbols-outlined">radio_button_unchecked</span></span><span>${esc(s.name)}</span></a>`;
-  }
-  function renderSidebarNav() {
-    const nav = $('sidebar-nav');
-    nav.innerHTML = (state.subject.units || []).map((u) => {
-      const unitOpen = u.id === sb.openUnit;
-      const midsHtml = unitOpen ? (u.mid_units || []).map((m) => {
-        const on = m.id === sb.openMid;
-        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-[13px] text-ink3 p-2">소단원이 없습니다.</p>';
-        return `<div><button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between p-3 rounded-lg text-left transition-all ${on ? 'bg-ink text-lime font-bold' : 'text-ink3 hover:bg-paper3'}"><span class="text-[14px]">${esc(m.name)}</span><span class="text-[18px] arrow ${on ? 'rotate-180' : ''}"><span class="material-symbols-outlined">expand_more</span></span></button>${on ? `<div class="mt-1 ml-4 space-y-0.5 swap-in">${subs}</div>` : ''}</div>`;
-      }).join('') : '';
-      return `<div><button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between p-3 rounded-lg hover:bg-paper3 text-left transition-all"><span class="text-[14px] font-bold ${unitOpen ? 'text-signal' : 'text-ink'}">${esc(u.name)}</span><span class="arrow text-ink3 text-[20px] ${unitOpen ? 'rotate-180' : ''}"><span class="material-symbols-outlined">expand_more</span></span></button>${unitOpen ? `<div class="mt-1 space-y-1 swap-in">${midsHtml}</div>` : ''}</div>`;
-    }).join('');
-    nav.querySelectorAll('.sb-unit').forEach((btn) => btn.addEventListener('click', () => { const id = btn.dataset.unit; if (sb.openUnit === id) { sb.openUnit = null; sb.openMid = null; } else { sb.openUnit = id; sb.openMid = null; } renderSidebarNav(); }));
-    nav.querySelectorAll('.sb-mid').forEach((btn) => btn.addEventListener('click', () => { const id = btn.dataset.mid; sb.openMid = (sb.openMid === id) ? null : id; renderSidebarNav(); }));
   }
 
   // ---------- 목록 카드 ----------
@@ -719,8 +698,6 @@
   document.querySelectorAll('[data-act="add-q"]').forEach((b) => b.addEventListener('click', () => { syncBuilder(); builder.fields.push({ id: uid(), type: 'short', label: '', required: false, options: [] }); renderBuilder(); }));
   document.querySelectorAll('[data-act="add-section"]').forEach((b) => b.addEventListener('click', () => { syncBuilder(); builder.fields.push({ id: uid(), type: 'section', label: '', help: '' }); renderBuilder(); }));
 
-  function toLocalInput(iso) { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`; }
-
   function openBuild(a) {
     state.editingId = a ? a.id : null;
     $('build-error').classList.add('hidden');
@@ -903,12 +880,7 @@
       refreshDriveStatus();
     }
 
-    document.querySelectorAll('.fixed-link').forEach((el) => el.addEventListener('click', (e) => e.preventDefault()));
-    const openSidebar = () => { $('sidebar').classList.add('drawer-open'); $('sidebar-backdrop').classList.remove('hidden'); };
-    const closeSidebar = () => { $('sidebar').classList.remove('drawer-open'); $('sidebar-backdrop').classList.add('hidden'); };
-    $('menu-btn').addEventListener('click', openSidebar);
-    $('sidebar-close').addEventListener('click', closeSidebar);
-    $('sidebar-backdrop').addEventListener('click', closeSidebar);
+    const closeSidebar = wireSidebar(); // 모바일 서랍 + 미구현 링크
     $('sidebar-nav').addEventListener('click', (e) => { if (e.target.closest('a')) closeSidebar(); });
 
     await loadList();

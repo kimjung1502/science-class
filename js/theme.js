@@ -171,8 +171,6 @@
 
   /* ---------- 4) 아이콘 시스템 (Material Symbols → 인라인 SVG 라인 아이콘) ---------- */
   // Lucide 계열 라인 아이콘. viewBox 0 0 24 24, stroke=currentColor.
-  var P = { // 특수(채움/특이 stroke) 아이콘용 커스텀 렌더
-  };
   var ICONS = {
     science:        '<path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 20h10.6a2 2 0 0 0 1.7-3L14 9V3"/><path d="M7.5 15h9"/>',
     experiment:     '<path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 20h10.6a2 2 0 0 0 1.7-3L14 9V3"/><path d="M7.5 15h9"/>',

@@ -119,11 +119,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260727a"></script>
+<script src="js/db.js?v=20260727b"></script>
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
-  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeMaterialFile, uploadMaterialToDrive, driveAccessToken, driveShareAnyone, pdfPageCount, splitPdfFile } = window.DB;
+  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeMaterialFile, uploadMaterialToDrive, driveShareAnyone, pdfPageCount, splitPdfFile, safeStorageName, toLocalInput, wireSidebar, pickDriveFile } = window.DB;
 
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
@@ -131,12 +131,7 @@
   const $ = (id) => document.getElementById(id);
   const state = { tree: null, lastUnitId: null, midUnitId: null, subunitId: null, isAdmin: false, addingSubId: null, student: null };
 
-  // ---------- 모바일 사이드바 서랍 ----------
-  function openSidebar() { $('sidebar').classList.add('drawer-open'); $('sidebar-backdrop').classList.remove('hidden'); }
-  function closeSidebar() { $('sidebar').classList.remove('drawer-open'); $('sidebar-backdrop').classList.add('hidden'); }
-  $('menu-btn').addEventListener('click', openSidebar);
-  $('sidebar-close').addEventListener('click', closeSidebar);
-  $('sidebar-backdrop').addEventListener('click', closeSidebar);
+  const closeSidebar = wireSidebar(); // 모바일 서랍 + 미구현 링크
 
   // height 애니메이션으로 펼치기/접기
   function setOpen(box, open) {
@@ -474,14 +469,6 @@
   function render(animate) { findSelection(); renderSidebar(animate); renderMain(animate); }
 
   // ================= 교사: 이 화면에서 자료 추가/삭제 =================
-  function safeStorageName(fn) {
-    fn = String(fn || '');
-    const dot = fn.lastIndexOf('.');
-    const ext = (dot > 0 ? fn.slice(dot + 1) : '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
-    let base = (dot > 0 ? fn.slice(0, dot) : fn).replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_').replace(/^[_.-]+|[_.-]+$/g, '');
-    if (!base) base = 'file';
-    return ext ? `${base}.${ext}` : base;
-  }
   async function reloadTree() {
     state.tree = await fetchSubjectTree(subjectId);
     render();
@@ -504,12 +491,6 @@
     matModalEl = el;
     return el;
   }
-  // ISO(UTC) → <input type="datetime-local"> 값(로컬 시각)
-  const toLocalInput = (iso) => {
-    if (!iso) return '';
-    const d = new Date(iso); const p = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-  };
   function matFormHtml(mat) {
     const isEdit = !!mat;
     const isFile = mat ? !!MATERIAL_TYPES[mat.type].file : false;
@@ -592,37 +573,20 @@
   }
   function closeMatModal() { if (matModalEl) { matModalEl.classList.add('hidden'); matModalEl.querySelector('#mat-form').innerHTML = ''; } state.addingSubId = null; state.editingMat = null; }
 
-  function loadPickerApi() {
-    return new Promise((resolve, reject) => {
-      if (window.google && window.google.picker) return resolve();
-      const finish = () => window.gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('Picker 모듈 로드 실패')) });
-      if (window.gapi) return finish();
-      const s = document.createElement('script');
-      s.src = 'https://apis.google.com/js/api.js';
-      s.onload = finish;
-      s.onerror = () => reject(new Error('구글 API를 불러오지 못했습니다 (네트워크/차단 확인). 대신 파일 업로드를 쓰세요.'));
-      document.head.appendChild(s);
-    });
-  }
   async function openDrivePicker(form) {
     const btn = form.querySelector('#m2-drive'); const old = btn.innerHTML; btn.disabled = true; btn.textContent = '여는 중…';
+    let doc = null;
+    try { doc = await pickDriveFile(); }
+    catch (e) { alert('드라이브 선택기 열기 실패: ' + e.message); }
+    btn.disabled = false; btn.innerHTML = old;
+    if (!doc) return;
+    const picked = form.querySelector('#m2-picked');
+    picked.classList.remove('hidden'); picked.textContent = '공유 설정 중…';
     try {
-      const { access_token, api_key, app_id } = await driveAccessToken();
-      await loadPickerApi();
-      const view = new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(false).setSelectFolderEnabled(false).setMode(google.picker.DocsViewMode.LIST);
-      const picker = new google.picker.PickerBuilder().setAppId(app_id).setOAuthToken(access_token).setDeveloperKey(api_key).setTitle('수업 자료로 넣을 파일 선택').addView(view).setCallback((data) => onDrivePicked(data, access_token, form)).build();
-      picker.setVisible(true);
-    } catch (e) { alert('드라이브 선택기 열기 실패: ' + e.message); } finally { btn.disabled = false; btn.innerHTML = old; }
-  }
-  async function onDrivePicked(data, token, form) {
-    if (!window.google || data.action !== google.picker.Action.PICKED) return;
-    const doc = (data.docs || [])[0]; if (!doc) return;
-    const picked = form.querySelector('#m2-picked'); picked.classList.remove('hidden'); picked.textContent = '공유 설정 중…';
-    try {
-      await driveShareAnyone(doc.id, token);
-      form.querySelector('#m2-drive-url').value = doc.url || ('https://drive.google.com/file/d/' + doc.id + '/view');
-      form.querySelector('#m2-drive-name').value = doc.name || '';
-      const nameInput = form.querySelector('#m2-name'); if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name || '';
+      await driveShareAnyone(doc.id, doc.token);
+      form.querySelector('#m2-drive-url').value = doc.url;
+      form.querySelector('#m2-drive-name').value = doc.name;
+      const nameInput = form.querySelector('#m2-name'); if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name;
       const fi = form.querySelector('#m2-file'); if (fi) fi.value = '';
       const sb = form.querySelector('#m2-split'); if (sb) { sb.classList.add('hidden'); form.querySelector('#m2-range').value = ''; }
       picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 링크로 등록';
@@ -743,7 +707,6 @@
       $('qna-link').href = `질의응답.html?subject=${encodeURIComponent(subjectId)}`;
       $('assess-link').href = `수행평가-공지.html?subject=${encodeURIComponent(subjectId)}`;
       $('submit-link').href = `산출물-제출.html?subject=${encodeURIComponent(subjectId)}`;
-      document.querySelectorAll('.fixed-link').forEach((a) => a.addEventListener('click', (e) => e.preventDefault())); // 미구현 링크(실험실 안전)
       // ?sub=<소단원id> 로 들어오면 그 소단원을 펼침 (질의응답 사이드바 등에서 연결)
       const subParam = params.get('sub');
       let target = null;

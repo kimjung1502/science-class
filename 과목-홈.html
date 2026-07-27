@@ -207,6 +207,11 @@
         </div>
       </div>
       <div class="flex flex-col gap-1.5">
+        <span class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">대상 분반</span>
+        <div id="an-classes" class="flex flex-wrap gap-2"></div>
+        <p class="text-[11px] text-ink3">아무것도 선택하지 않으면 모든 분반에 공개됩니다.</p>
+      </div>
+      <div class="flex flex-col gap-1.5">
         <span class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">파일 첨부</span>
         <div id="an-att-list" class="flex flex-col gap-1.5 empty:hidden"></div>
         <label for="an-files" class="cursor-pointer flex items-center justify-center gap-2 rounded-lg border border-dashed border-ink/25 bg-paper/60 px-4 py-3 text-[13px] font-bold text-ink3 hover:border-ink hover:text-ink transition">
@@ -226,12 +231,13 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260727a"></script>
+<script src="js/db.js?v=20260727b"></script>
 <script>
 (function () {
   const {
     supabase, requireLogin, signOut, esc,
-    fetchSubjectTree, fetchAnnouncements, saveAnnouncement, deleteAnnouncement,
+    fmtDate, fmtDateTime, toLocalInput, nl2br, safeStorageName, wireSidebar, renderUnitNav,
+    fetchSubjectTree, fetchAnnouncements, saveAnnouncement, deleteAnnouncement, fetchSubjectClasses,
     fetchAssessments, fetchSubmissionAssignments,
     uploadToBucket, uploadMaterialToDrive, materialDriveName, removeMaterialFile,
   } = window.DB;
@@ -244,50 +250,19 @@
     subject: null, isAdmin: false, editingId: null,
     counts: { announce: 0, assessOngoing: 0, submitDday: null },
     annList: [],          // 마지막으로 불러온 공지 목록 (삭제 시 첨부 정리용)
+    classes: [],          // 이 과목의 분반 목록 (교사 전용 — 대상 분반 선택·표시용)
     editAtts: [],         // 편집 중 유지할 기존 첨부
     removedAtts: [],      // 편집에서 뺀 기존 첨부 (저장 성공 후 파일 정리)
     pickedFiles: [],      // 새로 고른 파일 (저장 시 업로드)
   };
   const sb = { openUnit: null, openMid: null };
 
-  // ---------- 날짜 ----------
-  const fmtDate = (iso) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d)) return '';
-    const p = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
-  };
-  const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
-  const fmtDateTime = (iso) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d)) return '';
-    const p = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-  };
-  // datetime-local 입력값 ↔ ISO 문자열
-  const toLocalInput = (iso) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d)) return '';
-    const p = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-  };
   const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
   const fmtSize = (n) => {
     if (!n && n !== 0) return '';
     if (n < 1024 * 1024) return Math.max(1, Math.round(n / 1024)) + 'KB';
     return (n / 1048576).toFixed(1) + 'MB';
   };
-  function safeStorageName(fn) {
-    fn = String(fn || '');
-    const dot = fn.lastIndexOf('.');
-    const ext = (dot > 0 ? fn.slice(dot + 1) : '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
-    let base = (dot > 0 ? fn.slice(0, dot) : fn).replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_').replace(/^[_.-]+|[_.-]+$/g, '');
-    if (!base) base = 'file';
-    return ext ? `${base}.${ext}` : base;
-  }
   // D-day (마감 기준) — 오늘 자정 기준 남은 일수
   function dday(iso) {
     if (!iso) return null;
@@ -321,53 +296,8 @@
     box.innerHTML = chips.join('');
   }
 
-  // ---------- 사이드바 단원 트리 (질의응답과 동일 패턴) ----------
-  function subLink(s) {
-    return `<a href="단원-상세.html?subject=${encodeURIComponent(subjectId)}&sub=${encodeURIComponent(s.id)}" class="flex items-center gap-2 py-1.5 pl-3 pr-2 rounded-md text-[13px] text-ink2 hover:bg-paper3 hover:text-ink transition">
-      <span class="h-1.5 w-1.5 rounded-full bg-ink/25 shrink-0"></span><span class="truncate">${esc(s.name)}</span>
-    </a>`;
-  }
-  function renderSidebarNav() {
-    const nav = $('sidebar-nav');
-    const units = state.subject.units || [];
-    if (!units.length) { nav.innerHTML = '<p class="text-[12px] text-ink3 px-3 py-2">등록된 단원이 없습니다.</p>'; return; }
-    nav.innerHTML = units.map((u, ui) => {
-      const num = String(ui + 1).padStart(2, '0');
-      const unitOpen = u.id === sb.openUnit;
-      const midsHtml = unitOpen ? (u.mid_units || []).map((m) => {
-        const on = m.id === sb.openMid;
-        const subs = (m.subunits || []).map(subLink).join('') || '<p class="text-[12px] text-ink3 p-2">소단원이 없습니다.</p>';
-        return `<div>
-          <button data-mid="${m.id}" class="sb-mid w-full flex items-center justify-between gap-2 pl-4 pr-3 py-2 rounded-md text-left transition ${on ? 'bg-ink text-paper font-bold' : 'text-ink2 hover:bg-paper3'}">
-            <span class="text-[13px] truncate">${esc(m.name)}</span>
-            <span class="material-symbols-outlined arrow text-[16px] ${on ? 'rotate-180 text-lime' : 'text-ink3'}">expand_more</span>
-          </button>
-          ${on ? `<div class="mt-1 ml-3 pl-2 border-l border-ink/10 space-y-0.5 swap-in">${subs}</div>` : ''}
-        </div>`;
-      }).join('') : '';
-      return `<div>
-        <button data-unit="${u.id}" class="sb-unit w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg hover:bg-paper3 text-left transition">
-          <span class="flex items-center gap-2 min-w-0">
-            <span class="font-mono text-[11px] font-bold text-signal shrink-0">${num}</span>
-            <span class="text-[13.5px] font-bold truncate ${unitOpen ? 'text-ink' : 'text-ink2'}">${esc(u.name)}</span>
-          </span>
-          <span class="material-symbols-outlined arrow text-[18px] text-ink3 shrink-0 ${unitOpen ? 'rotate-180' : ''}">expand_more</span>
-        </button>
-        ${unitOpen ? `<div class="mt-1 space-y-1 swap-in">${midsHtml}</div>` : ''}
-      </div>`;
-    }).join('');
-    nav.querySelectorAll('.sb-unit').forEach((btn) => btn.addEventListener('click', () => {
-      const id = btn.dataset.unit;
-      if (sb.openUnit === id) { sb.openUnit = null; sb.openMid = null; }
-      else { sb.openUnit = id; sb.openMid = null; }
-      renderSidebarNav();
-    }));
-    nav.querySelectorAll('.sb-mid').forEach((btn) => btn.addEventListener('click', () => {
-      const id = btn.dataset.mid;
-      sb.openMid = (sb.openMid === id) ? null : id;
-      renderSidebarNav();
-    }));
-  }
+  // ---------- 사이드바 단원 트리 (공통 렌더러) ----------
+  const renderSidebarNav = () => renderUnitNav($('sidebar-nav'), subjectId, state.subject.units || [], sb);
 
   // ---------- 공지사항 ----------
   const LEVELS = {
@@ -395,6 +325,9 @@
     const pub = state.isAdmin ? pubBadge(a) : '';
     const period = state.isAdmin && (a.publish_from || a.publish_until)
       ? `<p class="font-mono text-[11px] text-ink3 mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span>공개 ${a.publish_from ? fmtDateTime(a.publish_from) : '즉시'} ~ ${a.publish_until ? fmtDateTime(a.publish_until) : '계속'}</p>` : '';
+    const tNames = (a.target_class_ids || []).map((id) => state.classes.find((x) => x.id === id)?.name).filter(Boolean);
+    const targets = state.isAdmin && a.target_class_ids?.length
+      ? `<p class="font-mono text-[11px] text-ink3 mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">groups</span>대상 ${esc(tNames.join(' · ') || a.target_class_ids.length + '개 분반')}</p>` : '';
     const body = (a.body || '').trim();
     const atts = Array.isArray(a.attachments) ? a.attachments : [];
     const attHtml = atts.length ? `<div class="flex flex-wrap gap-2 mt-2.5">${atts.map((f) =>
@@ -416,6 +349,7 @@
         </div>
       </div>
       ${period}
+      ${targets}
       ${body ? `<p class="text-[14px] text-ink2 whitespace-pre-wrap break-words mt-1 leading-relaxed">${nl2br(body)}</p>` : ''}
       ${attHtml}
     </div>`;
@@ -453,6 +387,7 @@
     $('an-body').value = a ? (a.body || '') : '';
     $('an-from').value = toLocalInput(a && a.publish_from);
     $('an-until').value = toLocalInput(a && a.publish_until);
+    renderClassPicker((a && Array.isArray(a.target_class_ids)) ? a.target_class_ids : []);
     state.editAtts = (a && Array.isArray(a.attachments)) ? a.attachments.slice() : [];
     state.removedAtts = [];
     state.pickedFiles = [];
@@ -462,6 +397,16 @@
     $('an-title').focus();
   }
   function closeAnnounce() { $('announce-modal').classList.add('hidden'); }
+  // 모달 안 대상 분반 체크박스 ('관리자' 분반은 목록에서 제외 — 교사 계정은 어차피 전부 봄)
+  function renderClassPicker(selectedIds) {
+    const box = $('an-classes');
+    const list = state.classes.filter((c) => c.name !== '관리자');
+    if (!list.length) { box.innerHTML = '<p class="text-[12px] text-ink3">이 과목에 연결된 분반이 없습니다.</p>'; return; }
+    box.innerHTML = list.map((c) => `<label class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-faint bg-paper/60 px-3 py-1.5 text-[13px] font-bold text-ink2 has-[:checked]:bg-ink has-[:checked]:text-paper has-[:checked]:border-ink transition select-none">
+        <input type="checkbox" class="an-class accent-lime" value="${c.id}" ${selectedIds.includes(c.id) ? 'checked' : ''}>
+        <span>${esc(c.name)}</span>
+      </label>`).join('');
+  }
   // 모달 안 첨부 목록 (기존 첨부 + 새로 고른 파일, 각각 제거 가능)
   function renderAttEditor() {
     const box = $('an-att-list');
@@ -632,13 +577,7 @@
     sb.openMid = null;
     renderSidebarNav();
 
-    // 모바일 서랍
-    const openSidebar = () => { $('sidebar').classList.add('drawer-open'); $('sidebar-backdrop').classList.remove('hidden'); };
-    const closeSidebar = () => { $('sidebar').classList.remove('drawer-open'); $('sidebar-backdrop').classList.add('hidden'); };
-    $('menu-btn').addEventListener('click', openSidebar);
-    $('sidebar-close').addEventListener('click', closeSidebar);
-    $('sidebar-backdrop').addEventListener('click', closeSidebar);
-    document.querySelectorAll('.fixed-link').forEach((a) => a.addEventListener('click', (e) => e.preventDefault()));
+    wireSidebar(); // 모바일 서랍 + 미구현 링크
 
     // 공지 모달 (교사)
     $('new-announce-btn').addEventListener('click', () => openAnnounce(null));
@@ -673,9 +612,10 @@
           renderAttEditor();
         }
         lbl.textContent = '저장 중…';
+        const targetClassIds = Array.from(document.querySelectorAll('.an-class:checked')).map((el) => el.value);
         await saveAnnouncement(state.editingId, {
           subjectId, title, level: $('an-level').value, body: $('an-body').value,
-          publishFrom, publishUntil, attachments: state.editAtts,
+          publishFrom, publishUntil, attachments: state.editAtts, targetClassIds,
         });
         // 편집에서 뺀 기존 첨부의 실제 파일 정리 (실패해도 조용히 넘어감)
         for (const f of state.removedAtts) if (f.storage_path) removeMaterialFile(f.storage_path);
@@ -690,7 +630,10 @@
       }
     });
 
-    // 데이터 로드
+    // 데이터 로드 (교사는 분반 목록 먼저 — 공지 행 '대상 분반' 이름과 모달 체크박스에 필요)
+    if (state.isAdmin) {
+      try { state.classes = await fetchSubjectClasses(subjectId); } catch (_) { state.classes = []; }
+    }
     loadAnnouncements();
     loadAssessments();
     loadSubmissions();
