@@ -1235,7 +1235,8 @@ function applyReadOnly() {
     // '다음으로 계속' 을 눌러 지나간 단계는 **답변만** 잠근다(제출된 것으로 본다).
     // 실험(시뮬레이터 조작·기록·점 삭제·그래프 토글)은 계속 할 수 있다 — 보일·샤를 그래프를
     // 직접 만들어 보는 것이 이 수업의 핵심 활동이라 다시 해 볼 수 있어야 한다.
-    var lock = !IS_ADMIN && (k < unlocked);
+    // 교사 미리보기도 똑같이 잠근다 — 학생이 보는 화면을 그대로 확인하기 위한 도구라서.
+    var lock = (k < unlocked);
     sec.classList.toggle('answers-locked', lock);
     $$('textarea, input[type=text], input[type=radio]', sec).forEach(function (el) { el.disabled = lock; });
     $$('.dtable .del, #invToggle', sec).forEach(function (el) { el.disabled = false; });
@@ -1254,7 +1255,7 @@ function paintStageNotes() {
     if (broken) {
       note.innerHTML = '⚠️ 지금은 이 단계의 조건이 채워지지 않았어요 — <b>' + g.why +
         '</b><br>이대로 새로고침하면 여기부터 다시 하게 돼요(기록한 자료는 그대로 남아 있어요).';
-    } else if (passed && !IS_ADMIN) {
+    } else if (passed) {
       note.innerHTML = '🔒 이 단계의 <b>답변은 제출</b>되어 고칠 수 없어요. ' +
         '<span style="font-weight:400">실험(조작·기록·그래프)은 계속 해 볼 수 있어요.</span>';
     }
