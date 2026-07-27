@@ -1748,7 +1748,7 @@ function renderTable(store) {
   for (i = 0; i < pts.length; i++) {
     p = pts[i];
     if (store === 'boyle') {
-      html += '<tr><td>' + (i + 1) + '</td><td>' + fmt(p.pExternal, 2) + '</td><td>' + fmt(p.v, 1) + '</td><td>' + fmt(p.pExternal * p.v, 2) + '</td>' +
+      html += '<tr><td>' + (i + 1) + '</td><td>' + fmt(p.pExternal, 2) + '</td><td>' + fmt(p.v, 1) + '</td><td>' + fmt(p.pExternal * p.v, 1) + '</td>' +
         '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
     } else if (store === 'charles') {
       html += '<tr><td>' + (i + 1) + '</td><td class="kcol">' + Math.round(p.t) + '</td><td>' + Math.round(celsius(p.t)) + '</td><td>' + fmt(p.v, 1) + '</td>' +
@@ -1766,7 +1766,7 @@ function renderTable(store) {
         var prods = pts2.map(function (q) { return q.pExternal * q.v; });
         var mean = prods.reduce(function (a, c) { return a + c; }, 0) / prods.length;
         var dev = Math.max.apply(null, prods.map(function (x) { return Math.abs(x - mean) / mean; }));
-        kv.innerHTML = 'P×V 평균 <b>' + fmt(mean, 2) + '</b> · 최대 편차 <b>' + fmt(dev * 100, 2) + '%</b> → ' +
+        kv.innerHTML = 'P×V 평균 <b>' + fmt(mean, 1) + '</b> · 최대 편차 <b>' + fmt(dev * 100, 2) + '%</b> → ' +
           (dev < 0.03 ? '거의 <b>일정</b>해요!' : '점을 더 찍어 보세요');
       } else kv.innerHTML = '';
     }
