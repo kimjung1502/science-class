@@ -194,6 +194,26 @@
         <label for="an-body" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">내용</label>
         <textarea id="an-body" rows="6" placeholder="공지 내용을 입력하세요." class="w-full rounded-lg border-faint bg-paper/60 px-4 py-3 text-[15px] text-ink placeholder:text-ink3/50 focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none resize-y"></textarea>
       </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label for="an-from" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">공개 시작</label>
+          <input id="an-from" type="datetime-local" class="w-full rounded-lg border-faint bg-paper/60 px-3 py-2.5 text-[14px] text-ink focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none">
+          <p class="text-[11px] text-ink3">비워두면 바로 공개됩니다.</p>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label for="an-until" class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">공개 종료</label>
+          <input id="an-until" type="datetime-local" class="w-full rounded-lg border-faint bg-paper/60 px-3 py-2.5 text-[14px] text-ink focus:border-ink focus:ring-2 focus:ring-lime/70 outline-none">
+          <p class="text-[11px] text-ink3">비워두면 계속 공개됩니다.</p>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <span class="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink3">파일 첨부</span>
+        <div id="an-att-list" class="flex flex-col gap-1.5 empty:hidden"></div>
+        <label for="an-files" class="cursor-pointer flex items-center justify-center gap-2 rounded-lg border border-dashed border-ink/25 bg-paper/60 px-4 py-3 text-[13px] font-bold text-ink3 hover:border-ink hover:text-ink transition">
+          <span class="material-symbols-outlined text-[18px]">upload_file</span>파일 추가 (여러 개 가능)
+        </label>
+        <input id="an-files" type="file" multiple class="hidden">
+      </div>
       <p id="announce-error" class="font-mono text-[12px] text-error hidden"></p>
       <div class="dashed pt-4 flex gap-3 justify-end">
         <button type="button" id="announce-cancel" class="px-5 py-2.5 rounded-lg border border-faint text-ink3 font-bold hover:bg-paper2 transition-colors">취소</button>
@@ -206,20 +226,28 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260726d"></script>
+<script src="js/db.js?v=20260727a"></script>
 <script>
 (function () {
   const {
     supabase, requireLogin, signOut, esc,
     fetchSubjectTree, fetchAnnouncements, saveAnnouncement, deleteAnnouncement,
     fetchAssessments, fetchSubmissionAssignments,
+    uploadToBucket, uploadMaterialToDrive, materialDriveName, removeMaterialFile,
   } = window.DB;
 
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
 
-  const state = { subject: null, isAdmin: false, editingId: null, counts: { announce: 0, assessOngoing: 0, submitDday: null } };
+  const state = {
+    subject: null, isAdmin: false, editingId: null,
+    counts: { announce: 0, assessOngoing: 0, submitDday: null },
+    annList: [],          // 마지막으로 불러온 공지 목록 (삭제 시 첨부 정리용)
+    editAtts: [],         // 편집 중 유지할 기존 첨부
+    removedAtts: [],      // 편집에서 뺀 기존 첨부 (저장 성공 후 파일 정리)
+    pickedFiles: [],      // 새로 고른 파일 (저장 시 업로드)
+  };
   const sb = { openUnit: null, openMid: null };
 
   // ---------- 날짜 ----------
@@ -231,6 +259,35 @@
     return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
   };
   const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
+  const fmtDateTime = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  // datetime-local 입력값 ↔ ISO 문자열
+  const toLocalInput = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
+  const fmtSize = (n) => {
+    if (!n && n !== 0) return '';
+    if (n < 1024 * 1024) return Math.max(1, Math.round(n / 1024)) + 'KB';
+    return (n / 1048576).toFixed(1) + 'MB';
+  };
+  function safeStorageName(fn) {
+    fn = String(fn || '');
+    const dot = fn.lastIndexOf('.');
+    const ext = (dot > 0 ? fn.slice(dot + 1) : '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+    let base = (dot > 0 ? fn.slice(0, dot) : fn).replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_').replace(/^[_.-]+|[_.-]+$/g, '');
+    if (!base) base = 'file';
+    return ext ? `${base}.${ext}` : base;
+  }
   // D-day (마감 기준) — 오늘 자정 기준 남은 일수
   function dday(iso) {
     if (!iso) return null;
@@ -318,6 +375,15 @@
     info:    { label: '안내', badge: 'bg-lime text-ink', icon: 'info' },
     general: { label: '일반', badge: 'bg-ink/10 text-ink2', icon: 'campaign' },
   };
+  // 공개 기간 기준 상태 (교사 뱃지용): 공개 전 '예약', 지난 것 '종료', 게시 중 null
+  function pubBadge(a) {
+    const now = Date.now();
+    if (a.publish_from && now < new Date(a.publish_from).getTime())
+      return '<span class="px-2 py-0.5 bg-ink text-paper font-mono text-[10px] font-bold rounded-full">공개 예정</span>';
+    if (a.publish_until && now > new Date(a.publish_until).getTime())
+      return '<span class="px-2 py-0.5 bg-paper3 text-ink3 font-mono text-[10px] font-bold rounded-full">공개 종료</span>';
+    return '';
+  }
   function announceRow(a) {
     const lv = LEVELS[a.level] || LEVELS.general;
     const admin = state.isAdmin ? `<div class="flex items-center gap-1 shrink-0">
@@ -326,12 +392,22 @@
       </div>` : '';
     const inactive = state.isAdmin && a.is_active === false
       ? '<span class="px-2 py-0.5 bg-paper3 text-ink3 font-mono text-[10px] font-bold rounded-full">숨김</span>' : '';
+    const pub = state.isAdmin ? pubBadge(a) : '';
+    const period = state.isAdmin && (a.publish_from || a.publish_until)
+      ? `<p class="font-mono text-[11px] text-ink3 mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span>공개 ${a.publish_from ? fmtDateTime(a.publish_from) : '즉시'} ~ ${a.publish_until ? fmtDateTime(a.publish_until) : '계속'}</p>` : '';
     const body = (a.body || '').trim();
+    const atts = Array.isArray(a.attachments) ? a.attachments : [];
+    const attHtml = atts.length ? `<div class="flex flex-wrap gap-2 mt-2.5">${atts.map((f) =>
+      `<a href="${esc(f.url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-lg border border-faint bg-paper/60 px-2.5 py-1.5 text-[12px] font-bold text-ink2 hover:border-ink hover:text-ink transition max-w-full">
+        <span class="material-symbols-outlined text-[15px] text-signal shrink-0">attach_file</span>
+        <span class="truncate">${esc(f.name)}</span>
+        ${f.size ? `<span class="font-mono text-[10px] font-normal text-ink3 shrink-0">${fmtSize(f.size)}</span>` : ''}
+      </a>`).join('')}</div>` : '';
     return `<div class="p-md hover:bg-paper2 transition-colors">
       <div class="flex justify-between items-start gap-3 mb-1">
         <div class="flex items-center gap-2 min-w-0 flex-wrap">
           <span class="px-2 py-0.5 ${lv.badge} font-mono text-[10px] font-bold rounded-full flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">${lv.icon}</span>${lv.label}</span>
-          ${inactive}
+          ${inactive}${pub}
           <h3 class="text-[15px] font-bold text-ink break-words">${esc(a.title)}</h3>
         </div>
         <div class="flex items-center gap-2 shrink-0">
@@ -339,7 +415,9 @@
           ${admin}
         </div>
       </div>
+      ${period}
       ${body ? `<p class="text-[14px] text-ink2 whitespace-pre-wrap break-words mt-1 leading-relaxed">${nl2br(body)}</p>` : ''}
+      ${attHtml}
     </div>`;
   }
   async function loadAnnouncements() {
@@ -353,9 +431,11 @@
           ${state.isAdmin ? '<button id="empty-announce" class="mt-2 font-mono text-[12px] font-bold text-signal hover:underline">첫 공지 작성하기</button>' : ''}
         </div>`;
         $('empty-announce')?.addEventListener('click', () => openAnnounce(null));
+        state.annList = [];
         state.counts.announce = 0; renderHeroChips();
         return;
       }
+      state.annList = list;
       box.innerHTML = list.map(announceRow).join('');
       box.querySelectorAll('.an-edit').forEach((b) => b.addEventListener('click', () => openAnnounce(list.find((x) => x.id === b.dataset.edit))));
       box.querySelectorAll('.an-del').forEach((b) => b.addEventListener('click', () => removeAnnounce(b.dataset.del)));
@@ -371,14 +451,59 @@
     $('an-title').value = a ? a.title : '';
     $('an-level').value = a ? (a.level || 'general') : 'general';
     $('an-body').value = a ? (a.body || '') : '';
+    $('an-from').value = toLocalInput(a && a.publish_from);
+    $('an-until').value = toLocalInput(a && a.publish_until);
+    state.editAtts = (a && Array.isArray(a.attachments)) ? a.attachments.slice() : [];
+    state.removedAtts = [];
+    state.pickedFiles = [];
+    renderAttEditor();
     $('announce-error').classList.add('hidden');
     $('announce-modal').classList.remove('hidden');
     $('an-title').focus();
   }
   function closeAnnounce() { $('announce-modal').classList.add('hidden'); }
+  // 모달 안 첨부 목록 (기존 첨부 + 새로 고른 파일, 각각 제거 가능)
+  function renderAttEditor() {
+    const box = $('an-att-list');
+    const row = (name, size, key, isNew) => `<div class="flex items-center gap-2 rounded-lg border border-faint bg-paper/60 px-3 py-2">
+      <span class="material-symbols-outlined text-[16px] ${isNew ? 'text-lime' : 'text-signal'} shrink-0">${isNew ? 'upload_file' : 'attach_file'}</span>
+      <span class="text-[13px] text-ink2 truncate flex-1">${esc(name)}</span>
+      ${size ? `<span class="font-mono text-[10px] text-ink3 shrink-0">${fmtSize(size)}</span>` : ''}
+      ${isNew ? '<span class="font-mono text-[10px] font-bold text-lime shrink-0">새 파일</span>' : ''}
+      <button type="button" data-att="${key}" class="p-0.5 text-ink3 hover:text-error rounded shrink-0" title="첨부에서 제거"><span class="material-symbols-outlined text-[16px]">close</span></button>
+    </div>`;
+    box.innerHTML = state.editAtts.map((f, i) => row(f.name, f.size, 'k' + i, false))
+      .concat(state.pickedFiles.map((f, i) => row(f.name, f.size, 'p' + i, true))).join('');
+    box.querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', () => {
+      const key = b.dataset.att;
+      if (key[0] === 'k') state.removedAtts.push(state.editAtts.splice(Number(key.slice(1)), 1)[0]);
+      else state.pickedFiles.splice(Number(key.slice(1)), 1);
+      renderAttEditor();
+    }));
+  }
+  // 첨부 파일 업로드: 드라이브(학교›수업자료›개정›과목›공지) 우선, 실패 시 버킷 폴백 (수업자료와 같은 패턴)
+  async function uploadAnnounceFile(file) {
+    let stored = null, warn = '';
+    try {
+      const driveName = materialDriveName({ name: '', typeLabel: '공지', fileName: file.name });
+      stored = await uploadMaterialToDrive(file, [(state.subject && state.subject.name) || '', '공지'], driveName);
+    } catch (e) { warn = e.message || String(e); }
+    if (!stored) {
+      const path = `announcements/${subjectId}/${Date.now()}-${safeStorageName(file.name)}`;
+      await uploadToBucket('materials', path, file);
+      stored = { storage_path: path, url: supabase.storage.from('materials').getPublicUrl(path).data.publicUrl };
+    }
+    return { att: { name: file.name, url: stored.url, storage_path: stored.storage_path, size: file.size }, warn };
+  }
   async function removeAnnounce(id) {
-    if (!confirm('이 공지를 삭제하시겠습니까?')) return;
-    try { await deleteAnnouncement(id); loadAnnouncements(); } catch (e) { alert('삭제 실패: ' + e.message); }
+    const a = state.annList.find((x) => x.id === id);
+    const hasFiles = a && Array.isArray(a.attachments) && a.attachments.length;
+    if (!confirm(hasFiles ? '이 공지를 삭제하시겠습니까? 첨부 파일도 함께 삭제됩니다.' : '이 공지를 삭제하시겠습니까?')) return;
+    try {
+      await deleteAnnouncement(id);
+      if (hasFiles) for (const f of a.attachments) if (f.storage_path) removeMaterialFile(f.storage_path);
+      loadAnnouncements();
+    } catch (e) { alert('삭제 실패: ' + e.message); }
   }
 
   // ---------- 수행평가 공지 ----------
@@ -520,18 +645,49 @@
     $('announce-close').addEventListener('click', closeAnnounce);
     $('announce-cancel').addEventListener('click', closeAnnounce);
     $('announce-backdrop').addEventListener('click', closeAnnounce);
+    $('an-files').addEventListener('change', (e) => {
+      for (const f of e.target.files) state.pickedFiles.push(f);
+      e.target.value = '';
+      renderAttEditor();
+    });
     $('announce-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const showErr = (m) => { const el = $('announce-error'); el.textContent = m; el.classList.remove('hidden'); };
+      $('announce-error').classList.add('hidden');
       const title = $('an-title').value.trim();
-      if (!title) { const el = $('announce-error'); el.textContent = '제목을 입력하세요.'; el.classList.remove('hidden'); return; }
-      const btn = $('announce-submit'); btn.disabled = true;
+      if (!title) return showErr('제목을 입력하세요.');
+      const publishFrom = fromLocalInput($('an-from').value);
+      const publishUntil = fromLocalInput($('an-until').value);
+      if (publishFrom && publishUntil && publishFrom >= publishUntil) return showErr('공개 종료가 공개 시작보다 빠를 수 없습니다.');
+      const btn = $('announce-submit'); const lbl = $('announce-submit-label');
+      btn.disabled = true;
+      let driveWarn = '';
       try {
-        await saveAnnouncement(state.editingId, { subjectId, title, level: $('an-level').value, body: $('an-body').value });
+        // 새 파일 업로드 — 성공한 것은 즉시 editAtts로 옮겨, 중간 실패 후 재시도해도 중복 업로드가 없다
+        while (state.pickedFiles.length) {
+          lbl.textContent = `파일 올리는 중… (남은 ${state.pickedFiles.length}개)`;
+          const { att, warn } = await uploadAnnounceFile(state.pickedFiles[0]);
+          if (warn) driveWarn = warn;
+          state.editAtts.push(att);
+          state.pickedFiles.shift();
+          renderAttEditor();
+        }
+        lbl.textContent = '저장 중…';
+        await saveAnnouncement(state.editingId, {
+          subjectId, title, level: $('an-level').value, body: $('an-body').value,
+          publishFrom, publishUntil, attachments: state.editAtts,
+        });
+        // 편집에서 뺀 기존 첨부의 실제 파일 정리 (실패해도 조용히 넘어감)
+        for (const f of state.removedAtts) if (f.storage_path) removeMaterialFile(f.storage_path);
         closeAnnounce();
         loadAnnouncements();
+        if (driveWarn) alert('구글 드라이브 업로드가 안 되어 수파베이스 저장소에 대신 저장했어요.\n(' + driveWarn + ')');
       } catch (err) {
-        const el = $('announce-error'); el.textContent = '저장 실패: ' + err.message; el.classList.remove('hidden');
-      } finally { btn.disabled = false; }
+        showErr('저장 실패: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        lbl.textContent = state.editingId ? '저장' : '등록';
+      }
     });
 
     // 데이터 로드

@@ -347,7 +347,11 @@
     return data || [];
   }
   async function saveAnnouncement(id, a) {
-    const payload = { subject_id: a.subjectId, title: a.title, body: a.body || '', level: a.level || 'general', is_active: a.isActive !== false };
+    const payload = {
+      subject_id: a.subjectId, title: a.title, body: a.body || '', level: a.level || 'general', is_active: a.isActive !== false,
+      publish_from: a.publishFrom || null, publish_until: a.publishUntil || null,
+      attachments: Array.isArray(a.attachments) ? a.attachments : [],
+    };
     if (id) { const { error } = await supabase.from('announcements').update(payload).eq('id', id); if (error) throw error; return { id }; }
     const { data, error } = await supabase.from('announcements').insert(payload).select('id').single();
     if (error) throw error; return data;
