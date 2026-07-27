@@ -1426,7 +1426,8 @@ function buildBlock(el) {
   }
   function guardT(dir) {
     var nt = E.snapT(b.sim.T, dir);
-    if (nt === b.sim.T) return { ok: false, why: dir > 0 ? '600 K가 최대예요' : '100 K가 최소예요' };
+    // 끝점 안내도 그 시점의 온도 표기를 따른다 — K 도입 전에는 ℃ 로(직접 입력 쪽과 같은 규칙)
+    if (nt === b.sim.T) return { ok: false, why: tempText(dir > 0 ? C.T_MAX : C.T_MIN, true) + (dir > 0 ? '가 최대예요' : '가 최소예요') };
     if (b.sim.locked) {
       var np = b.sim.n * C.R_GAS * nt / b.sim.V;
       if (np > C.P_SHOW_MAX + 1e-9) return { ok: false, why: 'P가 4 atm을 넘어요' };
