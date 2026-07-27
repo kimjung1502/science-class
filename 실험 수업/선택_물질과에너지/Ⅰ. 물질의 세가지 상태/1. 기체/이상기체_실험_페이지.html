@@ -164,7 +164,6 @@
   .dtable th,.dtable td{border-bottom:1px solid var(--paper3);padding:5px 7px;text-align:right;white-space:nowrap}
   .dtable th{background:var(--paper2);color:var(--ink3);font-size:11px;font-weight:700;text-align:right}
   .dtable th:first-child,.dtable td:first-child{text-align:center;width:34px}
-  .dtable.nok .kcol{display:none}
   .dtable tbody tr:hover{background:var(--paper2)}
   .dtable .del{font:inherit;font-size:13px;cursor:pointer;background:none;border:none;color:var(--signal);font-weight:800;min-width:44px;min-height:44px}
   .dtable .del:disabled{color:#c3bfb2;cursor:not-allowed}
@@ -409,7 +408,7 @@
       <div class="note lime">압력이 고정이니 <b>평균 압력(꾸준히 미는 힘)</b>은 같아야 해요. 입자가 빨라져서 <b>한 번 부딪힐 때의 충격</b>은 커졌으니,
         <b>공간을 넓혀 충돌 빈도를 낮춰야</b> 균형이 맞습니다.</div>
       <div class="datagrid" style="margin-top:12px">
-        <div class="tablescroll"><table class="dtable" data-table="charles"><thead><tr><th>#</th><th class="kcol">T<span style="font-weight:400">(K)</span></th><th>T<span style="font-weight:400">(℃)</span></th><th>V<span style="font-weight:400">(L)</span></th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="tablescroll"><table class="dtable" data-table="charles"><thead><tr><th>#</th><th>T<span style="font-weight:400">(℃)</span></th><th>V<span style="font-weight:400">(L)</span></th><th></th></tr></thead><tbody></tbody></table></div>
         <div class="graphbox">
           <div class="graphhead"><span class="t">V–T 그래프 &nbsp;<span style="font-weight:600;color:var(--ink3)">x축 : ℃</span></span></div>
           <canvas class="graphcanvas" data-graph="charles" width="480" height="360" role="img" aria-label="부피와 섭씨온도 그래프"></canvas>
@@ -1171,7 +1170,8 @@ function gate(step) {
     d = distinctVals(s.charles.points, 't');
     if (d.length < need) return { ok: false, why: 'T가 서로 다른 점을 ' + need + '개 찍어야 열려요 — 지금 ' + d.length + '개' };
     span = d.length ? Math.max.apply(null, d) - Math.min.apply(null, d) : 0;
-    if (span < 150 - 1e-9) return { ok: false, why: '온도 범위가 150 K 이상이어야 해요 — 지금 ' + Math.round(span) + ' K' };
+    // ④ 는 아직 K 를 모르는 단계 — 눈금 간격이 같으니 ℃ 로 안내한다.
+    if (span < 150 - 1e-9) return { ok: false, why: '온도 범위가 150 ℃ 이상이어야 해요 — 지금 ' + Math.round(span) + ' ℃' };
     if (!s.charles.axisToggled) return { ok: false, why: 'x축을 K 로 바꿔서도 봐야 해요.' };
     if (!interceptOk(s.charles.intercept)) return { ok: false, why: 'x절편(℃)을 맞혀 주세요.' };
     if (!tx(s.charles.whyKelvin) && !s.charles.whyKelvinLegacy)
@@ -1743,7 +1743,6 @@ function renderTable(store) {
   var tbl = $('[data-table="' + store + '"]');
   if (!tbl) return;
   var tb = tbl.querySelector('tbody'), pts = state[store].points, ro = false;
-  if (store === 'charles') tbl.classList.toggle('nok', !kIntroduced());
   var html = '', i, p;
   for (i = 0; i < pts.length; i++) {
     p = pts[i];
@@ -1751,7 +1750,8 @@ function renderTable(store) {
       html += '<tr><td>' + (i + 1) + '</td><td>' + fmt(p.pExternal, 2) + '</td><td>' + fmt(p.v, 1) + '</td><td>' + fmt(p.pExternal * p.v, 1) + '</td>' +
         '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
     } else if (store === 'charles') {
-      html += '<tr><td>' + (i + 1) + '</td><td class="kcol">' + Math.round(p.t) + '</td><td>' + Math.round(celsius(p.t)) + '</td><td>' + fmt(p.v, 1) + '</td>' +
+      // ④ 는 ℃ 로만 본다 — K 는 절편을 맞힌 뒤 아래 K 표(charlesK)에서 처음 등장한다.
+      html += '<tr><td>' + (i + 1) + '</td><td>' + Math.round(celsius(p.t)) + '</td><td>' + fmt(p.v, 1) + '</td>' +
         '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
     } else if (store === 'gaylussac') {
       html += '<tr><td>' + (i + 1) + '</td><td>' + Math.round(p.t) + '</td><td>' + fmt(p.pTheory, 3) + '</td><td>' + fmt(p.pTheory / p.t, 5) + '</td>' +
