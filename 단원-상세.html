@@ -119,7 +119,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260726d"></script>
+<script src="js/db.js?v=20260727a"></script>
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
@@ -152,6 +152,20 @@
   }
 
   // ---------- 자료 카드 ----------
+  // 공개 기간 배지 — 기간 밖 자료는 학생에겐 RLS로 아예 안 내려가므로 '예정/종료'는 교사 화면에만 나타나고,
+  // 기간 안이면서 종료일이 있는 자료는 학생에게도 '~언제까지'를 알려준다.
+  const fmtDT = (iso) => { const d = new Date(iso); const p = (n) => String(n).padStart(2, '0'); return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+  function visibilityBadge(m) {
+    if (!m.visible_from && !m.visible_until) return '';
+    const now = Date.now();
+    if (m.visible_from && now < new Date(m.visible_from).getTime())
+      return `<span class="font-mono text-[10px] font-bold text-ink2 bg-paper2 border border-faint px-1.5 py-0.5 rounded shrink-0">${fmtDT(m.visible_from)} 공개</span>`;
+    if (m.visible_until && now > new Date(m.visible_until).getTime())
+      return '<span class="font-mono text-[10px] font-bold text-ink3 bg-paper2 border border-faint px-1.5 py-0.5 rounded shrink-0">공개 종료</span>';
+    if (m.visible_until)
+      return `<span class="font-mono text-[10px] font-bold text-ink2 bg-paper2 border border-faint px-1.5 py-0.5 rounded shrink-0">~${fmtDT(m.visible_until)}</span>`;
+    return '';
+  }
   function materialCard(m) {
     const t = MATERIAL_TYPES[m.type];
     if (!t) return '';
@@ -175,7 +189,7 @@
     if (t.file && !isExternal && m.original_filename && m.type !== 'video' && href !== '#') {
       href += (href.indexOf('?') >= 0 ? '&' : '?') + 'download=' + encodeURIComponent(m.original_filename);
     }
-    const teacherBadge = m.teacher_only ? '<span class="font-mono text-[10px] font-bold text-signal bg-signal-soft px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '';
+    const teacherBadge = (m.teacher_only ? '<span class="font-mono text-[10px] font-bold text-signal bg-signal-soft px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '') + visibilityBadge(m);
     return `<a href="${esc(href)}"${tabAttr} class="group card lift-hover p-4 rounded-lg shadow-note hover:shadow-lift hover:border-ink/30 transition-all duration-200 flex items-center gap-3 min-h-[56px]">
       <div class="p-2 ${t.box} rounded-lg shrink-0"><span class="material-symbols-outlined lab-ic">${t.icon}</span></div>
       <div class="flex-1 overflow-hidden"><p class="text-[14px] font-bold text-ink truncate">${esc(name)}</p><p class="font-mono text-[11px] text-ink3 truncate">${esc(meta)}</p></div>
@@ -185,7 +199,7 @@
   }
 
   function materialHtmlCard(m, t, name, href) {
-    const teacherBadge = m.teacher_only ? '<span class="font-mono text-[10px] font-bold text-signal bg-signal-soft px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '';
+    const teacherBadge = (m.teacher_only ? '<span class="font-mono text-[10px] font-bold text-signal bg-signal-soft px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '') + visibilityBadge(m);
     const meta = m.meta || '눌러서 펼치기';
     const panelId = 'mat-html-panel-' + m.id;
     return `<div class="col-span-full card rounded-lg overflow-hidden shadow-note">
@@ -490,6 +504,12 @@
     matModalEl = el;
     return el;
   }
+  // ISO(UTC) → <input type="datetime-local"> 값(로컬 시각)
+  const toLocalInput = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso); const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
   function matFormHtml(mat) {
     const isEdit = !!mat;
     const isFile = mat ? !!MATERIAL_TYPES[mat.type].file : false;
@@ -524,6 +544,13 @@
       <div><label class="text-label-md text-on-surface-variant">부가 설명 <span class="text-outline">(선택)</span></label>
         <input name="meta" id="m2-meta" type="text" value="${esc(mat ? (mat.meta || '') : '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 12쪽"></div>
       <label class="flex items-center gap-2 p-1 cursor-pointer"><input type="checkbox" name="is_public" id="m2-public" ${publicChecked} class="rounded text-primary focus:ring-primary"><span class="text-body-md">학생에게 공개 <span class="text-caption text-on-surface-variant">(체크 해제 시 교사만 보기)</span></span></label>
+      <div><label class="text-label-md text-on-surface-variant">공개 기간 <span class="text-outline">(선택, 비우면 항상 공개)</span></label>
+        <div class="flex items-center gap-2 mt-1">
+          <input name="visible_from" id="m2-vfrom" type="datetime-local" value="${toLocalInput(mat && mat.visible_from)}" class="flex-1 min-w-0 rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-[13px]">
+          <span class="text-ink3 shrink-0">~</span>
+          <input name="visible_until" id="m2-vuntil" type="datetime-local" value="${toLocalInput(mat && mat.visible_until)}" class="flex-1 min-w-0 rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-[13px]">
+        </div>
+        <p class="text-caption text-on-surface-variant mt-1">시작만 적으면 그때부터 계속, 종료만 적으면 그때까지 공개돼요. 기간 밖에는 교사만 보여요.</p></div>
       <div class="flex gap-2 pt-1">
         ${isEdit ? `<button type="button" id="m2-delete" class="flex items-center gap-1 border border-error/50 text-error py-2.5 px-3.5 rounded-lg text-[14px] font-bold hover:bg-error hover:text-white transition-colors"><span class="material-symbols-outlined lab-ic text-[18px]">delete</span>삭제</button>` : ''}
         <button type="button" id="m2-cancel" class="flex-1 border border-faint py-2.5 rounded-lg text-[14px] font-bold text-ink3 hover:bg-paper2 transition-colors">취소</button>
@@ -619,6 +646,10 @@
       const fd = new FormData(form);
       const type = fd.get('type'); const t = MATERIAL_TYPES[type];
       const payload = { type, name: (fd.get('name') || '').trim(), meta: (fd.get('meta') || '').trim(), teacher_only: fd.get('is_public') !== 'on' };
+      const vf = (fd.get('visible_from') || '').trim(); const vu = (fd.get('visible_until') || '').trim();
+      payload.visible_from = vf ? new Date(vf).toISOString() : null;
+      payload.visible_until = vu ? new Date(vu).toISOString() : null;
+      if (payload.visible_from && payload.visible_until && payload.visible_from >= payload.visible_until) throw new Error('공개 종료가 시작보다 빠릅니다. 기간을 확인하세요.');
       if (!editing) { payload.subunit_id = state.addingSubId; payload.sort_order = Date.now() % 100000; }
       if (t.file || t.upload) {
         const driveUrl = (fd.get('drive_url') || '').trim();

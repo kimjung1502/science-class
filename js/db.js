@@ -175,7 +175,7 @@
             id, name, sort_order, is_active,
             subunits:subunits (
               id, name, description, sort_order, is_active,
-              materials:materials ( id, type, name, meta, url, storage_path, original_filename, sort_order, is_active, teacher_only )
+              materials:materials ( id, type, name, meta, url, storage_path, original_filename, sort_order, is_active, teacher_only, visible_from, visible_until )
             )
           )
         )

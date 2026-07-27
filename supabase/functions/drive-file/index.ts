@@ -34,10 +34,14 @@ Deno.serve(async (req) => {
     if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) return json({ error: '잘못된 파일 id 입니다.' }, 400)
 
     const admin = createClient(url, service)
-    const { data: mat } = await admin.from('materials').select('id, teacher_only, original_filename').eq('storage_path', 'gdrive:' + id).maybeSingle()
+    const { data: mat } = await admin.from('materials').select('id, teacher_only, original_filename, visible_from, visible_until').eq('storage_path', 'gdrive:' + id).maybeSingle()
     if (!mat) return json({ error: '등록된 자료가 아닙니다.' }, 404)
 
-    if (mat.teacher_only) {
+    // 공개 기간 밖이면 teacher_only와 동일하게 교사만 접근
+    const now = Date.now()
+    const outOfWindow = (mat.visible_from && new Date(mat.visible_from).getTime() > now)
+      || (mat.visible_until && new Date(mat.visible_until).getTime() < now)
+    if (mat.teacher_only || outOfWindow) {
       const authHeader = req.headers.get('Authorization') || ''
       const caller = createClient(url, anon, { global: { headers: { Authorization: authHeader } } })
       const { data: { user } } = await caller.auth.getUser()
@@ -45,7 +49,7 @@ Deno.serve(async (req) => {
       const { data: byEmail } = await admin.from('admins').select('email').eq('email', user.email).maybeSingle()
       let isAdmin = !!byEmail
       if (!isAdmin) { const { data: byUid } = await admin.from('admins').select('email').eq('auth_user_id', user.id).maybeSingle(); isAdmin = !!byUid }
-      if (!isAdmin) return json({ error: '교사만 볼 수 있는 자료입니다.' }, 403)
+      if (!isAdmin) return json({ error: mat.teacher_only ? '교사만 볼 수 있는 자료입니다.' : '지금은 공개 기간이 아닙니다.' }, 403)
     }
 
     const { data: cfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()

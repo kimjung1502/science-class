@@ -200,7 +200,7 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260726d"></script>
+<script src="js/db.js?v=20260727a"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile } = window.DB;
@@ -404,6 +404,12 @@
     return `<input name="${f.k}" type="text" ${f.required ? 'required' : ''} value="${v}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="${esc(f.placeholder||'')}">`;
   }
 
+  // ISO(UTC) → <input type="datetime-local"> 값(로컬 시각)
+  function toLocalInput(iso) {
+    if (!iso) return '';
+    const d = new Date(iso); const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
   function materialForm(item) {
     const type = item?.type || 'print';
     const typeOpts = Object.entries(MATERIAL_TYPES).map(([k, t]) => `<option value="${k}" ${type === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('');
@@ -437,6 +443,13 @@
         <input type="checkbox" name="teacher_only" ${item?.teacher_only ? 'checked' : ''} class="rounded text-primary focus:ring-primary">
         <span class="text-body-md">교사만 보기 <span class="text-caption text-on-surface-variant">(체크하면 학생 화면에 안 보임)</span></span>
       </label>
+      <div><label class="text-label-md text-on-surface-variant">공개 기간 <span class="text-outline">(선택, 비우면 항상 공개)</span></label>
+        <div class="flex items-center gap-2 mt-1">
+          <input name="visible_from" type="datetime-local" value="${toLocalInput(item?.visible_from)}" class="flex-1 min-w-0 rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-[13px]">
+          <span class="text-on-surface-variant shrink-0">~</span>
+          <input name="visible_until" type="datetime-local" value="${toLocalInput(item?.visible_until)}" class="flex-1 min-w-0 rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-[13px]">
+        </div>
+        <p class="text-caption text-on-surface-variant mt-1">시작만 적으면 그때부터 계속, 종료만 적으면 그때까지 공개돼요. 기간 밖에는 교사만 보여요.</p></div>
     `;
   }
 
@@ -559,6 +572,10 @@
         payload.name = fd.get('name').trim();
         payload.meta = fd.get('meta').trim();
         payload.teacher_only = fd.get('teacher_only') === 'on';
+        const vf = (fd.get('visible_from') || '').trim(); const vu = (fd.get('visible_until') || '').trim();
+        payload.visible_from = vf ? new Date(vf).toISOString() : null;
+        payload.visible_until = vu ? new Date(vu).toISOString() : null;
+        if (payload.visible_from && payload.visible_until && payload.visible_from >= payload.visible_until) throw new Error('공개 종료가 시작보다 빠릅니다. 기간을 확인하세요.');
         const t = MATERIAL_TYPES[payload.type];
         if (t.file || t.upload) {
           const driveUrl = (fd.get('drive_url') || '').trim();
