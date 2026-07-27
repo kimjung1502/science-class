@@ -46,8 +46,9 @@
   .stagehead .sub{font-size:12.5px;color:var(--ink3)}
   .card{background:var(--surface);border:1px solid var(--paper3);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin:0 0 13px}
   .card.tight{padding:13px}
-  .ro-note{font-size:12.5px;font-weight:600;color:#8a3510;background:var(--signal-soft);border:1px solid #f3c3ae;border-radius:9px;padding:7px 10px;margin:0 0 10px;display:none;line-height:1.5}
-  .stage.gate-broken .ro-note{display:block}
+  .ro-note{font-size:12.5px;font-weight:600;border-radius:9px;padding:7px 10px;margin:0 0 10px;display:none;line-height:1.5}
+  .stage.answers-locked .ro-note{display:block;color:var(--ink3);background:var(--paper2);border:1px solid var(--paper3)}
+  .stage.gate-broken .ro-note{display:block;color:#8a3510;background:var(--signal-soft);border:1px solid #f3c3ae}
 
   .hero{display:flex;gap:14px;align-items:stretch}
   .hero .bar{flex:none;width:8px;border-radius:6px;background:var(--lime)}
@@ -1231,21 +1232,32 @@ function applyReadOnly() {
   for (var k = 1; k <= 6; k++) {
     var sec = document.getElementById('s' + k);
     if (!sec) continue;
-    $$('textarea, input[type=text], input[type=radio]', sec).forEach(function (el) { el.disabled = false; });
+    // '다음으로 계속' 을 눌러 지나간 단계는 **답변만** 잠근다(제출된 것으로 본다).
+    // 실험(시뮬레이터 조작·기록·점 삭제·그래프 토글)은 계속 할 수 있다 — 보일·샤를 그래프를
+    // 직접 만들어 보는 것이 이 수업의 핵심 활동이라 다시 해 볼 수 있어야 한다.
+    var lock = !IS_ADMIN && (k < unlocked);
+    sec.classList.toggle('answers-locked', lock);
+    $$('textarea, input[type=text], input[type=radio]', sec).forEach(function (el) { el.disabled = lock; });
     $$('.dtable .del, #invToggle', sec).forEach(function (el) { el.disabled = false; });
   }
-  paintBrokenWarnings();
+  paintStageNotes();
 }
-/* 이미 지나온 단계의 조건이 무너지면 조용히 두지 않고 그 자리에서 알려 준다 */
-function paintBrokenWarnings() {
+/* 지나온 단계의 상태를 그 자리에 알려 준다 — 답변 잠김 / 조건 무너짐 */
+function paintStageNotes() {
   for (var k = 1; k <= 5; k++) {
     var sec = document.getElementById('s' + k);
     if (!sec) continue;
     var note = $('.ro-note', sec);
-    var g = gate(k), broken = (k < unlocked) && !g.ok;
+    var g = gate(k), passed = (k < unlocked), broken = passed && !g.ok;
     sec.classList.toggle('gate-broken', broken);
-    if (broken && note) note.innerHTML = '⚠️ 지금은 이 단계의 조건이 채워지지 않았어요 — <b>' + g.why +
-      '</b><br>이대로 새로고침하면 여기부터 다시 하게 돼요(기록한 자료는 그대로 남아 있어요).';
+    if (!note) continue;
+    if (broken) {
+      note.innerHTML = '⚠️ 지금은 이 단계의 조건이 채워지지 않았어요 — <b>' + g.why +
+        '</b><br>이대로 새로고침하면 여기부터 다시 하게 돼요(기록한 자료는 그대로 남아 있어요).';
+    } else if (passed && !IS_ADMIN) {
+      note.innerHTML = '🔒 이 단계의 <b>답변은 제출</b>되어 고칠 수 없어요. ' +
+        '<span style="font-weight:400">실험(조작·기록·그래프)은 계속 해 볼 수 있어요.</span>';
+    }
   }
 }
 function revealTo(step, smooth) {
@@ -1274,7 +1286,7 @@ function paintLock(step) {
     el.textContent = g6.ok ? '✔ 모두 완료했어요! 수고했어요.' : g6.why;
   } else { el.className = 'lockmsg'; el.textContent = ''; }
 }
-function paintAllLocks() { for (var k = 1; k <= 6; k++) paintLock(k); paintBrokenWarnings(); }
+function paintAllLocks() { for (var k = 1; k <= 6; k++) paintLock(k); paintStageNotes(); }
 
 /* ===================== 시뮬레이터 블록 (§5 ③④⑤⑥ 공용 SimBlock) ===================== */
 var KINDS = {
