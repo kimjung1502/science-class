@@ -106,6 +106,16 @@
           <h3 class="text-label-md font-bold text-on-surface">교시 시각 <span class="text-caption font-normal text-on-surface-variant">— 학교 종 시간(전 학년 공통)</span></h3>
           <button id="periods-save" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">교시 시각 저장</button>
         </div>
+        <div class="flex flex-wrap items-end gap-2 pb-1 border-b border-outline-variant mb-1">
+          <label class="text-caption text-on-surface-variant">1교시 시작<input id="tt-first" type="time" class="block mt-0.5 rounded-lg border-outline-variant text-body-md"></label>
+          <label class="text-caption text-on-surface-variant">점심 시작<input id="tt-lunch-s" type="time" class="block mt-0.5 rounded-lg border-outline-variant text-body-md"></label>
+          <label class="text-caption text-on-surface-variant">점심 끝<input id="tt-lunch-e" type="time" class="block mt-0.5 rounded-lg border-outline-variant text-body-md"></label>
+          <label class="text-caption text-on-surface-variant">수업(분)<input id="tt-len" type="number" value="50" min="1" max="120" class="block mt-0.5 w-[72px] rounded-lg border-outline-variant text-body-md"></label>
+          <label class="text-caption text-on-surface-variant">쉬는 시간(분)<input id="tt-brk" type="number" value="10" min="0" max="60" class="block mt-0.5 w-[72px] rounded-lg border-outline-variant text-body-md"></label>
+          <label class="text-caption text-on-surface-variant">교시 수<input id="tt-count" type="number" value="7" min="1" max="8" class="block mt-0.5 w-[72px] rounded-lg border-outline-variant text-body-md"></label>
+          <button id="tt-autofill" class="border border-outline-variant px-3 py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">자동 채우기</button>
+          <span class="text-caption text-on-surface-variant self-center">채운 뒤 확인하고 <b>교시 시각 저장</b>을 누르세요.</span>
+        </div>
         <div id="periods-list" class="grid gap-2" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))"></div>
       </div>
 
@@ -705,6 +715,37 @@
       </div>`).join('') || '<p class="text-caption text-on-surface-variant">분반이 없습니다.</p>';
     $('timetable-list').querySelectorAll('[data-save]').forEach((btn) => btn.addEventListener('click', () => saveClassSlots(btn.dataset.save, btn)));
   }
+
+  // 1교시 시작·점심시간만 넣으면 나머지는 '50분 수업 + 10분 쉬는 시간'으로 채운다.
+  // 다음 교시가 점심에 걸리면 점심 끝으로 건너뛴다(보통 4교시 뒤) — 몇 교시 뒤인지 따로 안 물어봐도 된다.
+  const toMin = (hhmm) => { if (!hhmm) return null; const a = hhmm.split(':'); return (+a[0]) * 60 + (+a[1]); };
+  const toHhmm = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  function buildPeriods({ first, lunchStart, lunchEnd, len, brk, count }) {
+    const out = [];
+    let t = first;
+    for (let p = 1; p <= count; p++) {
+      if (lunchStart != null && lunchEnd != null && t >= lunchStart && t < lunchEnd) t = lunchEnd;   // 점심에 시작할 교시는 점심 뒤로
+      out.push({ period: p, start: t, end: t + len });
+      t += len + brk;
+    }
+    return out;
+  }
+  $('tt-autofill').addEventListener('click', () => {
+    const first = toMin($('tt-first').value);
+    if (first == null) { alert('1교시 시작 시각을 넣어 주세요.'); return; }
+    const rows = buildPeriods({
+      first,
+      lunchStart: toMin($('tt-lunch-s').value), lunchEnd: toMin($('tt-lunch-e').value),
+      len: Math.max(1, +$('tt-len').value || 50), brk: Math.max(0, +$('tt-brk').value || 0),
+      count: Math.min(PERIODS_SHOWN, Math.max(1, +$('tt-count').value || 7)),
+    });
+    for (let i = 1; i <= PERIODS_SHOWN; i++) {
+      const r = rows.find((x) => x.period === i);
+      $('periods-list').querySelector(`[data-period="${i}"][data-k="start"]`).value = r ? toHhmm(r.start) : '';
+      $('periods-list').querySelector(`[data-period="${i}"][data-k="end"]`).value = r ? toHhmm(r.end) : '';
+    }
+    toast('채웠습니다 — 확인하고 저장하세요.');
+  });
 
   $('periods-save').addEventListener('click', async (e) => {
     const btn = e.currentTarget, rows = [];
