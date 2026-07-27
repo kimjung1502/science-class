@@ -534,6 +534,7 @@
       </div>
     </div>
     <div class="card">
+      <div class="note" id="dueBox" style="display:none;margin:0 0 10px"></div>
       <div class="actions">
         <button class="btn lime" id="exportBtn">결과 제출하기 (선생님께)</button>
         <button class="btn ghost" id="printBtn">인쇄 / PDF 보기</button>
@@ -848,6 +849,7 @@ var CONFIG = {
 };
 var AI_URL = CONFIG.SUPABASE_URL + "/functions/v1/check-experiment-response";
 var SUBMIT_URL = CONFIG.SUPABASE_URL + "/functions/v1/submit-work?op=experiment";
+var WINDOW_URL = CONFIG.SUPABASE_URL + "/functions/v1/submit-work?op=experiment-window";
 var AI_TIMEOUT = 8000, AI_TOTAL_CAP = 16000;   // §8.4 8 s × 재시도 포함 2회 = 총 16 s
 
 /* ===================== §3.2 학생 정보 자동 주입 ===================== */
@@ -2131,6 +2133,7 @@ function paintAxisNote() {
 /* ===================== §3.3 내보내기 ===================== */
 function exportReadyWhy() {
   if (IS_ADMIN) return '';
+  if (dueClosed()) return '제출 기한이 지났어요 — ' + dueText(dueAt) + ' 까지였어요.';
   if (!rNameOk(state.combine.rAnswer)) return 'PV/nT 값의 이름을 먼저 맞혀 주세요.';
   if (!tx(state.assess.a1) || !tx(state.assess.a2) || !tx(state.assess.a3)) return '형성평가 3문항을 모두 써 주세요.';
   if (!a3WordsOk(state.assess.a3)) return '3번은 ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.';
@@ -2151,6 +2154,71 @@ function invalidateExport() {
 function fileStamp() {
   var d = new Date();
   return '' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+}
+/* ---------- 제출 기한 ----------
+   수업 시간 안에서만 내게 하려는 장치다. 선생님이 이 페이지의 교사 화면에서 정하고,
+   학생 화면은 남은 기한을 보여 주기만 한다 — 실제 차단은 서버(submit-work)가 한다.
+   학생 기기의 시계는 못 믿으므로 여기 표시는 안내일 뿐이다. */
+var dueAt = null;
+function dueText(d) {
+  var wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+  return (d.getMonth() + 1) + '월 ' + d.getDate() + '일(' + wd + ') ' +
+    String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function dueClosed() { return !!(dueAt && dueAt.getTime() < Date.now()); }
+function dueInputValue(d) {
+  var p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function callWindow(extra) {
+  var tk = siteToken();
+  if (!tk) return Promise.reject(new Error('로그인 정보를 찾지 못했어요'));
+  var payload = { subject_id: CONFIG.SUBJECT_ID, title: CONFIG.EXPERIMENT_TITLE }, k;
+  for (k in extra) payload[k] = extra[k];
+  return fetch(WINDOW_URL, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + tk, 'apikey': CONFIG.SUPABASE_ANON, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (o) {
+      if (!r.ok) throw new Error(o.error || ('요청 실패 ' + r.status));
+      return o;
+    });
+  });
+}
+function setDue(iso) { dueAt = iso ? new Date(iso) : null; paintDue(); invalidateExport(); }
+function loadDue() { callWindow({}).then(function (o) { setDue(o.close_at); }, function () { /* 못 읽어도 진행 — 차단은 서버가 한다 */ }); }
+function paintDue() {
+  var box = $('#dueBox');
+  if (!box) return;
+  if (IS_ADMIN) {
+    box.style.display = 'block'; box.className = 'note';
+    box.innerHTML = '⏰ <b>제출 기한</b> <span style="font-weight:400">(교사에게만 보여요)</span> — 수업 시간 안에서만 내게 하려면 마감 시각을 정해 주세요.' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:center">' +
+      '<input type="datetime-local" id="dueIn" style="font:inherit;padding:8px 10px;border-radius:9px;border:1px solid var(--paper3);background:#fff;color:var(--ink)">' +
+      '<button class="btn sm lime" id="dueSave">기한 저장</button>' +
+      '<button class="btn sm ghost" id="dueClear">기한 없애기</button>' +
+      '<span id="dueState" style="font-size:12.5px;color:var(--ink3)"></span></div>';
+    if (dueAt) $('#dueIn').value = dueInputValue(dueAt);
+    $('#dueState').textContent = dueAt ? '지금 설정: ' + dueText(dueAt) + ' 까지' : '지금은 기한 없음';
+    $('#dueSave').addEventListener('click', function () {
+      var v = $('#dueIn').value;
+      if (!v) { $('#dueState').textContent = '시각을 골라 주세요.'; return; }
+      $('#dueState').textContent = '저장 중…';
+      callWindow({ set: new Date(v).toISOString() }).then(function (o) { setDue(o.close_at); },
+        function (e) { $('#dueState').textContent = '저장 실패 — ' + e.message; });
+    });
+    $('#dueClear').addEventListener('click', function () {
+      $('#dueState').textContent = '저장 중…';
+      callWindow({ set: null }).then(function () { setDue(null); },
+        function (e) { $('#dueState').textContent = '저장 실패 — ' + e.message; });
+    });
+    return;
+  }
+  if (!dueAt) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  if (dueClosed()) { box.className = 'note signal'; box.textContent = '⛔ 제출 기한이 지났어요 — ' + dueText(dueAt) + ' 까지였어요.'; }
+  else { box.className = 'note lime'; box.textContent = '⏰ 제출 기한 — ' + dueText(dueAt) + ' 까지'; }
 }
 function exportNote(cls, msg) {
   var note = $('#exportNote');
@@ -2198,7 +2266,7 @@ function sendResult() {
     body: JSON.stringify({ subject_id: CONFIG.SUBJECT_ID, title: CONFIG.EXPERIMENT_TITLE, payload: state })
   }).then(function (r) {
     return r.json().catch(function () { return {}; }).then(function (o) {
-      if (!r.ok) throw new Error(o.error || ('전송 실패 ' + r.status));
+      if (!r.ok) { var err = new Error(o.error || ('전송 실패 ' + r.status)); err.closeAt = o.close_at || null; throw err; }
       return o;
     });
   });
@@ -2216,6 +2284,7 @@ function finishExport() {
     markExported();
     exportNote('note lime', '✔ 제출 완료 — 선생님께 전송됐어요 (' + o.file_name + ')');
   }, function (e) {
+    if (e.closeAt) setDue(e.closeAt);   // 기한이 지나서 막힌 경우 — 기한을 화면에 알려 준다
     markExported();   // 전송이 막혀도 학생이 마무리를 못 하면 안 되니 파일로 남기고 완료 처리
     exportNote('note signal', '⚠️ 전송이 안 됐어요(' + e.message + ') — 대신 파일로 저장했어요: ' + saveJsonFile() + ' · 선생님께 전달해 주세요.');
   }).then(function () { btn.textContent = old; btn.disabled = false; });
@@ -2527,6 +2596,7 @@ function init() {
   hydrate();
   checkLow();
   save(true);
+  paintDue(); loadDue();                                // 제출 기한 — 먼저 그리고, 서버 값이 오면 다시 그린다
 
   // prefers-reduced-motion: 자동 시작하지 않고 큰 시작 버튼을 먼저 보여줌(§8.1)
   if (reduceMotion) {

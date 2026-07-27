@@ -189,6 +189,27 @@ Deno.serve(async (req) => {
       return json({ ok: true, file: { file_name: filename, storage_path: path, size: bytes.length } })
     }
 
+    // ---------- 실험 제출 마감 시각 조회/설정 ----------
+    // 조회는 누구나(학생이 기한을 봐야 하니), 설정(set 키가 있으면)은 교사만.
+    // set: null 이면 마감 해제. 실험 페이지가 열릴 때 한 번, 교사가 저장할 때 부른다.
+    if (op === 'experiment-window') {
+      const body = await req.json().catch(() => ({}))
+      const subjectId = String(body.subject_id || '')
+      const title = sanitizeName(body.title || '실험')
+      if (!subjectId) return json({ error: 'subject_id가 필요합니다.' }, 400)
+      if ('set' in body) {
+        if (!(await checkAdmin(admin, user))) return json({ error: '관리자만 설정할 수 있습니다.' }, 403)
+        const closeAt = body.set ? new Date(body.set) : null
+        if (closeAt && isNaN(closeAt.getTime())) return json({ error: '시각 형식이 올바르지 않습니다.' }, 400)
+        const { error } = await admin.from('experiment_windows')
+          .upsert({ subject_id: subjectId, title, close_at: closeAt ? closeAt.toISOString() : null, updated_at: new Date().toISOString() })
+        if (error) return json({ error: error.message }, 400)
+        return json({ ok: true, close_at: closeAt ? closeAt.toISOString() : null })
+      }
+      const { data: w } = await admin.from('experiment_windows').select('close_at').eq('subject_id', subjectId).eq('title', title).maybeSingle()
+      return json({ ok: true, close_at: w?.close_at || null })
+    }
+
     // ---------- 학생: 실험 페이지 결과(JSON) 제출 ----------
     // 자립형 실험 HTML 이 직접 부른다. 제출 과제(assignment) 없이 과목·분반만으로
     // 학교›년도›학기›과목›분반›<실험명> 에 '학번_이름.json' 으로 저장(같은 이름이면 내용 교체 = 재제출).
@@ -202,6 +223,10 @@ Deno.serve(async (req) => {
       const bytes = new TextEncoder().encode(JSON.stringify(body.payload ?? null, null, 2))
       if (bytes.length < 3) return json({ error: '보낼 내용이 없습니다.' }, 400)
       if (bytes.length > 10 * 1024 * 1024) return json({ error: '결과가 너무 큽니다(최대 10MB).' }, 400)
+      const { data: win } = await admin.from('experiment_windows').select('close_at').eq('subject_id', subjectId).eq('title', title).maybeSingle()
+      if (win?.close_at && new Date(win.close_at).getTime() < Date.now()) {
+        return json({ error: '제출 기한이 지났습니다.', close_at: win.close_at }, 403)
+      }
       const { data: gcfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()
       if (!(gcfg?.refresh_token && gcfg?.client_id && gcfg?.client_secret)) return json({ error: '선생님 드라이브가 연결되어 있지 않습니다.' }, 503)
       const cls = subjectId ? await resolveClass(admin, student.id, subjectId) : null
