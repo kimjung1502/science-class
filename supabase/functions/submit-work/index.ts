@@ -55,6 +55,39 @@ async function uploadDrive(token: string, folderId: string, filename: string, by
   const ud = await ur.json(); if (!ur.ok) throw new Error('drive upload failed'); return { id: ud.id, link: ud.webViewLink }
 }
 
+// 지금 제출이 열려 있는지.
+// ① 실험 페이지에서 정한 마감 시각이 있으면 그것만 본다(보강·결석생용 임시 연장).
+// ② 없으면 분반 시간표(class_periods × school_periods)를 보고 수업 시간에만 연다.
+// ③ 시간표도 없으면 제한 없음. 종 친 뒤 GRACE_MIN 분은 정리하며 낼 수 있게 봐 준다.
+const GRACE_MIN = 5
+async function submitGate(admin: any, subjectId: string, title: string, classId: string | null) {
+  const { data: win } = await admin.from('experiment_windows').select('close_at').eq('subject_id', subjectId).eq('title', title).maybeSingle()
+  const closeAt = win?.close_at || null
+  if (closeAt) {
+    const t = new Date(closeAt).getTime()
+    return t < Date.now()
+      ? { open: false, why: '제출 기한이 지났습니다.', close_at: closeAt, until: closeAt }
+      : { open: true, close_at: closeAt, until: closeAt }
+  }
+  if (!classId) return { open: true, close_at: null }
+  const { data: slots } = await admin.from('class_periods').select('weekday, period').eq('class_id', classId)
+  if (!slots || !slots.length) return { open: true, close_at: null }
+  const { data: periods } = await admin.from('school_periods').select('period, start_time, end_time')
+  const pmap = new Map((periods || []).map((p: any) => [p.period, p]))
+  const toMin = (t: string) => { const a = String(t).split(':'); return (+a[0]) * 60 + (+a[1]) }
+  const kst = new Date(Date.now() + 9 * 3600 * 1000)          // KST 벽시계 (getUTC* 로 읽는다)
+  const wd = kst.getUTCDay() === 0 ? 7 : kst.getUTCDay()
+  const mins = kst.getUTCHours() * 60 + kst.getUTCMinutes()
+  const today = slots.filter((s: any) => s.weekday === wd).map((s: any) => pmap.get(s.period)).filter(Boolean)
+  for (const p of today) {
+    if (mins >= toMin(p.start_time) && mins <= toMin(p.end_time) + GRACE_MIN) {
+      const end = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 0, toMin(p.end_time)) - 9 * 3600 * 1000)
+      return { open: true, close_at: null, until: end.toISOString() }
+    }
+  }
+  return { open: false, why: '수업 시간에만 제출할 수 있습니다.', close_at: null }
+}
+
 // 학생이 이 과목에서 수강하는 분반 판정 (class_subjects ∩ student_classes)
 async function resolveClass(admin: any, studentId: string, subjectId: string): Promise<{ classId: string; className: string } | null> {
   const { data: scs } = await admin.from('class_subjects').select('class_id').eq('subject_id', subjectId)
@@ -206,8 +239,10 @@ Deno.serve(async (req) => {
         if (error) return json({ error: error.message }, 400)
         return json({ ok: true, close_at: closeAt ? closeAt.toISOString() : null })
       }
-      const { data: w } = await admin.from('experiment_windows').select('close_at').eq('subject_id', subjectId).eq('title', title).maybeSingle()
-      return json({ ok: true, close_at: w?.close_at || null })
+      const { data: st } = await admin.from('students').select('id').eq('auth_user_id', user.id).maybeSingle()
+      const cls = st ? await resolveClass(admin, st.id, subjectId) : null
+      const g = await submitGate(admin, subjectId, title, cls?.classId || null)
+      return json({ ok: true, close_at: g.close_at, open: g.open, until: g.until || null, why: g.why || null })
     }
 
     // ---------- 학생: 실험 페이지 결과(JSON) 제출 ----------
@@ -223,13 +258,11 @@ Deno.serve(async (req) => {
       const bytes = new TextEncoder().encode(JSON.stringify(body.payload ?? null, null, 2))
       if (bytes.length < 3) return json({ error: '보낼 내용이 없습니다.' }, 400)
       if (bytes.length > 10 * 1024 * 1024) return json({ error: '결과가 너무 큽니다(최대 10MB).' }, 400)
-      const { data: win } = await admin.from('experiment_windows').select('close_at').eq('subject_id', subjectId).eq('title', title).maybeSingle()
-      if (win?.close_at && new Date(win.close_at).getTime() < Date.now()) {
-        return json({ error: '제출 기한이 지났습니다.', close_at: win.close_at }, 403)
-      }
+      const cls = subjectId ? await resolveClass(admin, student.id, subjectId) : null
+      const gate = await submitGate(admin, subjectId, title, cls?.classId || null)
+      if (!gate.open) return json({ error: gate.why, close_at: gate.close_at }, 403)
       const { data: gcfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()
       if (!(gcfg?.refresh_token && gcfg?.client_id && gcfg?.client_secret)) return json({ error: '선생님 드라이브가 연결되어 있지 않습니다.' }, 503)
-      const cls = subjectId ? await resolveClass(admin, student.id, subjectId) : null
       const { data: subj } = subjectId ? await admin.from('subjects').select('name').eq('id', subjectId).maybeSingle() : { data: null }
       const token = await getDriveToken(admin, gcfg)
       let f = await ensureFolder(token, gcfg.school_name || '학교', 'root')

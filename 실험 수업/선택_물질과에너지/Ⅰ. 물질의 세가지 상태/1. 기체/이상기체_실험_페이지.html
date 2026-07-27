@@ -2133,7 +2133,7 @@ function paintAxisNote() {
 /* ===================== §3.3 내보내기 ===================== */
 function exportReadyWhy() {
   if (IS_ADMIN) return '';
-  if (dueClosed()) return '제출 기한이 지났어요 — ' + dueText(dueAt) + ' 까지였어요.';
+  if (!gate.open) return gate.why || '지금은 제출할 수 없어요.';
   if (!rNameOk(state.combine.rAnswer)) return 'PV/nT 값의 이름을 먼저 맞혀 주세요.';
   if (!tx(state.assess.a1) || !tx(state.assess.a2) || !tx(state.assess.a3)) return '형성평가 3문항을 모두 써 주세요.';
   if (!a3WordsOk(state.assess.a3)) return '3번은 ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.';
@@ -2159,13 +2159,14 @@ function fileStamp() {
    수업 시간 안에서만 내게 하려는 장치다. 선생님이 이 페이지의 교사 화면에서 정하고,
    학생 화면은 남은 기한을 보여 주기만 한다 — 실제 차단은 서버(submit-work)가 한다.
    학생 기기의 시계는 못 믿으므로 여기 표시는 안내일 뿐이다. */
-var dueAt = null;
+var dueAt = null;                              // 수동 마감(교사가 이 페이지에서 정한 것)
+var gate = { open: true, until: null, why: '' };   // 지금 제출이 열려 있는지 — 서버가 판정해 준다
 function dueText(d) {
   var wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
   return (d.getMonth() + 1) + '월 ' + d.getDate() + '일(' + wd + ') ' +
     String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
-function dueClosed() { return !!(dueAt && dueAt.getTime() < Date.now()); }
+function dueClosed() { return !gate.open; }
 function dueInputValue(d) {
   var p = function (n) { return String(n).padStart(2, '0'); };
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
@@ -2186,14 +2187,18 @@ function callWindow(extra) {
     });
   });
 }
-function setDue(iso) { dueAt = iso ? new Date(iso) : null; paintDue(); invalidateExport(); }
-function loadDue() { callWindow({}).then(function (o) { setDue(o.close_at); }, function () { /* 못 읽어도 진행 — 차단은 서버가 한다 */ }); }
+function setDue(o) {
+  dueAt = o.close_at ? new Date(o.close_at) : null;
+  gate = { open: o.open !== false, until: o.until || null, why: o.why || '' };
+  paintDue(); invalidateExport();
+}
+function loadDue() { return callWindow({}).then(setDue, function () { /* 못 읽어도 진행 — 차단은 서버가 한다 */ }); }
 function paintDue() {
   var box = $('#dueBox');
   if (!box) return;
   if (IS_ADMIN) {
     box.style.display = 'block'; box.className = 'note';
-    box.innerHTML = '⏰ <b>제출 기한</b> <span style="font-weight:400">(교사에게만 보여요)</span> — 수업 시간 안에서만 내게 하려면 마감 시각을 정해 주세요.' +
+    box.innerHTML = '⏰ <b>제출 기한</b> <span style="font-weight:400">(교사에게만 보여요)</span> — 평소엔 <b>관리자 페이지 › 수업 시간표</b> 의 수업 시간에만 열려요. 여기에 시각을 정하면 <b>시간표 대신 그 시각까지</b> 열립니다(보강·결석생용).' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:center">' +
       '<input type="datetime-local" id="dueIn" style="font:inherit;padding:8px 10px;border-radius:9px;border:1px solid var(--paper3);background:#fff;color:var(--ink)">' +
       '<button class="btn sm lime" id="dueSave">기한 저장</button>' +
@@ -2205,20 +2210,24 @@ function paintDue() {
       var v = $('#dueIn').value;
       if (!v) { $('#dueState').textContent = '시각을 골라 주세요.'; return; }
       $('#dueState').textContent = '저장 중…';
-      callWindow({ set: new Date(v).toISOString() }).then(function (o) { setDue(o.close_at); },
+      callWindow({ set: new Date(v).toISOString() }).then(function () { loadDue(); },
         function (e) { $('#dueState').textContent = '저장 실패 — ' + e.message; });
     });
     $('#dueClear').addEventListener('click', function () {
       $('#dueState').textContent = '저장 중…';
-      callWindow({ set: null }).then(function () { setDue(null); },
+      callWindow({ set: null }).then(function () { loadDue(); },
         function (e) { $('#dueState').textContent = '저장 실패 — ' + e.message; });
     });
     return;
   }
-  if (!dueAt) { box.style.display = 'none'; return; }
-  box.style.display = 'block';
-  if (dueClosed()) { box.className = 'note signal'; box.textContent = '⛔ 제출 기한이 지났어요 — ' + dueText(dueAt) + ' 까지였어요.'; }
-  else { box.className = 'note lime'; box.textContent = '⏰ 제출 기한 — ' + dueText(dueAt) + ' 까지'; }
+  if (!gate.open) {
+    box.style.display = 'block'; box.className = 'note signal';
+    box.textContent = '⛔ ' + (gate.why || '지금은 제출할 수 없어요.') + (dueAt ? ' (' + dueText(dueAt) + ' 까지였어요)' : '');
+    return;
+  }
+  if (!gate.until) { box.style.display = 'none'; return; }
+  box.style.display = 'block'; box.className = 'note lime';
+  box.textContent = '⏰ 제출 기한 — ' + dueText(new Date(gate.until)) + ' 까지';
 }
 function exportNote(cls, msg) {
   var note = $('#exportNote');
@@ -2284,7 +2293,7 @@ function finishExport() {
     markExported();
     exportNote('note lime', '✔ 제출 완료 — 선생님께 전송됐어요 (' + o.file_name + ')');
   }, function (e) {
-    if (e.closeAt) setDue(e.closeAt);   // 기한이 지나서 막힌 경우 — 기한을 화면에 알려 준다
+    loadDue();   // 막힌 이유(기한·수업 시간)를 서버에서 다시 받아 화면에 알려 준다
     markExported();   // 전송이 막혀도 학생이 마무리를 못 하면 안 되니 파일로 남기고 완료 처리
     exportNote('note signal', '⚠️ 전송이 안 됐어요(' + e.message + ') — 대신 파일로 저장했어요: ' + saveJsonFile() + ' · 선생님께 전달해 주세요.');
   }).then(function () { btn.textContent = old; btn.disabled = false; });

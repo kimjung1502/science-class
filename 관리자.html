@@ -71,6 +71,7 @@
       <button id="tab-curriculum" class="tab px-md py-2 text-label-md font-bold border-b-2 border-primary text-primary -mb-px">교육과정</button>
       <button id="tab-classes" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">분반 관리</button>
       <button id="tab-students" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">학생 관리</button>
+      <button id="tab-timetable" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">수업 시간표</button>
       <button id="tab-admins" class="tab hidden px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">관리자 관리</button>
     </div>
 
@@ -92,6 +93,26 @@
       </div>
       <p class="text-caption text-on-surface-variant">분반을 만들고 볼 수 있는 과목을 배정하세요. 학생은 자기 분반에 배정된 과목만 볼 수 있습니다.</p>
       <div id="classes-list" class="space-y-2"></div>
+    </div>
+
+    <!-- 수업 시간표 -->
+    <div id="timetable-view" class="hidden space-y-md">
+      <h2 class="text-title-lg text-on-surface">수업 시간표</h2>
+      <p class="text-caption text-on-surface-variant">여기 적은 <b>수업 시간에만</b> 실험 페이지의 ‘결과 제출하기’가 열립니다. 비워 두면 시간 제한 없이 열립니다.<br>
+        (실험 페이지에서 마감 시각을 따로 정해 두면 그 설정이 우선합니다 — 보강·결석생용.)</p>
+
+      <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 space-y-2">
+        <div class="flex items-center justify-between gap-md">
+          <h3 class="text-label-md font-bold text-on-surface">교시 시각 <span class="text-caption font-normal text-on-surface-variant">— 학교 종 시간(전 학년 공통)</span></h3>
+          <button id="periods-save" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">교시 시각 저장</button>
+        </div>
+        <div id="periods-list" class="grid gap-2" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))"></div>
+      </div>
+
+      <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 space-y-2">
+        <h3 class="text-label-md font-bold text-on-surface">분반별 수업 시간 <span class="text-caption font-normal text-on-surface-variant">— 예: <code>화3, 목5</code> (요일+교시, 쉼표로 구분)</span></h3>
+        <div id="timetable-list" class="space-y-2"></div>
+      </div>
     </div>
 
     <!-- 관리자 관리 (소유자 전용) -->
@@ -627,7 +648,7 @@
 
   // ---------------- 탭 전환 ----------------
   let isOwner = false;
-  const TABS = ['curriculum', 'classes', 'students', 'admins'];
+  const TABS = ['curriculum', 'classes', 'students', 'timetable', 'admins'];
   function switchTab(which) {
     TABS.forEach((t) => {
       $(`${t}-view`).classList.toggle('hidden', t !== which);
@@ -636,9 +657,83 @@
     });
     if (which === 'students') loadStudents();
     if (which === 'classes') loadClasses();
+    if (which === 'timetable') loadTimetable();
     if (which === 'admins') loadAdmins();
   }
   TABS.forEach((t) => $(`tab-${t}`).addEventListener('click', () => switchTab(t)));
+
+  // ---------------- 수업 시간표 ----------------
+  // 여기 등록한 요일·교시에만 실험 결과 제출이 열린다(실제 판정은 서버가 한다).
+  // 교시 시각은 NEIS 에도 없는 값이라 학교마다 한 번 입력해서 쓴다.
+  const WD = ['월', '화', '수', '목', '금', '토', '일'];
+  const PERIODS_SHOWN = 8;
+  function parseSlots(text) {                 // "화3, 목5" → [{weekday:2, period:3}, …]
+    const out = [], seen = new Set();
+    String(text || '').split(/[,\s]+/).forEach((tok) => {
+      const m = tok.match(/^([월화수목금토일])\s*(\d{1,2})/);
+      if (!m) return;
+      const weekday = WD.indexOf(m[1]) + 1, period = parseInt(m[2], 10), key = `${weekday}-${period}`;
+      if (period >= 1 && period <= 12 && !seen.has(key)) { seen.add(key); out.push({ weekday, period }); }
+    });
+    return out;
+  }
+  const slotsText = (rows) => rows.slice().sort((a, b) => a.weekday - b.weekday || a.period - b.period)
+    .map((r) => WD[r.weekday - 1] + r.period).join(', ');
+
+  async function loadTimetable() {
+    const [pRes, cRes, tRes] = await Promise.all([
+      supabase.from('school_periods').select('*').order('period'),
+      supabase.from('classes').select('id, name').order('name'),
+      supabase.from('class_periods').select('*'),
+    ]);
+    const periods = pRes.data || [], classes = cRes.data || [], slots = tRes.data || [];
+    const hhmm = (t) => (t ? String(t).slice(0, 5) : '');
+    $('periods-list').innerHTML = Array.from({ length: PERIODS_SHOWN }, (_, i) => {
+      const p = periods.find((x) => x.period === i + 1) || {};
+      return `<div class="flex items-center gap-1.5">
+        <span class="text-label-md text-on-surface-variant w-12 shrink-0">${i + 1}교시</span>
+        <input type="time" data-period="${i + 1}" data-k="start" value="${hhmm(p.start_time)}" class="flex-1 min-w-0 rounded-lg border-outline-variant text-body-md">
+        <span class="text-on-surface-variant">~</span>
+        <input type="time" data-period="${i + 1}" data-k="end" value="${hhmm(p.end_time)}" class="flex-1 min-w-0 rounded-lg border-outline-variant text-body-md">
+      </div>`;
+    }).join('');
+    $('timetable-list').innerHTML = classes.map((c) => `<div class="flex items-center gap-2">
+        <span class="text-label-md text-on-surface truncate" style="flex:0 0 42%">${esc(c.name)}</span>
+        <input type="text" data-class="${c.id}" value="${esc(slotsText(slots.filter((s) => s.class_id === c.id)))}" placeholder="예: 화3, 목5"
+               class="flex-1 min-w-0 rounded-lg border-outline-variant text-body-md">
+        <button data-save="${c.id}" class="bg-primary text-white px-3 py-2 rounded-lg text-label-md font-bold shrink-0">저장</button>
+      </div>`).join('') || '<p class="text-caption text-on-surface-variant">분반이 없습니다.</p>';
+    $('timetable-list').querySelectorAll('[data-save]').forEach((btn) => btn.addEventListener('click', () => saveClassSlots(btn.dataset.save, btn)));
+  }
+
+  $('periods-save').addEventListener('click', async (e) => {
+    const btn = e.currentTarget, rows = [];
+    for (let i = 1; i <= PERIODS_SHOWN; i++) {
+      const s = $('periods-list').querySelector(`[data-period="${i}"][data-k="start"]`).value;
+      const t = $('periods-list').querySelector(`[data-period="${i}"][data-k="end"]`).value;
+      if (s && t) rows.push({ period: i, start_time: s, end_time: t });
+    }
+    btn.disabled = true;
+    await supabase.from('school_periods').delete().gte('period', 1);   // 비운 교시는 지워지도록 갈아끼운다
+    const { error } = rows.length ? await supabase.from('school_periods').insert(rows) : { error: null };
+    btn.disabled = false;
+    if (error) { alert('저장 실패: ' + error.message); return; }
+    toast('교시 시각을 저장했습니다.');
+  });
+
+  async function saveClassSlots(classId, btn) {
+    const input = $('timetable-list').querySelector(`[data-class="${classId}"]`);
+    const slots = parseSlots(input.value);
+    btn.disabled = true;
+    await supabase.from('class_periods').delete().eq('class_id', classId);
+    if (slots.length) {
+      const { error } = await supabase.from('class_periods').insert(slots.map((s) => ({ class_id: classId, weekday: s.weekday, period: s.period })));
+      if (error) { alert('저장 실패: ' + error.message); btn.disabled = false; return; }
+    }
+    input.value = slotsText(slots);            // 알아들은 대로 되돌려 보여 준다
+    btn.disabled = false;
+    toast(slots.length ? '저장되었습니다.' : '수업 시간을 지웠습니다(제한 없음).');
+  }
 
   // ---------------- 분반 관리 ----------------
   let classesCache = [];
