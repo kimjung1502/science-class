@@ -102,8 +102,7 @@
         </div>
         <div id="drive-settings" class="hidden mt-4 pt-4 dashed flex flex-wrap items-end gap-3">
           <div class="flex flex-col gap-1"><span class="font-mono text-[11px] uppercase tracking-wider text-ink3">학교</span><input id="set-school" type="text" class="rounded-lg border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 text-[14px] py-1.5"></div>
-          <div class="flex flex-col gap-1"><span class="font-mono text-[11px] uppercase tracking-wider text-ink3">년도</span><input id="set-year" type="text" class="w-24 rounded-lg border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 text-[14px] py-1.5"></div>
-          <div class="flex flex-col gap-1"><span class="font-mono text-[11px] uppercase tracking-wider text-ink3">학기</span><select id="set-semester" class="rounded-lg border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 text-[14px] py-1.5"><option>1학기</option><option>2학기</option></select></div>
+          <div class="flex flex-col gap-1"><span class="font-mono text-[11px] uppercase tracking-wider text-ink3">년도·학기</span><span class="text-[13px] text-ink3 py-1.5">자동 — 3~7월 1학기 · 8~2월 2학기 (1~2월은 전년도)</span></div>
           <div class="flex flex-col gap-1"><span class="font-mono text-[11px] uppercase tracking-wider text-ink3">교육과정 개정 <span class="normal-case tracking-normal">(수업자료 폴더용)</span></span><input id="set-curriculum" type="text" placeholder="2022개정" class="w-32 rounded-lg border-faint bg-paper/60 focus:border-ink focus:ring-2 focus:ring-lime/70 text-[14px] py-1.5"></div>
           <button id="set-save" class="px-4 py-2 rounded-lg bg-lime text-ink font-extrabold text-[13px] shadow-note hover:shadow-lift transition-all">저장</button>
         </div>
@@ -822,9 +821,11 @@
       driveConnected = !!s.connected;
       if (s.connected) { $('drive-status').innerHTML = `연결됨${s.email ? ' · <b>' + esc(s.email) + '</b>' : ''}`; $('drive-status').className = 'text-ink font-semibold'; $('drive-connect').textContent = '연결 해제'; }
       else { $('drive-status').textContent = s.hasClient ? '미연결' : '미설정'; $('drive-status').className = 'text-signal font-normal'; $('drive-connect').textContent = '연결'; }
-      const school = s.school || '학교', year = s.year || '년도', sem = s.semester || '학기', cur = s.curriculum || '개정';
+      const d = new Date(), m = d.getMonth() + 1; // 서버 acadYearSem 과 같은 규칙
+      const year = String(d.getFullYear() - (m <= 2 ? 1 : 0)), sem = (m >= 3 && m <= 7) ? '1학기' : '2학기';
+      const school = s.school || '학교', cur = s.curriculum || '개정';
       $('drive-path').innerHTML = `제출: ${esc(school)} › ${esc(year)} › ${esc(sem)} › 과목 › 분반 › 과제명(과목명_분반) 시트<br>수업자료: ${esc(school)} › 수업자료 › ${esc(cur)} › 과목 › 대단원 › 중단원`;
-      $('set-school').value = s.school || ''; $('set-year').value = s.year || ''; $('set-semester').value = s.semester || '1학기'; $('set-curriculum').value = s.curriculum || '';
+      $('set-school').value = s.school || ''; $('set-curriculum').value = s.curriculum || '';
     } catch (e) { $('drive-status').textContent = '상태 확인 실패'; $('drive-status').className = 'text-signal font-normal'; }
   }
   async function driveConnect() {
@@ -873,7 +874,7 @@
       $('drive-settings-btn').addEventListener('click', () => $('drive-settings').classList.toggle('hidden'));
       $('set-save').addEventListener('click', async () => {
         const btn = $('set-save'); btn.disabled = true; const o = btn.textContent; btn.textContent = '저장 중…';
-        try { await window.DB.driveSaveSettings($('set-school').value.trim(), $('set-year').value.trim(), $('set-semester').value, $('set-curriculum').value.trim()); await refreshDriveStatus(); $('drive-settings').classList.add('hidden'); }
+        try { await window.DB.driveSaveSettings($('set-school').value.trim(), '', '', $('set-curriculum').value.trim()); await refreshDriveStatus(); $('drive-settings').classList.add('hidden'); }
         catch (e) { alert('저장 실패: ' + e.message); }
         btn.disabled = false; btn.textContent = o;
       });

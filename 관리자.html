@@ -880,10 +880,24 @@
   }
 
   async function deleteClass(id, name) {
-    if (!confirm(`"${name}" 분반을 삭제할까요?\n이 분반 학생들은 분반이 없어져 과목을 못 보게 됩니다.`)) return;
+    if (!confirm(`"${name}" 분반을 삭제할까요?\n학생 계정(명단)은 남고, 이 분반 배정만 사라집니다.`)) return;
+    // 이 분반에만 속한 학생 계정도 정리할지 선택 (다른 분반 겸수강생은 건드리지 않는다)
+    const { data: rows } = await supabase.from('student_classes').select('student_id').eq('class_id', id);
+    const sids = (rows || []).map((r) => r.student_id);
+    let delSids = [];
+    if (sids.length) {
+      const { data: all } = await supabase.from('student_classes').select('student_id').in('student_id', sids);
+      const counts = {};
+      (all || []).forEach((r) => { counts[r.student_id] = (counts[r.student_id] || 0) + 1; });
+      const onlyThis = sids.filter((sid) => counts[sid] === 1);
+      if (onlyThis.length && confirm(`이 분반에만 속한 학생 ${onlyThis.length}명의 계정도 함께 삭제할까요?\n[취소]를 누르면 분반만 삭제하고 학생 명단은 그대로 둡니다.`)) delSids = onlyThis;
+    }
     const { error } = await supabase.from('classes').delete().eq('id', id);
     if (error) { alert('삭제 실패: ' + error.message); return; }
-    toast('삭제되었습니다.'); loadClasses();
+    let fails = 0;
+    for (const sid of delSids) { try { await callManageStudents({ action: 'delete', id: sid }); } catch (_e) { fails++; } }
+    toast(delSids.length ? `분반과 학생 ${delSids.length - fails}명을 삭제했습니다.${fails ? ` (실패 ${fails})` : ''}` : '분반을 삭제했습니다. 학생 명단은 그대로 있습니다.');
+    loadClasses();
   }
 
   $('add-class-btn').addEventListener('click', async () => {
@@ -951,6 +965,8 @@
 
   function renderStudents(items) {
     studentsCache = items;
+    // 재렌더 후에도 학년·반 폴더 열림 상태 유지 (분반 빼기/추가 등으로 다시 그릴 때 접히지 않게)
+    const open = new Set([...document.querySelectorAll('#students-list details[open]')].map((d) => d.dataset.key));
     const hideInactive = $('stu-hide-inactive') && $('stu-hide-inactive').checked;
     const shown = hideInactive ? items.filter((s) => s.is_active !== false) : items;
     if (!shown.length) { $('students-list').innerHTML = `<div class="text-center text-on-surface-variant py-lg border border-dashed border-outline-variant rounded-xl">${items.length ? '표시할 활성 학생이 없습니다. (상단 “비활성 숨기기” 해제)' : '아직 등록된 학생이 없습니다. "학생 추가"로 만들어 보세요.'}</div>`; $('student-toolbar').classList.add('hidden'); return; }
@@ -975,12 +991,12 @@
       for (const c of clsKeys) {
         const list = gm.get(c).slice().sort((a, b) => snNum(a) - snNum(b));
         const clsLabel = c === '기타' ? '반 미상' : `${c}반`;
-        inner += `<details class="mt-2">
+        inner += `<details data-key="c:${g}/${c}"${open.has(`c:${g}/${c}`) ? ' open' : ''} class="mt-2">
           <summary class="cursor-pointer flex items-center gap-1.5 text-label-md font-semibold text-on-surface-variant px-1 py-1"><span class="material-symbols-outlined text-[18px] arrow">expand_more</span><span class="material-symbols-outlined text-[18px] text-outline">folder</span>${clsLabel} <span class="text-caption text-outline font-normal">(${list.length})</span></summary>
           <div class="space-y-2 mt-1 pl-2 border-l-2 border-outline-variant ml-2">${list.map(studentRowHtml).join('')}</div>
         </details>`;
       }
-      html += `<details class="border border-outline-variant rounded-xl p-2 bg-surface-container-low">
+      html += `<details data-key="g:${g}"${open.has(`g:${g}`) ? ' open' : ''} class="border border-outline-variant rounded-xl p-2 bg-surface-container-low">
         <summary class="cursor-pointer flex items-center gap-1.5 text-title-lg font-bold text-on-surface px-1 py-1"><span class="material-symbols-outlined arrow">expand_more</span><span class="material-symbols-outlined text-primary">school</span>${gradeLabel} <span class="text-caption text-on-surface-variant font-normal">(${gradeCount}명)</span></summary>
         <div class="pl-1">${inner}</div>
       </details>`;

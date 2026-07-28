@@ -32,6 +32,12 @@ async function getDriveToken(admin: any, cfg: any): Promise<string> {
   return t.access_token
 }
 const q1 = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+// 학년도·학기 자동 계산 (KST): 1~2월은 전년도 2학기, 3~7월 = 1학기, 8~12월 = 2학기
+function acadYearSem(): { year: string; sem: string } {
+  const d = new Date(Date.now() + 9 * 3600 * 1000)
+  const m = d.getUTCMonth() + 1
+  return { year: String(d.getUTCFullYear() - (m <= 2 ? 1 : 0)), sem: m >= 3 && m <= 7 ? '1학기' : '2학기' }
+}
 async function ensureFolder(token: string, name: string, parentId: string): Promise<string> {
   const q = `mimeType='application/vnd.google-apps.folder' and trashed=false and name='${q1(name)}' and '${parentId}' in parents`
   const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&spaces=drive`, { headers: { Authorization: `Bearer ${token}` } })
@@ -204,9 +210,10 @@ Deno.serve(async (req) => {
         try {
           const token = await getDriveToken(admin, gcfg)
           const { data: subj } = await admin.from('subjects').select('name').eq('id', asg.subject_id).maybeSingle()
+          const ys = acadYearSem()
           const fSchool = await ensureFolder(token, gcfg.school_name || '학교', 'root')
-          const fYear = await ensureFolder(token, gcfg.acad_year || '년도', fSchool)
-          const fSem = await ensureFolder(token, gcfg.semester || '학기', fYear)
+          const fYear = await ensureFolder(token, ys.year, fSchool)
+          const fSem = await ensureFolder(token, ys.sem, fYear)
           const fSubj = await ensureFolder(token, subj?.name || '과목', fSem)
           const fClass = await ensureFolder(token, cls.className || '미분류', fSubj)
           const fAsg = await ensureFolder(token, sanitizeName(asg.title || '과제'), fClass)
@@ -265,9 +272,10 @@ Deno.serve(async (req) => {
       if (!(gcfg?.refresh_token && gcfg?.client_id && gcfg?.client_secret)) return json({ error: '선생님 드라이브가 연결되어 있지 않습니다.' }, 503)
       const { data: subj } = subjectId ? await admin.from('subjects').select('name').eq('id', subjectId).maybeSingle() : { data: null }
       const token = await getDriveToken(admin, gcfg)
+      const ys = acadYearSem()
       let f = await ensureFolder(token, gcfg.school_name || '학교', 'root')
-      f = await ensureFolder(token, gcfg.acad_year || '년도', f)
-      f = await ensureFolder(token, gcfg.semester || '학기', f)
+      f = await ensureFolder(token, ys.year, f)
+      f = await ensureFolder(token, ys.sem, f)
       f = await ensureFolder(token, sanitizeName(subj?.name || '과목'), f)
       f = await ensureFolder(token, sanitizeName(cls?.className || '미분류'), f)
       f = await ensureFolder(token, title, f)
