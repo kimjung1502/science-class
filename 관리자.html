@@ -693,7 +693,7 @@
   async function loadTimetable() {
     const [pRes, cRes, tRes] = await Promise.all([
       supabase.from('school_periods').select('*').order('period'),
-      supabase.from('classes').select('id, name').order('name'),
+      supabase.from('classes').select('id, name').is('hidden_at', null).order('name'),
       supabase.from('class_periods').select('*'),
     ]);
     const periods = pRes.data || [], classes = cRes.data || [], slots = tRes.data || [];
@@ -778,6 +778,7 @@
 
   // ---------------- 분반 관리 ----------------
   let classesCache = [];
+  const activeClasses = () => classesCache.filter((c) => !c.hidden_at); // 숨긴 분반은 새 배정 대상에서 제외
   async function refreshClassesCache() {
     const { data } = await supabase.from('classes').select('*').order('name');
     classesCache = data || [];
@@ -796,25 +797,43 @@
   }
 
   function renderClasses(classes, subjects, links) {
-    if (!classes.length) { $('classes-list').innerHTML = `<div class="text-center text-on-surface-variant py-lg border border-dashed border-outline-variant rounded-xl">아직 분반이 없습니다. "분반 추가"로 만들어 보세요.</div>`; return; }
     const subjName = (id) => subjects.find((s) => s.id === id)?.name || '';
-    $('classes-list').innerHTML = classes.map((c) => {
+    const card = (c) => {
       const subs = links.filter((l) => l.class_id === c.id).map((l) => subjName(l.subject_id)).filter(Boolean);
       const chips = subs.length ? subs.map((n) => `<span class="text-caption bg-primary-fixed text-primary px-2 py-0.5 rounded-full">${esc(n)}</span>`).join(' ') : '<span class="text-caption text-on-surface-variant">배정된 과목 없음</span>';
+      const h = !!c.hidden_at;
+      const delDate = h ? new Date(new Date(c.hidden_at).setMonth(new Date(c.hidden_at).getMonth() + 6)).toISOString().slice(0, 10) : '';
       return `<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center gap-3">
-        <div class="p-2 rounded-lg bg-surface-container text-primary shrink-0"><span class="material-symbols-outlined">group</span></div>
+        <div class="p-2 rounded-lg bg-surface-container text-primary shrink-0"><span class="material-symbols-outlined">${h ? 'visibility_off' : 'group'}</span></div>
         <div class="flex-1 min-w-0">
           <p class="text-label-md font-bold text-on-surface truncate">${esc(c.name)}</p>
           <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
+          ${h ? `<p class="text-caption text-error mt-1">${delDate} 자동 삭제 예정</p>` : ''}
         </div>
-        <button data-cact="edit" data-id="${c.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="과목 배정·이름 수정"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+        ${h
+          ? `<button data-cact="show" data-id="${c.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="다시 보이기"><span class="material-symbols-outlined text-[20px]">visibility</span></button>`
+          : `<button data-cact="edit" data-id="${c.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="과목 배정·이름 수정"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+        <button data-cact="hide" data-id="${c.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="숨기기 — 6개월 뒤 자동 삭제"><span class="material-symbols-outlined text-[20px]">visibility_off</span></button>`}
         <button data-cact="del" data-id="${c.id}" data-name="${esc(c.name)}" class="p-2 text-on-surface-variant hover:text-error rounded-lg" title="삭제"><span class="material-symbols-outlined text-[20px]">delete</span></button>
       </div>`;
-    }).join('');
+    };
+    const visible = classes.filter((c) => !c.hidden_at), hidden = classes.filter((c) => c.hidden_at);
+    let html = visible.map(card).join('') || `<div class="text-center text-on-surface-variant py-lg border border-dashed border-outline-variant rounded-xl">아직 분반이 없습니다. "분반 추가"로 만들어 보세요.</div>`;
+    if (hidden.length) html += `<details class="pt-1"><summary class="text-caption text-on-surface-variant cursor-pointer select-none">숨긴 분반 ${hidden.length}개 — 숨긴 날부터 6개월 뒤 자동 삭제됩니다</summary><div class="space-y-2 mt-2 opacity-70">${hidden.map(card).join('')}</div></details>`;
+    $('classes-list').innerHTML = html;
     $('classes-list').querySelectorAll('[data-cact]').forEach((el) => el.addEventListener('click', () => {
-      if (el.dataset.cact === 'edit') openClassModal(classes.find((c) => c.id === el.dataset.id), subjects, links);
-      else deleteClass(el.dataset.id, el.dataset.name);
+      const act = el.dataset.cact;
+      if (act === 'edit') openClassModal(classes.find((c) => c.id === el.dataset.id), subjects, links);
+      else if (act === 'del') deleteClass(el.dataset.id, el.dataset.name);
+      else setClassHidden(el.dataset.id, act === 'hide');
     }));
+  }
+
+  async function setClassHidden(id, hide) {
+    const { error } = await supabase.from('classes').update({ hidden_at: hide ? new Date().toISOString() : null }).eq('id', id);
+    if (error) { alert((hide ? '숨기기' : '복원') + ' 실패: ' + error.message); return; }
+    toast(hide ? '숨겼습니다. 6개월 뒤 자동 삭제됩니다.' : '다시 보이게 했습니다.');
+    loadClasses();
   }
 
   function openClassModal(cls, subjects, links) {
@@ -900,7 +919,7 @@
       const c = classesCache.find((cc) => cc.id === cid);
       return c ? `<span class="inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container text-caption px-2 py-0.5 rounded-full">${esc(c.name)}<button data-rm-sid="${s.id}" data-rm-cid="${cid}" class="rm-class leading-none hover:text-error font-bold" title="이 분반에서 빼기">×</button></span>` : '';
     }).join('');
-    const remaining = classesCache.filter((c) => !ids.includes(c.id));
+    const remaining = activeClasses().filter((c) => !ids.includes(c.id));
     const addSel = remaining.length
       ? `<select data-add-sid="${s.id}" class="add-class text-caption border border-outline-variant rounded-lg px-1.5 py-1 bg-surface-container-lowest"><option value="">+ 분반 추가</option>${remaining.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>`
       : '';
@@ -982,7 +1001,7 @@
     $('student-toolbar').classList.remove('hidden');
     $('student-toolbar').classList.add('flex');
     $('stu-select-all').checked = false;
-    $('stu-select-class').innerHTML = '<option value="">분반으로 선택…</option>' + classesCache.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    $('stu-select-class').innerHTML = '<option value="">분반으로 선택…</option>' + activeClasses().map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
     updateSelCount();
   }
 
@@ -1073,8 +1092,8 @@
 
   $('add-student-btn').addEventListener('click', async () => {
     await refreshClassesCache();
-    const classChecks = classesCache.length
-      ? classesCache.map((c) => `<label class="inline-flex items-center gap-1.5 text-label-md bg-surface-container px-2 py-1 rounded-lg cursor-pointer"><input type="checkbox" name="class_ids" value="${c.id}" class="rounded border-outline-variant text-primary focus:ring-primary">${esc(c.name)}</label>`).join('')
+    const classChecks = activeClasses().length
+      ? activeClasses().map((c) => `<label class="inline-flex items-center gap-1.5 text-label-md bg-surface-container px-2 py-1 rounded-lg cursor-pointer"><input type="checkbox" name="class_ids" value="${c.id}" class="rounded border-outline-variant text-primary focus:ring-primary">${esc(c.name)}</label>`).join('')
       : '<p class="text-caption text-on-surface-variant">먼저 "분반 관리"에서 분반을 만들면 여기서 선택할 수 있습니다.</p>';
     $('modal-title').textContent = '학생 추가';
     $('modal-form').innerHTML = `
@@ -1179,7 +1198,7 @@
     bulkRows.forEach((r) => {
       let class_id = defaultClassId || null;
       if (r.fileCls) {
-        const c = classesCache.find((cc) => cc.name.trim().toLowerCase() === r.fileCls.toLowerCase());
+        const c = activeClasses().find((cc) => cc.name.trim().toLowerCase() === r.fileCls.toLowerCase());
         class_id = c ? c.id : (defaultClassId || null);
       }
       r.class_id = class_id;
@@ -1248,7 +1267,7 @@
     $('bulk-parse-msg').textContent = '';
     $('bulk-import').disabled = true; $('bulk-import').textContent = '등록';
     await refreshClassesCache();
-    $('bulk-class').innerHTML = '<option value="">(분반 미지정)</option>' + classesCache.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    $('bulk-class').innerHTML = '<option value="">(분반 미지정)</option>' + activeClasses().map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
     $('bulk-modal').classList.remove('hidden');
   }
   function closeBulk() { $('bulk-modal').classList.add('hidden'); }
