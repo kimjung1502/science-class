@@ -70,7 +70,7 @@ const gateShadow = /\bfunction\s+gate\s*\(/.test(body) && /\bvar\s+gate\s*=/.tes
   : [];
 check('단계 진행 gate() 이름 충돌 없음', gateShadow, '제출 가능 상태 객체는 submitGate 같은 별도 이름을 사용');
 
-/* 8) ① 이상 기체 조건 서술 → 시작 후 답안 잠금 배선 */
+/* 8) ① 관찰 응답 → 즉시 전송 요청 + 수업 진행을 막지 않는 체크포인트 배선 */
 const introWiring = [
   ['#introConditions 마크업', declaredIds.has('introConditions')],
   ['intro.conditions 입력 저장', /bindText\('#introConditions',\s*'intro\.conditions'\)/.test(body)],
@@ -78,11 +78,13 @@ const introWiring = [
   ['통과한 단계의 textarea 잠금', /\$\$\('textarea,\s*input\[type=text\],\s*input\[type=radio\]'.*el\.disabled\s*=\s*lock/.test(body)],
   ['교사용 결과 열', /path:\s*'intro\.conditions'/.test(body)],
   ['시작 버튼의 즉시 제출 호출', /startBtn[\s\S]{0,120}submitIntro\(this\)/.test(body)],
-  ['도입 응답 서버 전송', /function\s+submitIntro\(btn\)[\s\S]{0,900}sendResult\(\)\.then/.test(body)],
-  ['전송 성공 후에만 단계 이동', /sendResult\(\)\.then\(function\s*\(\)\s*\{[\s\S]{0,160}proceed\(1\)/.test(body)],
-  ['전송 실패 시 시작 상태 복원', /state\.intro\.started\s*=\s*false;[\s\S]{0,100}state\.intro\.submittedAt\s*=\s*null/.test(body)],
+  ['도입 응답 서버 전송', /function\s+sendIntroCheckpoint\(\)[\s\S]{0,700}sendResult\(\)\.then/.test(body)],
+  ['전송 요청 직후 단계 이동', /function\s+submitIntro\(btn\)[\s\S]{0,700}sendIntroCheckpoint\(\);\s*proceed\(1\)/.test(body)],
+  ['전송 상태 안내', declaredIds.has('introSubmitNote') && declaredIds.has('introSubmitText')],
+  ['실패 시 다시 제출', declaredIds.has('introRetryBtn') && /introRetryBtn[\s\S]{0,140}sendIntroCheckpoint\(\)/.test(body)],
+  ['다음 접속 자동 재시도', /state\.intro\.started[\s\S]{0,160}!state\.intro\.submittedAt[\s\S]{0,100}sendIntroCheckpoint\(\)/.test(body)],
 ].filter(([, ok]) => !ok).map(([name]) => name + ' 없음');
-check('① 조건 응답의 즉시 제출과 단계 이동 배선', introWiring);
+check('① 응답의 비차단 제출과 단계 이동 배선', introWiring);
 
 console.log('\n════════════════════════════════════');
 console.log(fail ? ' 정적 점검: ' + fail + '건 실패' : ' 정적 점검: 통과');

@@ -329,6 +329,10 @@
   <section class="stage hidden" id="s2">
     <div class="stagehead"><div class="num" id="n2">2</div><div><h2>예상</h2><div class="sub">조작하기 전에 먼저 생각해 보기</div></div></div>
     <div class="ro-note"></div>
+    <div class="note" id="introSubmitNote" style="display:none;margin:0 0 10px">
+      <span id="introSubmitText"></span>
+      <button type="button" class="btn sm ghost" id="introRetryBtn" hidden style="margin-left:8px">다시 제출</button>
+    </div>
     <div class="card">
       <p class="qhint">채점하지 않아요. 나중에 실제 결과와 비교할 거예요.</p>
       <div class="q">
@@ -1195,8 +1199,6 @@ function gate(step) {
     if (!tx(s.intro.conditions) && !s.intro.fromLegacy)
       return { ok: false, why: '운동하고 있는 기체 입자들의 특징을 한 줄 이상 작성해 주세요.' };
     if (!s.intro.started) return { ok: false, why: '‘응답 제출하고 시작하기’를 눌러 주세요.' };
-    if (!s.intro.submittedAt && !s.intro.fromLegacy)
-      return { ok: false, why: '도입 응답 제출을 완료해 주세요.' };
     return { ok: true, why: '' };
   }
   if (step === 2) {
@@ -1288,6 +1290,10 @@ function applyReadOnly() {
     var lock = (k < unlocked);
     sec.classList.toggle('answers-locked', lock);
     $$('textarea, input[type=text], input[type=radio]', sec).forEach(function (el) { el.disabled = lock; });
+    if (k === 1) {
+      var start = $('#startBtn', sec);
+      if (start) start.disabled = lock;
+    }
     $$('.dtable .del, #invToggle', sec).forEach(function (el) { el.disabled = false; });
   }
   paintStageNotes();
@@ -2346,35 +2352,51 @@ function sendResult() {
     });
   });
 }
-/* ① 도입 응답은 시작하는 순간 먼저 제출한다.
+var introSubmitInflight = null;
+function paintIntroSubmitStatus(cls, msg, retry) {
+  var note = $('#introSubmitNote'), text = $('#introSubmitText'), btn = $('#introRetryBtn');
+  if (!note || !text || !btn) return;
+  note.style.display = 'block';
+  note.className = cls;
+  text.textContent = msg;
+  btn.hidden = !retry;
+}
+/* 서버 응답을 기다리는 동안에도 수업은 계속한다.
+   실패한 응답은 localStorage에 남고, 다시 제출 버튼·다음 접속에서 같은 학생 파일로 재시도한다. */
+function sendIntroCheckpoint() {
+  if (IS_ADMIN || introSubmitInflight || !tx(state.intro.conditions)) return introSubmitInflight;
+  state.intro.submittedAt = new Date().toISOString();
+  save(true);
+  paintIntroSubmitStatus('note', '⏳ 도입 응답을 선생님께 제출하는 중이에요…', false);
+  introSubmitInflight = sendResult().then(function () {
+    save(true);
+    paintIntroSubmitStatus('note lime', '✔ 도입 응답이 제출됐어요.', false);
+  }, function (e) {
+    state.intro.submittedAt = null;
+    save(true); loadDue();
+    paintIntroSubmitStatus('note signal',
+      '⚠️ 응답은 이 기기에 저장했지만 아직 전송하지 못했어요 — ' + e.message, true);
+  }).then(function () { introSubmitInflight = null; });
+  return introSubmitInflight;
+}
+/* ① 도입 응답은 시작하는 순간 전송을 요청하고, ②는 즉시 연다.
    최종 제출은 같은 학생 파일을 덮어쓰므로 2차시 뒤 완성본으로 자연스럽게 갱신된다. */
 function submitIntro(btn) {
-  if (!tx(state.intro.conditions)) { paintLock(1); return; }
+  if (!tx(state.intro.conditions)) {
+    paintLock(1);
+    var answer = $('#introConditions');
+    if (answer) { answer.focus(); answer.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); }
+    return;
+  }
+  state.intro.started = true;
   if (IS_ADMIN) {
-    state.intro.started = true;
     state.intro.submittedAt = new Date().toISOString();
     save(true); proceed(1);
     return;
   }
-  var old = btn.textContent, lock = $('#lock1');
-  btn.disabled = true; btn.textContent = '응답 제출 중…';
-  if (lock) { lock.className = 'lockmsg show'; lock.textContent = '⏳ 도입 응답을 선생님께 제출하는 중이에요…'; }
-  state.intro.started = true;
-  state.intro.submittedAt = new Date().toISOString();
   save(true);
-  sendResult().then(function () {
-    btn.textContent = old; btn.disabled = false;
-    proceed(1);
-  }, function (e) {
-    state.intro.started = false;
-    state.intro.submittedAt = null;
-    save(true); loadDue();
-    btn.textContent = old; btn.disabled = false;
-    if (lock) {
-      lock.className = 'lockmsg show';
-      lock.textContent = '⚠️ 응답을 제출하지 못했어요 — ' + e.message + ' · 다시 눌러 주세요.';
-    }
-  });
+  sendIntroCheckpoint();
+  proceed(1);
 }
 function finishExport() {
   if (IS_ADMIN) {   // 교사 미리보기는 학생 계정이 아니라 전송 대상이 아니다
@@ -2600,6 +2622,10 @@ function bindAll() {
   $('#startBtn').addEventListener('click', function () {
     submitIntro(this);
   });
+  $('#introRetryBtn').addEventListener('click', function () {
+    this.hidden = true;
+    sendIntroCheckpoint();
+  });
   [2, 3, 4, 5].forEach(function (step) {
     var btn = document.getElementById('next' + step);
     if (!btn) return;
@@ -2704,6 +2730,9 @@ function init() {
   checkLow();
   save(true);
   paintDue(); loadDue();                                // 제출 기한 — 먼저 그리고, 서버 값이 오면 다시 그린다
+  if (!IS_ADMIN && state.intro.started && tx(state.intro.conditions) && !state.intro.submittedAt) {
+    sendIntroCheckpoint();                               // 이전 접속에서 못 보낸 도입 응답 자동 재시도
+  }
 
   // prefers-reduced-motion: 자동 시작하지 않고 큰 시작 버튼을 먼저 보여줌(§8.1)
   if (reduceMotion) {
