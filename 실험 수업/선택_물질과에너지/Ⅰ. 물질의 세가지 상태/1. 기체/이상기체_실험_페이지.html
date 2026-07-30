@@ -2000,30 +2000,30 @@ function renderGraphs() {
   drawGraph($('[data-graph="charles"]'), {
     pts: cp.map(function (p) { return { x: celsius(p.t), y: p.v }; }),
     xl: 'T 온도 (℃)', yl: 'V 부피 (L)',
-    fit: 'line', extrapolate: true, showIntercept: gotK, includeZeroY: true, clampY0: true,
+    fit: 'line', extrapolate: true, showIntercept: gotK, includeZeroY: true, clampY0: true, zeroY: true,
     forceX: [-290], fx: function (v) { return v.toFixed(0); }
   });
   // 아래 그래프 — 절대영도를 찾아낸 뒤 같은 데이터를 K 축으로 다시 그린다(원점 통과)
   drawGraph($('[data-graph="charlesK"]'), {
     pts: cp.map(function (p) { return { x: p.t, y: p.v }; }),
     xl: 'T 절대온도 (K)', yl: 'V 부피 (L)',
-    fit: 'line', extendToOrigin: true, includeZeroY: true, includeZeroX: true, clampY0: true,
+    fit: 'line', extendToOrigin: true, includeZeroY: true, includeZeroX: true, clampY0: true, zeroX: true, zeroY: true,
     forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
   });
   var gp = state.gaylussac.points;
   drawGraph($('[data-graph="gaylussac"]'), {
     pts: gp.map(function (p) { return { x: p.t, y: p.pTheory }; }),
-    xl: 'T 온도 (K)', yl: 'P 압력 (atm)', fit: 'line', includeZeroY: true, includeZeroX: true,
+    xl: 'T 온도 (K)', yl: 'P 압력 (atm)', fit: 'line', includeZeroY: true, includeZeroX: true, zeroX: true, zeroY: true,
     forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
   });
   drawGraph($('[data-graph="mini_boyle"]'), {
-    pts: bp.map(function (p) { return { x: p.v, y: p.pExternal }; }), xl: 'V (L)', yl: 'P (atm)', fit: 'hyperbola', fx: function (v) { return v.toFixed(0); }
+    pts: bp.map(function (p) { return { x: p.v, y: p.pExternal }; }), xl: 'V (L)', yl: 'P (atm)', fit: 'hyperbola', zeroX: true, zeroY: true, fx: function (v) { return v.toFixed(0); }
   });
   drawGraph($('[data-graph="mini_charles"]'), {
-    pts: cp.map(function (p) { return { x: p.t, y: p.v }; }), xl: 'T (K)', yl: 'V (L)', fit: 'line', includeZeroY: true, includeZeroX: true, forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
+    pts: cp.map(function (p) { return { x: p.t, y: p.v }; }), xl: 'T (K)', yl: 'V (L)', fit: 'line', includeZeroY: true, includeZeroX: true, zeroX: true, zeroY: true, forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
   });
   drawGraph($('[data-graph="mini_gaylussac"]'), {
-    pts: gp.map(function (p) { return { x: p.t, y: p.pTheory }; }), xl: 'T (K)', yl: 'P (atm)', fit: 'line', includeZeroY: true, includeZeroX: true, forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
+    pts: gp.map(function (p) { return { x: p.t, y: p.pTheory }; }), xl: 'T (K)', yl: 'P (atm)', fit: 'line', includeZeroY: true, includeZeroX: true, zeroX: true, zeroY: true, forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
   });
 }
 
