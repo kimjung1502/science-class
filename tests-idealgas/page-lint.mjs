@@ -78,6 +78,7 @@ const introWiring = [
   ['통과한 단계의 textarea 잠금', /\$\$\('textarea,\s*input\[type=text\],\s*input\[type=radio\]'.*el\.disabled\s*=\s*lock/.test(body)],
   ['교사용 결과 열', /path:\s*'intro\.conditions'/.test(body)],
   ['시작 버튼의 즉시 제출 호출', /startBtn[\s\S]{0,120}submitIntro\(this\)/.test(body)],
+  ['교사 계정의 빈 답안 우회', /function\s+submitIntro\(btn\)\s*\{\s*if\s*\(IS_ADMIN\)[\s\S]{0,220}proceed\(1\)[\s\S]{0,100}if\s*\(!tx\(state\.intro\.conditions\)\)/.test(body)],
   ['도입 응답 서버 전송', /function\s+sendIntroCheckpoint\(\)[\s\S]{0,700}sendResult\(\)\.then/.test(body)],
   ['전송 요청 직후 단계 이동', /function\s+submitIntro\(btn\)[\s\S]{0,700}sendIntroCheckpoint\(\);\s*proceed\(1\)/.test(body)],
   ['전송 상태 안내', declaredIds.has('introSubmitNote') && declaredIds.has('introSubmitText')],
