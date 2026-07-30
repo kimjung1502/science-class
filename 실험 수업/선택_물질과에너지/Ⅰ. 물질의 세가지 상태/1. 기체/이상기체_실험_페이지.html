@@ -393,7 +393,7 @@
       <div class="datagrid" style="margin-top:12px">
         <div class="tablescroll"><table class="dtable" data-table="boyle"><thead><tr><th>#</th><th>P<span style="font-weight:400">(atm)</span></th><th>V<span style="font-weight:400">(L)</span></th><th>P×V</th><th></th></tr></thead><tbody></tbody></table></div>
         <div class="graphbox">
-          <div class="graphhead"><span class="t">P–V 그래프</span><button class="minibtn" id="invToggle" aria-pressed="false">1/V 로 보기</button></div>
+          <div class="graphhead"><span class="t" id="pvTitle">P–V 그래프</span><button class="minibtn" id="invToggle" aria-pressed="false">1/V 로 보기</button></div>
           <canvas class="graphcanvas" data-graph="boyle" width="480" height="360" role="img" aria-label="압력과 부피 그래프"></canvas>
         </div>
       </div>
@@ -1938,8 +1938,12 @@ function drawGraph(cv, cfg) {
       if (Math.abs(den) > 1e-12) {
         var a = (n * sxy - sx * sy) / den, c0 = (sy - a * sx) / n;
         if (cfg.showEq) {
-          x.fillStyle = '#16213E'; x.font = 'bold 12px monospace'; x.textAlign = 'left';
-          x.fillText(cfg.showEq[0] + ' = ' + a.toFixed(3) + ' × ' + cfg.showEq[1] + (c0 < 0 ? ' − ' : ' + ') + Math.abs(c0).toFixed(1), L + 10, T + 18);
+          // 샤를 법칙 형태: V = V₀ + (T/k)×V₀ — V₀=y절편(0℃ 부피), k=V₀/기울기(≈273)
+          var kDiv = Math.round(c0 / a);
+          if (isFinite(kDiv) && kDiv !== 0) {
+            x.fillStyle = '#16213E'; x.font = 'bold 12px monospace'; x.textAlign = 'left';
+            x.fillText(cfg.showEq[0] + ' = ' + c0.toFixed(1) + ' + (' + cfg.showEq[1] + '/' + kDiv + ') × ' + c0.toFixed(1), L + 10, T + 18);
+          }
         }
         var dxs = pts.map(function (p) { return p.x; });
         var dmin = Math.min.apply(null, dxs), dmax = Math.max.apply(null, dxs);
@@ -2594,6 +2598,7 @@ function hydrate() {
   invView = state.boyle.inverseToggled ? invView : false;
   $('#invToggle').setAttribute('aria-pressed', String(invView));
   $('#invToggle').textContent = invView ? 'P–V 로 보기' : '1/V 로 보기';
+  $('#pvTitle').textContent = invView ? 'P–1/V 그래프' : 'P–V 그래프';
   ['boyle', 'charles', 'gaylussac'].forEach(renderTable);
   renderCharlesK();
   renderAllTable(); renderGraphs(); paintCompare(); paintAxisNote();
@@ -2674,6 +2679,7 @@ function bindAll() {
     if (invView) state.boyle.inverseToggled = true;
     this.setAttribute('aria-pressed', String(invView));
     this.textContent = invView ? 'P–V 로 보기' : '1/V 로 보기';
+    $('#pvTitle').textContent = invView ? 'P–1/V 그래프' : 'P–V 그래프';
     renderGraphs(); save(); paintAllLocks(); invalidateExport();
   });
 
