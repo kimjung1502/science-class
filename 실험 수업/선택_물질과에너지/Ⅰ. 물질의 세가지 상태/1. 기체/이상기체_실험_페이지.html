@@ -314,10 +314,14 @@
     <div class="card tight">
       <p class="qtext" style="margin-bottom:8px">💡 먼저 이 도구를 구경해 보자 — <b>조작은 아직 안 돼요</b></p>
       <div class="simblock" data-sim="intro"></div>
-      <div class="note lime">기체 입자는 쉬지 않고 마구 움직여요(<b>열운동</b>). 그 입자들이 <b>벽과 피스톤에 부딪히는 것</b>이 바로 <b>압력</b>이에요.</div>
+      <div class="q" style="margin-top:12px">
+        <p class="qtext">🔍 위 모형에서 <b>운동하고 있는 기체 입자들의 특징</b>을 관찰하여 작성해 보세요.</p>
+        <p class="qhint">입자의 크기, 입자끼리 마주쳤을 때의 모습, 벽에 부딪힌 뒤의 움직임을 살펴보세요.</p>
+        <textarea id="introConditions" placeholder="관찰한 기체 입자들의 특징을 한 줄 이상 작성하세요."></textarea>
+      </div>
     </div>
 
-    <button class="btn next" id="startBtn">시작하기 →</button>
+    <button class="btn next" id="startBtn">응답 제출하고 시작하기 →</button>
     <div class="lockmsg" id="lock1"></div>
   </section>
 
@@ -850,6 +854,30 @@ var CONFIG = {
 var AI_URL = CONFIG.SUPABASE_URL + "/functions/v1/check-experiment-response";
 var SUBMIT_URL = CONFIG.SUPABASE_URL + "/functions/v1/submit-work?op=experiment";
 var WINDOW_URL = CONFIG.SUPABASE_URL + "/functions/v1/submit-work?op=experiment-window";
+var EXPORT_URL = CONFIG.SUPABASE_URL + "/functions/v1/export-submissions";
+/* 교사용 '구글 시트로 모으기' 열 정의 — state 의 값 경로 → 시트 열 제목 (배열 경로는 개수로 나감) */
+var EXPORT_COLUMNS = [
+  { path: 'intro.conditions', label: '도입 기체 입자 특징' },
+  { path: 'intro.submittedAt', label: '도입 응답 제출 시각' },
+  { path: 'predict.pv', label: '예측① 누르면 부피는' },
+  { path: 'predict.vt', label: '예측② 가열하면 부피는' },
+  { path: 'predict.pt', label: '예측③ 부피 고정·가열 시 압력은' },
+  { path: 'predict.reason', label: '예측 이유' },
+  { path: 'boyle.points', label: '보일 측정(회)' },
+  { path: 'boyle.q1', label: '보일Q1 압력 2배→부피는' },
+  { path: 'boyle.q2', label: '보일Q2 P×V 값은' },
+  { path: 'charles.points', label: '샤를 측정(회)' },
+  { path: 'charles.intercept', label: 'V=0 x절편(℃)' },
+  { path: 'charles.whyKelvin', label: '왜 K로 계산해야 하나' },
+  { path: 'charles.relation', label: '샤를Q 온도↑→부피↑ 이유' },
+  { path: 'gaylussac.points', label: '게이뤼삭 측정(회)' },
+  { path: 'gaylussac.relation', label: '게이뤼삭Q 압력 상승 이유' },
+  { path: 'combine.points', label: '통합 측정(회)' },
+  { path: 'combine.rAnswer', label: 'PV/nT 의 이름' },
+  { path: 'assess.a1', label: '평가1 주사기' },
+  { path: 'assess.a2', label: '평가2 타이어' },
+  { path: 'assess.a3', label: '평가3 빈도·세기' }
+];
 var AI_TIMEOUT = 8000, AI_TOTAL_CAP = 16000;   // §8.4 8 s × 재시도 포함 2회 = 총 16 s
 
 /* ===================== §3.2 학생 정보 자동 주입 ===================== */
@@ -869,7 +897,7 @@ function defaultState() {
     student: { name: (S && S.name) || '', sid: (S && S.sid) || '', fromSite: !!S },
     updatedAt: null,
     unlockedStep: 1,
-    intro: { started: false },
+    intro: { started: false, conditions: '', submittedAt: null },
     predict: { pv: '', vt: '', pt: '', reason: '' },
     boyle: { points: [], q1: '', q2: '', inverseToggled: false },
     charles: { points: [], axisToggled: false, intercept: '', relation: '', whyKelvin: '' },
@@ -947,6 +975,10 @@ function validState(o) {
   if (!o.student || typeof o.student !== 'object') return false;
   if (typeof o.student.sid !== 'string' || typeof o.student.name !== 'string') return false;
   if (!o.intro || typeof o.intro.started !== 'boolean') return false;
+  // 새 도입 문항이 생기기 전 저장본도 읽을 수 있게 undefined 는 허용하고 migrate() 에서 채운다.
+  if (o.intro.conditions !== undefined && typeof o.intro.conditions !== 'string') return false;
+  if (o.intro.fromLegacy !== undefined && typeof o.intro.fromLegacy !== 'boolean') return false;
+  if (o.intro.submittedAt !== undefined && o.intro.submittedAt !== null && typeof o.intro.submittedAt !== 'string') return false;
   var strs = ['predict.pv', 'predict.vt', 'predict.pt', 'predict.reason', 'boyle.q1', 'boyle.q2',
     'charles.intercept', 'charles.relation', 'gaylussac.relation', 'combine.rAnswer',
     'assess.a1', 'assess.a2', 'assess.a3'], i;
@@ -974,10 +1006,15 @@ function readKey(k) {
 }
 function backup(k, raw) { try { localStorage.setItem(k + '_bak', raw); } catch (e) { } }
 /* §3.1 마이그레이션 훅 — 없는 필드를 안전 기본값으로 채운다(리셋하지 않음).
-   (잠시 존재했던 intro.conditions/fromLegacy 가 남아 있는 저장본도 그대로 통과한다 — 무시되는 여분 필드) */
+   도입 조건 문항이 없던 시기의 저장본은 이미 ①을 통과했다면 fromLegacy 로 진행 단계를 보존한다. */
 function migrate(o) {
-  if (!o.intro) o.intro = { started: false };
+  if (!o.intro) o.intro = { started: false, conditions: '', submittedAt: null };
   if (typeof o.intro.started !== 'boolean') o.intro.started = false;
+  if (typeof o.intro.conditions !== 'string') {
+    o.intro.conditions = '';
+    if (o.intro.started === true) o.intro.fromLegacy = true;
+  }
+  if (o.intro.submittedAt === undefined) o.intro.submittedAt = null;
   // ④ '왜 ℃ 로 계산하면 안 되나' 서술은 나중에 추가된 항목 — 없는 저장본은 빈 값으로 채우고,
   // 이미 ④를 마친 학생은 다시 막지 않는다(새로고침 시 단계가 뒤로 밀리는 것 방지).
   if (o.charles && typeof o.charles.whyKelvin !== 'string') {
@@ -1154,7 +1191,14 @@ function aiGateOk(step) {
 function gate(step) {
   if (IS_ADMIN) return { ok: true, why: '' };   // §3.2 교사 미리보기 = 전 단계 우회
   var s = state, d, span, need = CONFIG.MIN_POINTS;
-  if (step === 1) return s.intro.started ? { ok: true, why: '' } : { ok: false, why: '‘시작하기’를 눌러 주세요.' };
+  if (step === 1) {
+    if (!tx(s.intro.conditions) && !s.intro.fromLegacy)
+      return { ok: false, why: '운동하고 있는 기체 입자들의 특징을 한 줄 이상 작성해 주세요.' };
+    if (!s.intro.started) return { ok: false, why: '‘응답 제출하고 시작하기’를 눌러 주세요.' };
+    if (!s.intro.submittedAt && !s.intro.fromLegacy)
+      return { ok: false, why: '도입 응답 제출을 완료해 주세요.' };
+    return { ok: true, why: '' };
+  }
   if (step === 2) {
     if (!s.predict.pv || !s.predict.vt || !s.predict.pt) return { ok: false, why: '예상 3문항을 모두 골라 주세요.' };
     if (!tx(s.predict.reason)) return { ok: false, why: '왜 그렇게 생각했는지 써 주세요.' };
@@ -2134,7 +2178,7 @@ function paintAxisNote() {
 /* ===================== §3.3 내보내기 ===================== */
 function exportReadyWhy() {
   if (IS_ADMIN) return '';
-  if (!gate.open) return gate.why || '지금은 제출할 수 없어요.';
+  if (!submitGate.open) return submitGate.why || '지금은 제출할 수 없어요.';
   if (!rNameOk(state.combine.rAnswer)) return 'PV/nT 값의 이름을 먼저 맞혀 주세요.';
   if (!tx(state.assess.a1) || !tx(state.assess.a2) || !tx(state.assess.a3)) return '형성평가 3문항을 모두 써 주세요.';
   if (!a3WordsOk(state.assess.a3)) return '3번은 ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.';
@@ -2161,13 +2205,13 @@ function fileStamp() {
    학생 화면은 남은 기한을 보여 주기만 한다 — 실제 차단은 서버(submit-work)가 한다.
    학생 기기의 시계는 못 믿으므로 여기 표시는 안내일 뿐이다. */
 var dueAt = null;                              // 수동 마감(교사가 이 페이지에서 정한 것)
-var gate = { open: true, until: null, why: '' };   // 지금 제출이 열려 있는지 — 서버가 판정해 준다
+var submitGate = { open: true, until: null, why: '' };   // 지금 제출이 열려 있는지 — 서버가 판정해 준다
 function dueText(d) {
   var wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
   return (d.getMonth() + 1) + '월 ' + d.getDate() + '일(' + wd + ') ' +
     String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
-function dueClosed() { return !gate.open; }
+function dueClosed() { return !submitGate.open; }
 function dueInputValue(d) {
   var p = function (n) { return String(n).padStart(2, '0'); };
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
@@ -2190,7 +2234,7 @@ function callWindow(extra) {
 }
 function setDue(o) {
   dueAt = o.close_at ? new Date(o.close_at) : null;
-  gate = { open: o.open !== false, until: o.until || null, why: o.why || '' };
+  submitGate = { open: o.open !== false, until: o.until || null, why: o.why || '' };
   paintDue(); invalidateExport();
 }
 function loadDue() { return callWindow({}).then(setDue, function () { /* 못 읽어도 진행 — 차단은 서버가 한다 */ }); }
@@ -2204,7 +2248,10 @@ function paintDue() {
       '<input type="datetime-local" id="dueIn" style="font:inherit;padding:8px 10px;border-radius:9px;border:1px solid var(--paper3);background:#fff;color:var(--ink)">' +
       '<button class="btn sm lime" id="dueSave">기한 저장</button>' +
       '<button class="btn sm ghost" id="dueClear">기한 없애기</button>' +
-      '<span id="dueState" style="font-size:12.5px;color:var(--ink3)"></span></div>';
+      '<span id="dueState" style="font-size:12.5px;color:var(--ink3)"></span></div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:center">' +
+      '<button class="btn sm" id="sheetBtn">📊 결과를 구글 시트로 모으기</button>' +
+      '<span id="sheetState" style="font-size:12.5px;color:var(--ink3)"></span></div>';
     if (dueAt) $('#dueIn').value = dueInputValue(dueAt);
     $('#dueState').textContent = dueAt ? '지금 설정: ' + dueText(dueAt) + ' 까지' : '지금은 기한 없음';
     $('#dueSave').addEventListener('click', function () {
@@ -2219,16 +2266,34 @@ function paintDue() {
       callWindow({ set: null }).then(function () { loadDue(); },
         function (e) { $('#dueState').textContent = '저장 실패 — ' + e.message; });
     });
+    $('#sheetBtn').addEventListener('click', function () {
+      var tk = siteToken(), st = $('#sheetState'), btn = $('#sheetBtn');
+      if (!tk) { st.textContent = '로그인 정보를 찾지 못했어요'; return; }
+      btn.disabled = true; st.textContent = '반별 제출 파일을 읽어 시트를 만드는 중…';
+      fetch(EXPORT_URL, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + tk, 'apikey': CONFIG.SUPABASE_ANON, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ experiment: { subject_id: CONFIG.SUBJECT_ID, title: CONFIG.EXPERIMENT_TITLE, columns: EXPORT_COLUMNS } })
+      }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (o) { if (!r.ok) throw new Error(o.error || ('요청 실패 ' + r.status)); return o; }); })
+        .then(function (o) {
+          st.innerHTML = (o.results || []).map(function (x) {
+            var name = String(x.class_name || '').replace(/[<>&]/g, ' ');
+            if (x.skipped) return name + ': 제출 없음';
+            return name + ': <a href="' + encodeURI(x.drive_link || '') + '" target="_blank" rel="noopener">시트 열기</a> (' + x.submitted + '/' + x.total + ')';
+          }).join(' · ') || '내보낼 반이 없어요';
+        }, function (e) { st.textContent = '실패 — ' + e.message; })
+        .then(function () { btn.disabled = false; });
+    });
     return;
   }
-  if (!gate.open) {
+  if (!submitGate.open) {
     box.style.display = 'block'; box.className = 'note signal';
-    box.textContent = '⛔ ' + (gate.why || '지금은 제출할 수 없어요.') + (dueAt ? ' (' + dueText(dueAt) + ' 까지였어요)' : '');
+    box.textContent = '⛔ ' + (submitGate.why || '지금은 제출할 수 없어요.') + (dueAt ? ' (' + dueText(dueAt) + ' 까지였어요)' : '');
     return;
   }
-  if (!gate.until) { box.style.display = 'none'; return; }
+  if (!submitGate.until) { box.style.display = 'none'; return; }
   box.style.display = 'block'; box.className = 'note lime';
-  box.textContent = '⏰ 제출 기한 — ' + dueText(new Date(gate.until)) + ' 까지';
+  box.textContent = '⏰ 제출 기한 — ' + dueText(new Date(submitGate.until)) + ' 까지';
 }
 function exportNote(cls, msg) {
   var note = $('#exportNote');
@@ -2279,6 +2344,36 @@ function sendResult() {
       if (!r.ok) { var err = new Error(o.error || ('전송 실패 ' + r.status)); err.closeAt = o.close_at || null; throw err; }
       return o;
     });
+  });
+}
+/* ① 도입 응답은 시작하는 순간 먼저 제출한다.
+   최종 제출은 같은 학생 파일을 덮어쓰므로 2차시 뒤 완성본으로 자연스럽게 갱신된다. */
+function submitIntro(btn) {
+  if (!tx(state.intro.conditions)) { paintLock(1); return; }
+  if (IS_ADMIN) {
+    state.intro.started = true;
+    state.intro.submittedAt = new Date().toISOString();
+    save(true); proceed(1);
+    return;
+  }
+  var old = btn.textContent, lock = $('#lock1');
+  btn.disabled = true; btn.textContent = '응답 제출 중…';
+  if (lock) { lock.className = 'lockmsg show'; lock.textContent = '⏳ 도입 응답을 선생님께 제출하는 중이에요…'; }
+  state.intro.started = true;
+  state.intro.submittedAt = new Date().toISOString();
+  save(true);
+  sendResult().then(function () {
+    btn.textContent = old; btn.disabled = false;
+    proceed(1);
+  }, function (e) {
+    state.intro.started = false;
+    state.intro.submittedAt = null;
+    save(true); loadDue();
+    btn.textContent = old; btn.disabled = false;
+    if (lock) {
+      lock.className = 'lockmsg show';
+      lock.textContent = '⚠️ 응답을 제출하지 못했어요 — ' + e.message + ' · 다시 눌러 주세요.';
+    }
   });
 }
 function finishExport() {
@@ -2410,7 +2505,8 @@ function hydrate() {
     $$('input[name="' + k + '"]').forEach(function (r) { r.checked = (r.value === state.predict[k]); });
   });
   var map = {
-    '#predReason': 'predict.reason', '#q_boyle_q1': 'boyle.q1', '#q_boyle_q2': 'boyle.q2',
+    '#introConditions': 'intro.conditions', '#predReason': 'predict.reason',
+    '#q_boyle_q1': 'boyle.q1', '#q_boyle_q2': 'boyle.q2',
     '#q_charles_whyK': 'charles.whyKelvin',
     '#q_charles_relation': 'charles.relation', '#q_gaylussac_relation': 'gaylussac.relation',
     '#q_assess_a1': 'assess.a1', '#q_assess_a2': 'assess.a2', '#q_assess_a3': 'assess.a3',
@@ -2485,6 +2581,7 @@ function bindAll() {
     });
   });
   bindText('#predReason', 'predict.reason');
+  bindText('#introConditions', 'intro.conditions');
   bindText('#q_boyle_q1', 'boyle.q1'); bindText('#q_boyle_q2', 'boyle.q2');
   bindText('#q_charles_whyK', 'charles.whyKelvin');
   bindText('#q_charles_relation', 'charles.relation');
@@ -2501,7 +2598,7 @@ function bindAll() {
   });
 
   $('#startBtn').addEventListener('click', function () {
-    state.intro.started = true; save(); proceed(1);
+    submitIntro(this);
   });
   [2, 3, 4, 5].forEach(function (step) {
     var btn = document.getElementById('next' + step);

@@ -63,6 +63,27 @@ check('init() 에서 렌더 루프를 hydrate 보다 먼저 시작',
   (initIdx >= 0 && rafIdx >= 0 && hydrateIdx >= 0 && rafIdx < hydrateIdx) ? [] : ['rAF 가 hydrate 뒤에 있음'],
   '초기화 중 예외가 나면 캔버스가 전부 빈 화면이 된다');
 
+/* 7) 단계 진행 gate() 를 같은 스코프의 상태 객체로 덮어쓰지 않는지
+      (var gate = {...} 는 함수 선언을 런타임에 객체로 바꿔 시작 버튼을 멈추게 한다) */
+const gateShadow = /\bfunction\s+gate\s*\(/.test(body) && /\bvar\s+gate\s*=/.test(body)
+  ? ['function gate() 와 var gate 가 함께 선언됨']
+  : [];
+check('단계 진행 gate() 이름 충돌 없음', gateShadow, '제출 가능 상태 객체는 submitGate 같은 별도 이름을 사용');
+
+/* 8) ① 이상 기체 조건 서술 → 시작 후 답안 잠금 배선 */
+const introWiring = [
+  ['#introConditions 마크업', declaredIds.has('introConditions')],
+  ['intro.conditions 입력 저장', /bindText\('#introConditions',\s*'intro\.conditions'\)/.test(body)],
+  ['① 단계의 빈 답안 차단', /step\s*===\s*1[\s\S]{0,300}tx\(s\.intro\.conditions\)/.test(body)],
+  ['통과한 단계의 textarea 잠금', /\$\$\('textarea,\s*input\[type=text\],\s*input\[type=radio\]'.*el\.disabled\s*=\s*lock/.test(body)],
+  ['교사용 결과 열', /path:\s*'intro\.conditions'/.test(body)],
+  ['시작 버튼의 즉시 제출 호출', /startBtn[\s\S]{0,120}submitIntro\(this\)/.test(body)],
+  ['도입 응답 서버 전송', /function\s+submitIntro\(btn\)[\s\S]{0,900}sendResult\(\)\.then/.test(body)],
+  ['전송 성공 후에만 단계 이동', /sendResult\(\)\.then\(function\s*\(\)\s*\{[\s\S]{0,160}proceed\(1\)/.test(body)],
+  ['전송 실패 시 시작 상태 복원', /state\.intro\.started\s*=\s*false;[\s\S]{0,100}state\.intro\.submittedAt\s*=\s*null/.test(body)],
+].filter(([, ok]) => !ok).map(([name]) => name + ' 없음');
+check('① 조건 응답의 즉시 제출과 단계 이동 배선', introWiring);
+
 console.log('\n════════════════════════════════════');
 console.log(fail ? ' 정적 점검: ' + fail + '건 실패' : ' 정적 점검: 통과');
 console.log('════════════════════════════════════');
