@@ -161,14 +161,23 @@
       return `<span class="font-mono text-[10px] font-bold text-ink2 bg-paper2 border border-faint px-1.5 py-0.5 rounded shrink-0">~${fmtDT(m.visible_until)}</span>`;
     return '';
   }
+  // 저장소에 함께 배포되는 실험 HTML은 업로드 당시의 스토리지 사본보다 최신 배포본을 우선한다.
+  // 앞으로 이 파일을 수정해 GitHub Pages에 배포하면 관리자 페이지에서 다시 업로드하지 않아도 반영된다.
+  function bundledHtmlUrl(m) {
+    if (!m || m.type !== 'html') return '';
+    const key = [m.name, m.original_filename, m.url].filter(Boolean).join(' ');
+    if (!/(이상\s*기체|%EC%9D%B4%EC%83%81%EA%B8%B0%EC%B2%B4|ideal.?gas)/i.test(key)) return '';
+    return new URL('실험 수업/선택_물질과에너지/Ⅰ. 물질의 세가지 상태/1. 기체/이상기체_실험_페이지.html', window.location.href).href;
+  }
   function materialCard(m) {
     const t = MATERIAL_TYPES[m.type];
     if (!t) return '';
     const name = m.name || t.label;
+    const bundledUrl = bundledHtmlUrl(m);
     // 파일형인데 storage_path가 없거나 드라이브 저장('gdrive:')이면 외부 링크 취급 → 새 탭으로 열기, ?download 미부여
-    const isDriveStored = !!(m.storage_path && m.storage_path.indexOf('gdrive:') === 0);
-    const isExternal = t.file && (isDriveStored || !m.storage_path) && m.url && m.url !== '#';
-    let href = m.url || '#';
+    const isDriveStored = !bundledUrl && !!(m.storage_path && m.storage_path.indexOf('gdrive:') === 0);
+    const isExternal = !bundledUrl && t.file && (isDriveStored || !m.storage_path) && m.url && m.url !== '#';
+    let href = bundledUrl || m.url || '#';
 
     // html 자료(실험 페이지 등): 링크로 열지 않고 카드 아래에 아코디언으로 펼쳐서 바로 보여준다.
     // (Supabase 공개 오브젝트가 XSS 방지로 text/html을 text/plain으로 내려서 그냥 링크로 열면 소스가 보임
