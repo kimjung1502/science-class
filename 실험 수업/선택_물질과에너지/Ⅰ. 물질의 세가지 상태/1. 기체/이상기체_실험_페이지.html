@@ -1906,6 +1906,8 @@ function drawGraph(cv, cfg) {
   var padX = (x1 - x0) * 0.12 || 1, padY = (y1 - y0) * 0.14 || 1;
   x0 -= padX; x1 += padX; y0 -= padY; y1 += padY;
   if (cfg.clampY0 && y0 > 0) y0 = 0;
+  if (cfg.zeroX) x0 = 0;               // 축 하한을 정확히 0에 고정(패딩 무시)
+  if (cfg.zeroY) y0 = 0;
   var PX = function (v) { return L + (v - x0) / (x1 - x0) * GW; };
   var PY = function (v) { return T + GH - (v - y0) / (y1 - y0) * GH; };
   // 격자
@@ -1990,7 +1992,7 @@ function renderGraphs() {
   drawGraph($('[data-graph="boyle"]'), {
     pts: bp.map(function (p) { return inv ? { x: 1 / p.v, y: p.pExternal } : { x: p.v, y: p.pExternal }; }),
     xl: inv ? '1/V (1/L)' : 'V 부피 (L)', yl: 'P 압력 (atm)',
-    fit: inv ? 'line' : 'hyperbola', includeZeroY: inv, includeZeroX: inv,
+    fit: inv ? 'line' : 'hyperbola', includeZeroY: inv, includeZeroX: inv, zeroX: !inv, zeroY: !inv,
     fx: function (v) { return inv ? v.toFixed(3) : v.toFixed(0); }
   });
   var cp = state.charles.points, gotK = kIntroduced();
