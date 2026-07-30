@@ -349,6 +349,9 @@
           <label class="choice"><input type="radio" name="pv" value="작아진다"><span>작아진다</span></label>
           <label class="choice"><input type="radio" name="pv" value="그대로"><span>그대로</span></label>
         </div>
+        <p class="qtext" style="margin-top:10px">왜 그렇게 생각했나요?</p>
+        <textarea id="predReasonPv" data-ai="predict.reasonPv" placeholder="입자의 움직임으로 설명해 보세요."></textarea>
+        <div class="aimsg" id="ai-predict.reasonPv"></div>
       </div>
       <div class="q">
         <p class="qtext">2. 누르는 힘은 그대로 두고 <b>가열하면</b> 부피는?</p>
@@ -357,6 +360,9 @@
           <label class="choice"><input type="radio" name="vt" value="작아진다"><span>작아진다</span></label>
           <label class="choice"><input type="radio" name="vt" value="그대로"><span>그대로</span></label>
         </div>
+        <p class="qtext" style="margin-top:10px">왜 그렇게 생각했나요?</p>
+        <textarea id="predReasonVt" data-ai="predict.reasonVt" placeholder="입자의 움직임으로 설명해 보세요."></textarea>
+        <div class="aimsg" id="ai-predict.reasonVt"></div>
       </div>
       <div class="q">
         <p class="qtext">3. <b>부피를 못 변하게 막고</b> 가열하면 압력은?</p>
@@ -365,11 +371,9 @@
           <label class="choice"><input type="radio" name="pt" value="작아진다"><span>작아진다</span></label>
           <label class="choice"><input type="radio" name="pt" value="그대로"><span>그대로</span></label>
         </div>
-      </div>
-      <div class="q">
-        <p class="qtext">왜 그렇게 생각했나요?</p>
-        <textarea id="predReason" data-ai="predict.reason" placeholder="입자의 움직임으로 설명해 보세요."></textarea>
-        <div class="aimsg" id="ai-predict.reason"></div>
+        <p class="qtext" style="margin-top:10px">왜 그렇게 생각했나요?</p>
+        <textarea id="predReasonPt" data-ai="predict.reasonPt" placeholder="입자의 움직임으로 설명해 보세요."></textarea>
+        <div class="aimsg" id="ai-predict.reasonPt"></div>
       </div>
     </div>
     <button class="btn next" id="next2">다음으로 계속 ↓</button>
@@ -865,7 +869,7 @@ var E = IdealGasEngine, C = E.C;
 var CONFIG = {
   HINT_PW: "1234",          // 힌트 잠금 비밀번호 (스펙트럼과 동일)
   MIN_POINTS: 4,            // 각 탐구 데이터 점 최소 개수 — '서로 다른' 점만 카운트(§6)
-  AI_CHECK: true,           // 서술형 Gemini 1차 검수 사용 여부 (대상 키 8개는 §8.4)
+  AI_CHECK: true,           // 서술형 Gemini 1차 검수 사용 여부 (대상 키 10개는 §8.4)
   REQUIRE_AI_PASS: false,   // true여도 '정상 응답의 ok=false'만 차단. 통신 실패는 항상 통과
   GOAL: "실린더 속 기체 입자의 운동을 관찰해 압력·부피·온도가 서로 어떤 관계인지 스스로 찾아낸다.",
   SUPABASE_URL: "https://razxfewnttqbqaxgypju.supabase.co",
@@ -884,7 +888,9 @@ var EXPORT_COLUMNS = [
   { path: 'predict.pv', label: '예측① 누르면 부피는' },
   { path: 'predict.vt', label: '예측② 가열하면 부피는' },
   { path: 'predict.pt', label: '예측③ 부피 고정·가열 시 압력은' },
-  { path: 'predict.reason', label: '예측 이유' },
+  { path: 'predict.reasonPv', label: '예측① 이유' },
+  { path: 'predict.reasonVt', label: '예측② 이유' },
+  { path: 'predict.reasonPt', label: '예측③ 이유' },
   { path: 'boyle.points', label: '보일 측정(회)' },
   { path: 'boyle.q1', label: '보일Q1 압력 2배→부피는' },
   { path: 'boyle.q2', label: '보일Q2 P×V 값은' },
@@ -920,7 +926,7 @@ function defaultState() {
     updatedAt: null,
     unlockedStep: 1,
     intro: { started: false, conditions: '', submittedAt: null },
-    predict: { pv: '', vt: '', pt: '', reason: '' },
+    predict: { pv: '', vt: '', pt: '', reasonPv: '', reasonVt: '', reasonPt: '' },
     boyle: { points: [], q1: '', q2: '', inverseToggled: false },
     charles: { points: [], axisToggled: false, intercept: '', relation: '', whyKelvin: '' },
     gaylussac: { points: [], relation: '' },
@@ -1001,7 +1007,7 @@ function validState(o) {
   if (o.intro.conditions !== undefined && typeof o.intro.conditions !== 'string') return false;
   if (o.intro.fromLegacy !== undefined && typeof o.intro.fromLegacy !== 'boolean') return false;
   if (o.intro.submittedAt !== undefined && o.intro.submittedAt !== null && typeof o.intro.submittedAt !== 'string') return false;
-  var strs = ['predict.pv', 'predict.vt', 'predict.pt', 'predict.reason', 'boyle.q1', 'boyle.q2',
+  var strs = ['predict.pv', 'predict.vt', 'predict.pt', 'boyle.q1', 'boyle.q2',
     'charles.intercept', 'charles.relation', 'gaylussac.relation', 'combine.rAnswer',
     'assess.a1', 'assess.a2', 'assess.a3'], i;
   for (i = 0; i < strs.length; i++) if (typeof getPath(o, strs[i]) !== 'string') return false;
@@ -1045,18 +1051,24 @@ function migrate(o) {
       o.charles.whyKelvinLegacy = true;
     }
   }
+  // ② 예상 근거가 문항별 3칸으로 분리됨 — 옛 공용 근거는 세 문항 공통 답이었으므로 세 칸 모두에 복사
+  if (o.predict && typeof o.predict.reasonPv !== 'string') {
+    var legacyReason = typeof o.predict.reason === 'string' ? o.predict.reason : '';
+    o.predict.reasonPv = legacyReason; o.predict.reasonVt = legacyReason; o.predict.reasonPt = legacyReason;
+    delete o.predict.reason;
+  }
   return o;
 }
 
 /* ===================== §8.4 AI 검수 ===================== */
 var AI_KEYS_BY_STEP = {
-  2: ['predict.reason'],
+  2: ['predict.reasonPv', 'predict.reasonVt', 'predict.reasonPt'],
   3: ['boyle.q1', 'boyle.q2'],
   4: ['charles.relation'],
   5: ['gaylussac.relation'],
   6: ['assess.a1', 'assess.a2', 'assess.a3']
 };
-var AI_ALL = ['predict.reason', 'boyle.q1', 'boyle.q2', 'charles.relation', 'gaylussac.relation', 'assess.a1', 'assess.a2', 'assess.a3'];
+var AI_ALL = ['predict.reasonPv', 'predict.reasonVt', 'predict.reasonPt', 'boyle.q1', 'boyle.q2', 'charles.relation', 'gaylussac.relation', 'assess.a1', 'assess.a2', 'assess.a3'];
 var aiInflight = {};      // key → {ctrl, promise}
 
 function aiText(key) { return tx(getPath(state, key)); }
@@ -1221,7 +1233,8 @@ function gate(step) {
   }
   if (step === 2) {
     if (!s.predict.pv || !s.predict.vt || !s.predict.pt) return { ok: false, why: '예상 3문항을 모두 골라 주세요.' };
-    if (!tx(s.predict.reason)) return { ok: false, why: '왜 그렇게 생각했는지 써 주세요.' };
+    if (!tx(s.predict.reasonPv) || !tx(s.predict.reasonVt) || !tx(s.predict.reasonPt))
+      return { ok: false, why: '문항마다 왜 그렇게 생각했는지 써 주세요.' };
     if (!aiGateOk(2)) return { ok: false, why: 'AI 확인이 끝나지 않았어요.' };
     return { ok: true, why: '' };
   }
@@ -2563,7 +2576,8 @@ function hydrate() {
     $$('input[name="' + k + '"]').forEach(function (r) { r.checked = (r.value === state.predict[k]); });
   });
   var map = {
-    '#introConditions': 'intro.conditions', '#predReason': 'predict.reason',
+    '#introConditions': 'intro.conditions',
+    '#predReasonPv': 'predict.reasonPv', '#predReasonVt': 'predict.reasonVt', '#predReasonPt': 'predict.reasonPt',
     '#q_boyle_q1': 'boyle.q1', '#q_boyle_q2': 'boyle.q2',
     '#q_charles_whyK': 'charles.whyKelvin',
     '#q_charles_relation': 'charles.relation', '#q_gaylussac_relation': 'gaylussac.relation',
@@ -2638,7 +2652,9 @@ function bindAll() {
       });
     });
   });
-  bindText('#predReason', 'predict.reason');
+  bindText('#predReasonPv', 'predict.reasonPv');
+  bindText('#predReasonVt', 'predict.reasonVt');
+  bindText('#predReasonPt', 'predict.reasonPt');
   bindText('#introConditions', 'intro.conditions');
   bindText('#q_boyle_q1', 'boyle.q1'); bindText('#q_boyle_q2', 'boyle.q2');
   bindText('#q_charles_whyK', 'charles.whyKelvin');

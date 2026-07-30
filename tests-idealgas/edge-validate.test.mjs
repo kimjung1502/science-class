@@ -86,10 +86,11 @@ t('spectrum 시스템 지침에 사진 판정 규칙이 남아 있음', () => {
 });
 
 console.log('\n■ ideal_gas');
-const IG_KEYS = ['predict.reason', 'boyle.q1', 'boyle.q2', 'charles.relation', 'gaylussac.relation', 'assess.a1', 'assess.a2', 'assess.a3'];
+// predict.reason(옛 공용 키)은 캐시된 구버전 클라이언트 호환용으로 유지, v1.15부터 문항별 3키 사용
+const IG_KEYS = ['predict.reason', 'predict.reasonPv', 'predict.reasonVt', 'predict.reasonPt', 'boyle.q1', 'boyle.q2', 'charles.relation', 'gaylussac.relation', 'assess.a1', 'assess.a2', 'assess.a3'];
 const igItems = IG_KEYS.map((k) => ({ key: k, kind: 'text', text: '입자가 더 자주 부딪혀서 그렇다고 생각한다.' }));
-t('8개 key 전부 통과', () => { const r = validateRequest({ contextId: 'ideal_gas', items: igItems }); isOk(r); eq(r.items.length, 8); });
-t('expect 매핑 8개가 §8.4 표와 일치', () => {
+t('11개 key 전부 통과', () => { const r = validateRequest({ contextId: 'ideal_gas', items: igItems }); isOk(r); eq(r.items.length, 11); });
+t('expect 매핑 11개가 §8.4 표와 일치', () => {
   const got = Object.keys(CONTEXTS.ideal_gas.expect).sort();
   eq(JSON.stringify(got), JSON.stringify(IG_KEYS.slice().sort()));
   eq(CONTEXTS.ideal_gas.expect['boyle.q2'], '표의 P×V 값이 어떻게 되는지(경향)에 대한 답');
@@ -117,7 +118,7 @@ t('items 12개 초과 → 자르지 않고 400', () => {
   for (let i = 0; i < 13; i++) many.push({ key: IG_KEYS[i % 8], kind: 'text', text: 'a' });
   isErr(validateRequest({ contextId: 'ideal_gas', items: many }), MAX_ITEMS + '개');
 });
-t('items 정확히 12개는 통과(중복 없을 때만 가능하므로 8개로 확인)', () => {
+t('items 정확히 12개는 통과(중복 없을 때만 가능하므로 11개로 확인)', () => {
   isOk(validateRequest({ contextId: 'ideal_gas', items: igItems }));
 });
 t('중복 key → 400', () => {
