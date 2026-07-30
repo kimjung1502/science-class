@@ -86,6 +86,16 @@ const introWiring = [
 ].filter(([, ok]) => !ok).map(([name]) => name + ' 없음');
 check('① 응답의 비차단 제출과 단계 이동 배선', introWiring);
 
+/* 9) 제출 토큰은 현재 사이트 프로젝트·현재 부모 세션만 사용해야 한다.
+      localStorage 의 첫 auth-token 을 쓰면 다른 Supabase 프로젝트 토큰으로 401 이 난다. */
+const authWiring = [
+  ['현재 부모 세션 조회', /function\s+freshSiteToken\(\)[\s\S]{0,550}window\.parent\.DB\.supabase\.auth\.getSession\(\)/.test(body)],
+  ['현재 프로젝트 저장 키 사용', /localStorage\.getItem\('sb-'\s*\+\s*ref\s*\+\s*'-auth-token'\)/.test(body)],
+  ['임의 auth-token 전체 순회 제거', !/for\s*\([^)]*localStorage\.length[\s\S]{0,240}\^sb-/.test(body)],
+  ['도입 응답 전송에 최신 토큰 사용', /function\s+sendResult\(\)[\s\S]{0,240}freshSiteToken\(\)\.then/.test(body)],
+].filter(([, ok]) => !ok).map(([name]) => name + ' 없음');
+check('현재 로그인 세션을 사용하는 제출 인증', authWiring);
+
 console.log('\n════════════════════════════════════');
 console.log(fail ? ' 정적 점검: ' + fail + '건 실패' : ' 정적 점검: 통과');
 console.log('════════════════════════════════════');
