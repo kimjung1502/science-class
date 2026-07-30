@@ -62,7 +62,11 @@
   .goals .g{flex:none;width:21px;height:21px;border-radius:7px;background:var(--lime-soft);color:#4a5a00;font-size:11px;font-weight:800;display:grid;place-items:center;font-family:var(--mono)}
 
   label.fld{display:block;font-size:12.5px;color:var(--ink3);margin:0 0 4px}
-  input[type=text]{width:100%;font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--paper3);background:#fff;color:var(--ink)}
+  input[type=text],input[type=password]{width:100%;font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--paper3);background:#fff;color:var(--ink)}
+  #resetDlg{border:1px solid var(--paper3);border-radius:14px;background:var(--paper);color:var(--ink);padding:20px;max-width:320px;width:calc(100vw - 48px)}
+  #resetDlg::backdrop{background:rgba(30,28,20,.4)}
+  #resetDlg p{margin:0 0 12px;font-size:14px;line-height:1.6}
+  #resetDlg .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
   textarea{width:100%;font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--paper3);background:#fff;color:var(--ink);resize:vertical;min-height:62px;line-height:1.55}
   input:focus-visible,textarea:focus-visible,button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--lime);outline-offset:1px;border-color:var(--ink)}
   input:disabled,textarea:disabled{background:var(--paper2);color:var(--ink3)}
@@ -555,6 +559,18 @@
     </div>
   </section>
 </main>
+
+<dialog id="resetDlg">
+  <form id="resetForm">
+    <p><b>처음부터 다시 시작할까요?</b><br>기록한 데이터와 답이 모두 지워져요.</p>
+    <input type="password" id="resetPw" placeholder="초기화 비밀번호" autocomplete="off">
+    <div class="lockmsg" id="resetPwMsg" style="margin-top:8px"></div>
+    <div class="actions">
+      <button type="button" class="btn ghost" id="resetCancel">취소</button>
+      <button type="submit" class="btn lime">초기화</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 /* ===================== IDEALGAS ENGINE BEGIN =====================
@@ -2653,11 +2669,20 @@ function bindAll() {
   });
   $('#exportBtn').addEventListener('click', doExport);
   $('#printBtn').addEventListener('click', doPrint);
+  // 헤더 상시 노출 대신 비밀번호 잠금 — 학생의 실수·장난 초기화 방지(힌트 비밀번호와 공용)
   $('#resetBtn').addEventListener('click', function () {
-    // 헤더 상시 노출 대신 비밀번호 잠금 — 학생의 실수·장난 초기화 방지(힌트 비밀번호와 공용)
-    var pw = window.prompt('처음부터 다시 시작하면 기록한 데이터와 답이 모두 지워져요.\n초기화 비밀번호를 입력하세요.');
-    if (pw === null) return;
-    if (pw.trim() !== CONFIG.HINT_PW) { window.alert('비밀번호가 맞지 않아요. 선생님께 문의하세요.'); return; }
+    $('#resetPw').value = '';
+    var m = $('#resetPwMsg'); m.className = 'lockmsg'; m.textContent = '';
+    $('#resetDlg').showModal();
+  });
+  $('#resetCancel').addEventListener('click', function () { $('#resetDlg').close(); });
+  $('#resetForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if ($('#resetPw').value.trim() !== CONFIG.HINT_PW) {
+      var m = $('#resetPwMsg'); m.className = 'lockmsg show'; m.textContent = '비밀번호가 맞지 않아요. 선생님께 문의하세요.';
+      return;
+    }
+    $('#resetDlg').close();
     try { localStorage.removeItem(getActiveKeyName()); } catch (e) { }
     state = defaultState();
     if (S) { state.student.name = S.name || ''; state.student.sid = S.sid || ''; state.student.fromSite = true; }
