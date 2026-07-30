@@ -36,6 +36,8 @@
   .chip.tbadge{background:var(--lime-soft);border-color:#d8e88a;color:#4a5a00;font-weight:700;margin-left:6px}
   .chip.err{background:var(--signal-soft);border-color:#f3c3ae;color:#a5310c;font-weight:700;margin-left:6px}
   .chip.ver{margin-left:6px;font-family:var(--mono)}
+  button.chip.reset{margin-left:6px;font-family:inherit;cursor:pointer}
+  button.chip.reset:hover{background:var(--paper3);color:var(--ink)}
 
   main{max-width:860px;margin:0 auto;padding:18px 14px 140px}
   .stage.hidden{display:none}
@@ -275,6 +277,7 @@
     <span class="chip ver">v1</span>
     <span class="chip tbadge" id="tbadge" hidden>교사 미리보기</span>
     <span class="chip err" id="savefail" hidden>저장 실패 — 제출로 백업</span>
+    <button class="chip reset" id="resetBtn" type="button">처음부터 다시</button>
   </div>
 </header>
 <main id="main">
@@ -546,7 +549,6 @@
       <div class="actions">
         <button class="btn lime" id="exportBtn">결과 제출하기 (선생님께)</button>
         <button class="btn ghost" id="printBtn">인쇄 / PDF 보기</button>
-        <button class="btn ghost" id="resetBtn" style="margin-left:auto">처음부터 다시</button>
       </div>
       <div class="lockmsg" id="lock6"></div>
       <div class="note" id="exportNote" style="display:none"></div>
@@ -2652,7 +2654,10 @@ function bindAll() {
   $('#exportBtn').addEventListener('click', doExport);
   $('#printBtn').addEventListener('click', doPrint);
   $('#resetBtn').addEventListener('click', function () {
-    if (!window.confirm('지금까지 기록한 데이터와 답이 모두 지워지고 처음부터 다시 시작해요.\n계속할까요?')) return;
+    // 헤더 상시 노출 대신 비밀번호 잠금 — 학생의 실수·장난 초기화 방지(힌트 비밀번호와 공용)
+    var pw = window.prompt('처음부터 다시 시작하면 기록한 데이터와 답이 모두 지워져요.\n초기화 비밀번호를 입력하세요.');
+    if (pw === null) return;
+    if (pw.trim() !== CONFIG.HINT_PW) { window.alert('비밀번호가 맞지 않아요. 선생님께 문의하세요.'); return; }
     try { localStorage.removeItem(getActiveKeyName()); } catch (e) { }
     state = defaultState();
     if (S) { state.student.name = S.name || ''; state.student.sid = S.sid || ''; state.student.fromSite = true; }
