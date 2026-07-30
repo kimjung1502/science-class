@@ -1896,8 +1896,8 @@ function drawGraph(cv, cfg) {
   var L = 54, R = 16, T = 14, B = 40, GW = LW - L - R, GH = LH - T - B;
   var pts = cfg.pts || [];
   var xs = pts.map(function (p) { return p.x; }), ys = pts.map(function (p) { return p.y; });
-  if (cfg.forceX) cfg.forceX.forEach(function (v) { xs.push(v); });
-  if (cfg.forceY) cfg.forceY.forEach(function (v) { ys.push(v); });
+  if (cfg.forceX && pts.length) cfg.forceX.forEach(function (v) { xs.push(v); });
+  if (cfg.forceY && pts.length) cfg.forceY.forEach(function (v) { ys.push(v); });
   if (!xs.length) { xs = [0, 1]; ys = [0, 1]; }
   var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
   var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
@@ -1937,6 +1937,10 @@ function drawGraph(cv, cfg) {
       var den = n * sxx - sx * sx;
       if (Math.abs(den) > 1e-12) {
         var a = (n * sxy - sx * sy) / den, c0 = (sy - a * sx) / n;
+        if (cfg.showEq) {
+          x.fillStyle = '#16213E'; x.font = 'bold 12px monospace'; x.textAlign = 'left';
+          x.fillText(cfg.showEq[0] + ' = ' + a.toFixed(3) + ' × ' + cfg.showEq[1] + (c0 < 0 ? ' − ' : ' + ') + Math.abs(c0).toFixed(1), L + 10, T + 18);
+        }
         var dxs = pts.map(function (p) { return p.x; });
         var dmin = Math.min.apply(null, dxs), dmax = Math.max.apply(null, dxs);
         x.strokeStyle = '#16213E'; x.lineWidth = 2; x.setLineDash([]);
@@ -2000,7 +2004,7 @@ function renderGraphs() {
   drawGraph($('[data-graph="charles"]'), {
     pts: cp.map(function (p) { return { x: celsius(p.t), y: p.v }; }),
     xl: 'T 온도 (℃)', yl: 'V 부피 (L)',
-    fit: 'line', extrapolate: true, showIntercept: gotK, includeZeroY: true, clampY0: true, zeroY: true,
+    fit: 'line', extrapolate: true, showIntercept: gotK, includeZeroY: true, clampY0: true, zeroY: true, showEq: ['V', 'T'],
     forceX: [-290], fx: function (v) { return v.toFixed(0); }
   });
   // 아래 그래프 — 절대영도를 찾아낸 뒤 같은 데이터를 K 축으로 다시 그린다(원점 통과)
