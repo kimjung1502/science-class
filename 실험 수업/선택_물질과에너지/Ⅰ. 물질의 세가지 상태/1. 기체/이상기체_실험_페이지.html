@@ -2469,6 +2469,13 @@ function doPrint() {
 function applyManual() {
   var name = tx($('#mName').value), sid = tx($('#mSid').value);
   var klass = $('#mKlass') ? tx($('#mKlass').value) : '';
+  // 교사 프리패스: 이름 또는 학번 칸에 힌트 비밀번호를 넣고 저장 → 교사 미리보기로 재시작
+  // (?teacher=off 쿼리가 남아 있으면 재시작 때 플래그가 지워지므로 쿼리를 떼고 연다)
+  if (name === CONFIG.HINT_PW || sid === CONFIG.HINT_PW) {
+    try { sessionStorage.setItem('idealgas_teacher', '1'); } catch (e) { }
+    location.replace(location.pathname);
+    return;
+  }
   var msg = $('#manualMsg');
   var show = function (t, ok) { msg.className = 'lockmsg show' + (ok ? ' ok' : ''); msg.textContent = t; };
   if (!sid) {
