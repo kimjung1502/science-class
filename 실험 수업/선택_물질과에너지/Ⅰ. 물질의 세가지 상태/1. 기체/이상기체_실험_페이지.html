@@ -860,6 +860,17 @@ var AI_TIMEOUT = 8000, AI_TOTAL_CAP = 16000;   // §8.4 8 s × 재시도 포함 
 /* ===================== §3.2 학생 정보 자동 주입 ===================== */
 var S = window.__SITE_STUDENT__ || null;
 var IS_ADMIN = !!(S && S.isAdmin === true);
+/* 단독 배포(사이트 밖·로그인 주입 없음)용 교사 미리보기 —
+   ?teacher=<힌트 비밀번호> 로 열면 켜지고 같은 탭에서 유지된다(sessionStorage).
+   끄려면 ?teacher=off 또는 탭 닫기. 게이트·AI 검수 우회, 전송 없음(기존 IS_ADMIN 동작 그대로). */
+if (!S) {
+  try {
+    var _tq = new URLSearchParams(location.search).get('teacher');
+    if (_tq === 'off') sessionStorage.removeItem('idealgas_teacher');
+    else if (_tq === CONFIG.HINT_PW) sessionStorage.setItem('idealgas_teacher', '1');
+    if (sessionStorage.getItem('idealgas_teacher') === '1') IS_ADMIN = true;
+  } catch (e) { /* sessionStorage 접근 불가 → 학생 모드 유지 */ }
+}
 var $ = function (s, r) { return (r || document).querySelector(s); };
 var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2695,7 +2706,7 @@ function init() {
   // 상단 칩·배지
   if (IS_ADMIN) $('#tbadge').hidden = false;
   $('#whochip').textContent = ((S && S.sid) || '학번') + ' · ' + ((S && S.name) || (IS_ADMIN ? '교사' : '이름'));
-  if (!S) {
+  if (!S && !IS_ADMIN) {
     $('#manualBox').hidden = false;
   } else if (IS_ADMIN) {
     $('#whochip').hidden = true;          // 옆의 ‘교사 미리보기’ 배지와 중복이라 숨김
