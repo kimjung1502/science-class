@@ -822,6 +822,7 @@ var E = IdealGasEngine, C = E.C;
 /* ===================== §4 교사 설정 ===================== */
 var CONFIG = {
   HINT_PW: "1234",          // 힌트 잠금 비밀번호 (스펙트럼과 동일)
+  TEACHER_PW: "김정환쌤/Coco1515!",   // 교사 미리보기 전환 — 이름 칸 입력·?teacher= 공용
   MIN_POINTS: 4,            // 각 탐구 데이터 점 최소 개수 — '서로 다른' 점만 카운트(§6)
   AI_CHECK: true,           // 서술형 Gemini 1차 검수 사용 여부 (대상 키 10개는 §8.4)
   REQUIRE_AI_PASS: false,   // true여도 '정상 응답의 ok=false'만 차단. 통신 실패는 항상 통과
@@ -867,7 +868,7 @@ if (!S) {
   try {
     var _tq = new URLSearchParams(location.search).get('teacher');
     if (_tq === 'off') sessionStorage.removeItem('idealgas_teacher');
-    else if (_tq === CONFIG.HINT_PW) sessionStorage.setItem('idealgas_teacher', '1');
+    else if (_tq === CONFIG.TEACHER_PW) sessionStorage.setItem('idealgas_teacher', '1');
     if (sessionStorage.getItem('idealgas_teacher') === '1') IS_ADMIN = true;
   } catch (e) { /* sessionStorage 접근 불가 → 학생 모드 유지 */ }
 }
@@ -2469,9 +2470,9 @@ function doPrint() {
 function applyManual() {
   var name = tx($('#mName').value), sid = tx($('#mSid').value);
   var klass = $('#mKlass') ? tx($('#mKlass').value) : '';
-  // 교사 프리패스: 이름 또는 학번 칸에 힌트 비밀번호를 넣고 저장 → 교사 미리보기로 재시작
+  // 교사 프리패스: 이름 칸에 교사 암호를 넣고 저장 → 교사 미리보기로 재시작
   // (?teacher=off 쿼리가 남아 있으면 재시작 때 플래그가 지워지므로 쿼리를 떼고 연다)
-  if (name === CONFIG.HINT_PW || sid === CONFIG.HINT_PW) {
+  if (name === CONFIG.TEACHER_PW) {
     try { sessionStorage.setItem('idealgas_teacher', '1'); } catch (e) { }
     location.replace(location.pathname);
     return;
