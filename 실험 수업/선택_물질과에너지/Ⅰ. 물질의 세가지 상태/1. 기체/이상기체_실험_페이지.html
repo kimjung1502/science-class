@@ -180,7 +180,7 @@
   .graphcanvas{display:block;width:100%;height:auto;aspect-ratio:4/3;background:#fff;border:1px solid var(--paper3);border-radius:12px}
   .graphhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
   .graphhead .t{font-size:12.5px;font-weight:800;color:var(--ink3)}
-  .triple{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .triple{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   @media (max-width:720px){.triple{grid-template-columns:1fr}}
 
   .kv{display:flex;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--ink3);margin-top:6px}
@@ -300,7 +300,7 @@
           <ul class="goals">
             <li><span class="g">1</span><span>기체의 압력이 <b>입자가 벽에 부딪히는 것</b>에서 생긴다는 것을 설명할 수 있다.</span></li>
             <li><span class="g">2</span><span>온도를 고정하고 <b>압력을 바꿀 때 부피가 어떻게 되는지</b> 데이터로 찾아낸다.</span></li>
-            <li><span class="g">3</span><span>압력을 고정하고, 또 부피를 고정하고 <b>온도를 바꿀 때 무엇이 달라지는지</b> 그래프로 나타낸다.</span></li>
+            <li><span class="g">3</span><span>압력을 고정하고 <b>온도를 바꿀 때 부피가 어떻게 달라지는지</b> 그래프로 나타낸다.</span></li>
             <li><span class="g">4</span><span>모은 데이터를 한 표에 모아 <b>세 변수를 잇는 하나의 규칙</b>을 찾아낸다.</span></li>
           </ul>
           <div class="tags" style="margin-top:12px"><span class="tag">P 압력</span><span class="tag">V 부피</span><span class="tag">T 온도</span><span class="tag">n 기체 양</span></div>
@@ -363,17 +363,6 @@
         <p class="qtext" style="margin-top:10px">왜 그렇게 생각했나요?</p>
         <textarea id="predReasonVt" data-ai="predict.reasonVt" placeholder="입자의 움직임으로 설명해 보세요."></textarea>
         <div class="aimsg" id="ai-predict.reasonVt"></div>
-      </div>
-      <div class="q">
-        <p class="qtext">3. <b>부피를 못 변하게 막고</b> 가열하면 압력은?</p>
-        <div class="choices" data-pred="pt">
-          <label class="choice"><input type="radio" name="pt" value="커진다"><span>커진다</span></label>
-          <label class="choice"><input type="radio" name="pt" value="작아진다"><span>작아진다</span></label>
-          <label class="choice"><input type="radio" name="pt" value="그대로"><span>그대로</span></label>
-        </div>
-        <p class="qtext" style="margin-top:10px">왜 그렇게 생각했나요?</p>
-        <textarea id="predReasonPt" data-ai="predict.reasonPt" placeholder="입자의 움직임으로 설명해 보세요."></textarea>
-        <div class="aimsg" id="ai-predict.reasonPt"></div>
       </div>
     </div>
     <button class="btn next" id="next2">다음으로 계속 ↓</button>
@@ -476,49 +465,17 @@
     <div class="lockmsg" id="lock4"></div>
   </section>
 
-  <!-- ============================ ⑤ 탐구3 · 등적 ============================ -->
+  <!-- ============================ ⑤ 통합 ============================ -->
   <section class="stage hidden" id="s5">
-    <div class="stagehead"><div class="num" id="n5">5</div><div><h2>탐구 3 · 등적 — 온도와 압력</h2><div class="sub">게이뤼삭 법칙 · 🔒 부피 고정(피스톤 잠김)</div></div></div>
-    <div class="card tight">
-      <div class="ro-note"></div>
-      <div class="simblock" data-sim="gaylussac"></div>
-    </div>
-    <div class="card">
-      <div class="note lime">이 단계가 <b>압력의 두 요인을 분리</b>해 보여줍니다. 계기판의 <b>충돌 빈도</b>와 <b>평균 충격</b>을 둘 다 지켜보세요.</div>
-      <div class="datagrid" style="margin-top:12px">
-        <div class="tablescroll"><table class="dtable" data-table="gaylussac"><thead><tr><th>#</th><th>T<span style="font-weight:400">(K)</span></th><th>P<span style="font-weight:400">(atm)</span></th><th>P/T</th><th></th></tr></thead><tbody></tbody></table></div>
-        <div class="graphbox">
-          <div class="graphhead"><span class="t">P–T 그래프</span></div>
-          <canvas class="graphcanvas" data-graph="gaylussac" width="480" height="360" role="img" aria-label="압력과 온도 그래프"></canvas>
-        </div>
-      </div>
-      <details class="more"><summary>③ 등온 결과와 비교하기 ▾</summary><div class="body" id="cmp35"></div></details>
-    </div>
-    <div class="card">
-      <div class="q">
-        <p class="qtext">Q. 부피가 못 변하는데 왜 압력이 오를까요?</p>
-        <p class="qhint">💡 힌트: <b>충돌 빈도</b>와 <b>평균 충격</b> 중 무엇이 변했나요?</p>
-        <textarea id="q_gaylussac_relation" data-ai="gaylussac.relation" placeholder="두 가지 중 무엇이 변했는지 써 보세요."></textarea>
-        <div class="aimsg" id="ai-gaylussac.relation"></div>
-      </div>
-      <div class="note" id="cmp5"></div>
-    </div>
-    <button class="btn next" id="next5">다음으로 계속 ↓</button>
-    <div class="lockmsg" id="lock5"></div>
-  </section>
-
-  <!-- ============================ ⑥ 통합 ============================ -->
-  <section class="stage hidden" id="s6">
-    <div class="stagehead"><div class="num" id="n6">6</div><div><h2>통합 · 정리</h2><div class="sub">자유 모드 · 세 탐구 합치기 · 평가</div></div></div>
+    <div class="stagehead"><div class="num" id="n5">5</div><div><h2>통합 · 정리</h2><div class="sub">자유 모드 · 두 탐구 합치기 · 평가</div></div></div>
     <div class="card tight">
       <div class="simblock" data-sim="combine"></div>
     </div>
     <div class="card">
-      <p class="qtext">③④⑤ 세 그래프를 나란히 놓고 보기</p>
+      <p class="qtext">③④ 두 그래프를 나란히 놓고 보기</p>
       <div class="triple">
         <div class="graphbox"><div class="graphhead"><span class="t">P–V (등온)</span></div><canvas class="graphcanvas" data-graph="mini_boyle" width="360" height="270" role="img" aria-label="등온 P-V 그래프"></canvas></div>
         <div class="graphbox"><div class="graphhead"><span class="t">V–T (등압)</span></div><canvas class="graphcanvas" data-graph="mini_charles" width="360" height="270" role="img" aria-label="등압 V-T 그래프"></canvas></div>
-        <div class="graphbox"><div class="graphhead"><span class="t">P–T (등적)</span></div><canvas class="graphcanvas" data-graph="mini_gaylussac" width="360" height="270" role="img" aria-label="등적 P-T 그래프"></canvas></div>
       </div>
     </div>
     <div class="card">
@@ -536,17 +493,13 @@
       </div></details>
     </div>
     <div class="card">
-      <p class="qtext" style="margin-bottom:10px">형성평가 3문항</p>
+      <p class="qtext" style="margin-bottom:10px">형성평가 2문항</p>
       <div class="q">
         <p class="qtext">1. 주사기 끝을 막고 누르면 왜 잘 안 눌릴까요? <span style="font-weight:400;color:var(--ink3)">(보일 + 입자 충돌로 설명)</span></p>
         <textarea id="q_assess_a1" data-ai="assess.a1"></textarea><div class="aimsg" id="ai-assess.a1"></div>
       </div>
       <div class="q">
-        <p class="qtext">2. 여름에 자전거 타이어가 터질 수 있는 까닭은? <span style="font-weight:400;color:var(--ink3)">(등적 + 게이뤼삭)</span></p>
-        <textarea id="q_assess_a2" data-ai="assess.a2"></textarea><div class="aimsg" id="ai-assess.a2"></div>
-      </div>
-      <div class="q">
-        <p class="qtext">3. 온도를 올렸을 때 압력이 커지는 이유를 <b>‘빈도’</b>와 <b>‘세기’</b> 두 낱말을 써서 설명하세요.</p>
+        <p class="qtext">2. 온도를 올렸을 때 압력이 커지는 이유를 <b>‘빈도’</b>와 <b>‘세기’</b> 두 낱말을 써서 설명하세요.</p>
         <textarea id="q_assess_a3" data-ai="assess.a3"></textarea>
         <div class="aimsg" id="ai-assess.a3"></div>
         <div class="verdict" id="a3Verdict"></div>
@@ -558,7 +511,7 @@
         <button class="btn lime" id="exportBtn">결과 제출하기 (선생님께)</button>
         <button class="btn ghost" id="printBtn">인쇄 / PDF 보기</button>
       </div>
-      <div class="lockmsg" id="lock6"></div>
+      <div class="lockmsg" id="lock5"></div>
       <div class="note" id="exportNote" style="display:none"></div>
     </div>
   </section>
@@ -887,10 +840,8 @@ var EXPORT_COLUMNS = [
   { path: 'intro.submittedAt', label: '도입 응답 제출 시각' },
   { path: 'predict.pv', label: '예측① 누르면 부피는' },
   { path: 'predict.vt', label: '예측② 가열하면 부피는' },
-  { path: 'predict.pt', label: '예측③ 부피 고정·가열 시 압력은' },
   { path: 'predict.reasonPv', label: '예측① 이유' },
   { path: 'predict.reasonVt', label: '예측② 이유' },
-  { path: 'predict.reasonPt', label: '예측③ 이유' },
   { path: 'boyle.points', label: '보일 측정(회)' },
   { path: 'boyle.q1', label: '보일Q1 압력 2배→부피는' },
   { path: 'boyle.q2', label: '보일Q2 P×V 값은' },
@@ -898,13 +849,10 @@ var EXPORT_COLUMNS = [
   { path: 'charles.intercept', label: 'V=0 x절편(℃)' },
   { path: 'charles.whyKelvin', label: '왜 K로 계산해야 하나' },
   { path: 'charles.relation', label: '샤를Q 온도↑→부피↑ 이유' },
-  { path: 'gaylussac.points', label: '게이뤼삭 측정(회)' },
-  { path: 'gaylussac.relation', label: '게이뤼삭Q 압력 상승 이유' },
   { path: 'combine.points', label: '통합 측정(회)' },
   { path: 'combine.rAnswer', label: 'PV/nT 의 이름' },
   { path: 'assess.a1', label: '평가1 주사기' },
-  { path: 'assess.a2', label: '평가2 타이어' },
-  { path: 'assess.a3', label: '평가3 빈도·세기' }
+  { path: 'assess.a3', label: '평가2 빈도·세기' }
 ];
 var AI_TIMEOUT = 8000, AI_TOTAL_CAP = 16000;   // §8.4 8 s × 재시도 포함 2회 = 총 16 s
 
@@ -926,12 +874,11 @@ function defaultState() {
     updatedAt: null,
     unlockedStep: 1,
     intro: { started: false, conditions: '', submittedAt: null },
-    predict: { pv: '', vt: '', pt: '', reasonPv: '', reasonVt: '', reasonPt: '' },
+    predict: { pv: '', vt: '', reasonPv: '', reasonVt: '' },
     boyle: { points: [], q1: '', q2: '', inverseToggled: false },
     charles: { points: [], axisToggled: false, intercept: '', relation: '', whyKelvin: '' },
-    gaylussac: { points: [], relation: '' },
     combine: { points: [], rAnswer: '' },
-    assess: { a1: '', a2: '', a3: '' },
+    assess: { a1: '', a3: '' },
     aiCheck: {},
     exportedAt: null,
     exportedHash: null
@@ -1007,12 +954,12 @@ function validState(o) {
   if (o.intro.conditions !== undefined && typeof o.intro.conditions !== 'string') return false;
   if (o.intro.fromLegacy !== undefined && typeof o.intro.fromLegacy !== 'boolean') return false;
   if (o.intro.submittedAt !== undefined && o.intro.submittedAt !== null && typeof o.intro.submittedAt !== 'string') return false;
-  var strs = ['predict.pv', 'predict.vt', 'predict.pt', 'boyle.q1', 'boyle.q2',
-    'charles.intercept', 'charles.relation', 'gaylussac.relation', 'combine.rAnswer',
-    'assess.a1', 'assess.a2', 'assess.a3'], i;
+  var strs = ['predict.pv', 'predict.vt', 'boyle.q1', 'boyle.q2',
+    'charles.intercept', 'charles.relation', 'combine.rAnswer',
+    'assess.a1', 'assess.a3'], i;
   for (i = 0; i < strs.length; i++) if (typeof getPath(o, strs[i]) !== 'string') return false;
   if (typeof o.boyle.inverseToggled !== 'boolean' || typeof o.charles.axisToggled !== 'boolean') return false;
-  var arrs = ['boyle.points', 'charles.points', 'gaylussac.points', 'combine.points'], j, arr;
+  var arrs = ['boyle.points', 'charles.points', 'combine.points'], j, arr;
   for (i = 0; i < arrs.length; i++) {
     arr = getPath(o, arrs[i]);
     if (!Array.isArray(arr)) return false;
@@ -1054,7 +1001,7 @@ function migrate(o) {
   // ② 예상 근거가 문항별 3칸으로 분리됨 — 옛 공용 근거는 세 문항 공통 답이었으므로 세 칸 모두에 복사
   if (o.predict && typeof o.predict.reasonPv !== 'string') {
     var legacyReason = typeof o.predict.reason === 'string' ? o.predict.reason : '';
-    o.predict.reasonPv = legacyReason; o.predict.reasonVt = legacyReason; o.predict.reasonPt = legacyReason;
+    o.predict.reasonPv = legacyReason; o.predict.reasonVt = legacyReason;
     delete o.predict.reason;
   }
   return o;
@@ -1062,13 +1009,12 @@ function migrate(o) {
 
 /* ===================== §8.4 AI 검수 ===================== */
 var AI_KEYS_BY_STEP = {
-  2: ['predict.reasonPv', 'predict.reasonVt', 'predict.reasonPt'],
+  2: ['predict.reasonPv', 'predict.reasonVt'],
   3: ['boyle.q1', 'boyle.q2'],
   4: ['charles.relation'],
-  5: ['gaylussac.relation'],
-  6: ['assess.a1', 'assess.a2', 'assess.a3']
+  5: ['assess.a1', 'assess.a3']
 };
-var AI_ALL = ['predict.reasonPv', 'predict.reasonVt', 'predict.reasonPt', 'boyle.q1', 'boyle.q2', 'charles.relation', 'gaylussac.relation', 'assess.a1', 'assess.a2', 'assess.a3'];
+var AI_ALL = ['predict.reasonPv', 'predict.reasonVt', 'boyle.q1', 'boyle.q2', 'charles.relation', 'assess.a1', 'assess.a3'];
 var aiInflight = {};      // key → {ctrl, promise}
 
 function aiText(key) { return tx(getPath(state, key)); }
@@ -1232,8 +1178,8 @@ function gate(step) {
     return { ok: true, why: '' };
   }
   if (step === 2) {
-    if (!s.predict.pv || !s.predict.vt || !s.predict.pt) return { ok: false, why: '예상 3문항을 모두 골라 주세요.' };
-    if (!tx(s.predict.reasonPv) || !tx(s.predict.reasonVt) || !tx(s.predict.reasonPt))
+    if (!s.predict.pv || !s.predict.vt) return { ok: false, why: '예상 2문항을 모두 골라 주세요.' };
+    if (!tx(s.predict.reasonPv) || !tx(s.predict.reasonVt))
       return { ok: false, why: '문항마다 왜 그렇게 생각했는지 써 주세요.' };
     if (!aiGateOk(2)) return { ok: false, why: 'AI 확인이 끝나지 않았어요.' };
     return { ok: true, why: '' };
@@ -1263,20 +1209,11 @@ function gate(step) {
     return { ok: true, why: '' };
   }
   if (step === 5) {
-    d = distinctVals(s.gaylussac.points, 't');
-    if (d.length < need) return { ok: false, why: 'T가 서로 다른 점을 ' + need + '개 찍어야 열려요 — 지금 ' + d.length + '개' };
-    span = d.length ? Math.max.apply(null, d) - Math.min.apply(null, d) : 0;
-    if (span < 150 - 1e-9) return { ok: false, why: '온도 범위가 150 K 이상이어야 해요 — 지금 ' + Math.round(span) + ' K' };
-    if (!tx(s.gaylussac.relation)) return { ok: false, why: '서술 문항을 써 주세요.' };
-    if (!aiGateOk(5)) return { ok: false, why: 'AI 확인이 끝나지 않았어요.' };
-    return { ok: true, why: '' };
-  }
-  if (step === 6) {
     if (!rNameOk(s.combine.rAnswer)) return { ok: false, why: 'PV/nT 값의 이름을 맞혀 주세요.' };
-    if (!tx(s.assess.a1) || !tx(s.assess.a2) || !tx(s.assess.a3)) return { ok: false, why: '형성평가 3문항을 모두 써 주세요.' };
-    if (!a3WordsOk(s.assess.a3)) return { ok: false, why: '3번은 ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.' };
+    if (!tx(s.assess.a1) || !tx(s.assess.a3)) return { ok: false, why: '형성평가 2문항을 모두 써 주세요.' };
+    if (!a3WordsOk(s.assess.a3)) return { ok: false, why: '2번은 ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.' };
     d = distinctVals(s.combine.points, 'n');
-    if (d.length < 2) return { ok: false, why: '⑥에서 n(기체 양)이 서로 다른 점을 2개 이상 기록해 주세요 — 지금 ' + d.length + '개' };
+    if (d.length < 2) return { ok: false, why: '⑤에서 n(기체 양)이 서로 다른 점을 2개 이상 기록해 주세요 — 지금 ' + d.length + '개' };
     if (!s.exportedAt || s.exportedHash !== payloadHash(s)) return { ok: false, why: '마지막으로 ‘결과 제출하기’를 눌러야 완료돼요.' };
     return { ok: true, why: '' };
   }
@@ -1286,23 +1223,23 @@ function gate(step) {
 function recomputeUnlocked() {
   // 교사 미리보기(§3.2)는 게이트 '조건'만 우회하고 진행 '순서'는 학생과 똑같이 간다.
   // 열 때마다 항상 ①부터 — 미리보기는 '학생이 보는 첫 화면'을 확인하는 도구이므로
-  // 지난번 진행 단계가 남아 6단계가 펼쳐진 채로 열리면 안 된다(조건 우회는 그대로라 다음을 계속 누르면 됨).
+  // 지난번 진행 단계가 남아 마지막 단계가 펼쳐진 채로 열리면 안 된다(조건 우회는 그대로라 다음을 계속 누르면 됨).
   if (IS_ADMIN) return 1;
   var s = 1, k;
-  for (k = 1; k <= 5; k++) { if (gate(k).ok) s = k + 1; else break; }
-  return Math.min(6, Math.max(1, s));
+  for (k = 1; k <= 4; k++) { if (gate(k).ok) s = k + 1; else break; }
+  return Math.min(5, Math.max(1, s));
 }
 
 /* ===================== 화면 진행 ===================== */
-var TOTAL = 6;
-var LABELS = { 1: '도입 · 목표', 2: '예상', 3: '탐구1 · 등온', 4: '탐구2 · 등압', 5: '탐구3 · 등적', 6: '통합 · 정리' };
+var TOTAL = 5;
+var LABELS = { 1: '도입 · 목표', 2: '예상', 3: '탐구1 · 등온', 4: '탐구2 · 등압', 5: '통합 · 정리' };
 function paintProgress() {
   $('#railfill').style.width = (unlocked / TOTAL * 100) + '%';
   $('#stepnow').textContent = 'STEP ' + String(unlocked).padStart(2, '0');
   $('#steplabel').textContent = LABELS[unlocked] || '';
-  for (var k = 1; k <= 6; k++) {
+  for (var k = 1; k <= 5; k++) {
     var n = document.getElementById('n' + k);
-    if (n) n.classList.toggle('done', k < unlocked || (k === 6 && gate(6).ok));
+    if (n) n.classList.toggle('done', k < unlocked || (k === 5 && gate(5).ok));
   }
 }
 /* 지나간 단계도 계속 실험할 수 있게 둔다.
@@ -1311,7 +1248,7 @@ function paintProgress() {
    게이트 무결성은 §3.1 의 '로드 시 ①부터 순차 재평가' 가 그대로 지켜 준다 —
    조건을 무너뜨리면 그 단계에 경고가 뜨고, 새로고침하면 그 단계부터 다시 하게 된다. */
 function applyReadOnly() {
-  for (var k = 1; k <= 6; k++) {
+  for (var k = 1; k <= 5; k++) {
     var sec = document.getElementById('s' + k);
     if (!sec) continue;
     // '다음으로 계속' 을 눌러 지나간 단계는 **답변만** 잠근다(제출된 것으로 본다).
@@ -1331,7 +1268,7 @@ function applyReadOnly() {
 }
 /* 지나온 단계의 상태를 그 자리에 알려 준다 — 답변 잠김 / 조건 무너짐 */
 function paintStageNotes() {
-  for (var k = 1; k <= 5; k++) {
+  for (var k = 1; k <= 4; k++) {
     var sec = document.getElementById('s' + k);
     if (!sec) continue;
     var note = $('.ro-note', sec);
@@ -1360,28 +1297,27 @@ function revealTo(step, smooth) {
 }
 function paintLock(step) {
   var el = document.getElementById('lock' + step);
-  var btn = document.getElementById(step === 1 ? 'startBtn' : (step === 6 ? 'exportBtn' : 'next' + step));
+  var btn = document.getElementById(step === 1 ? 'startBtn' : (step === 5 ? 'exportBtn' : 'next' + step));
   if (!el) return;
-  if (step >= unlocked && step < 6) {
+  if (step >= unlocked && step < 5) {
     var g = gate(step);
     if (btn && step !== 1) btn.disabled = false;   // 눌러야 AI 재검수가 도는 배선(§6)
     el.className = 'lockmsg' + (g.ok ? ' show ok' : (g.why ? ' show' : ''));
     el.textContent = g.ok ? '✔ 조건을 다 채웠어요 — 다음으로 넘어갈 수 있어요.' : g.why;
-  } else if (step === 6) {
-    var g6 = gate(6);
-    el.className = 'lockmsg' + (g6.ok ? ' show ok' : (g6.why ? ' show' : ''));
-    el.textContent = g6.ok ? '✔ 모두 완료했어요! 수고했어요.' : g6.why;
+  } else if (step === 5) {
+    var g5 = gate(5);
+    el.className = 'lockmsg' + (g5.ok ? ' show ok' : (g5.why ? ' show' : ''));
+    el.textContent = g5.ok ? '✔ 모두 완료했어요! 수고했어요.' : g5.why;
   } else { el.className = 'lockmsg'; el.textContent = ''; }
 }
-function paintAllLocks() { for (var k = 1; k <= 6; k++) paintLock(k); paintStageNotes(); }
+function paintAllLocks() { for (var k = 1; k <= 5; k++) paintLock(k); paintStageNotes(); }
 
-/* ===================== 시뮬레이터 블록 (§5 ③④⑤⑥ 공용 SimBlock) ===================== */
+/* ===================== 시뮬레이터 블록 (§5 ③④⑤ 공용 SimBlock) ===================== */
 var KINDS = {
   intro:     { mode: 'isothermal', ctl: [], record: false, store: null },
   boyle:     { mode: 'isothermal', ctl: ['p'], record: true, store: 'boyle', step: 3 },
   charles:   { mode: 'isobaric',   ctl: ['t'], record: true, store: 'charles', step: 4 },
-  gaylussac: { mode: 'isochoric',  ctl: ['t'], record: true, store: 'gaylussac', step: 5 },
-  combine:   { mode: 'isothermal', ctl: ['p', 't', 'n'], modes: true, record: true, store: 'combine', step: 6 }
+  combine:   { mode: 'isothermal', ctl: ['p', 't', 'n'], modes: true, record: true, store: 'combine', step: 5 }
 };
 var MODE_LABEL = { isothermal: '등온', isobaric: '등압', isochoric: '등적', amount: '입자 주입' };
 var blocks = [];
@@ -1722,7 +1658,7 @@ function paintCtl(b) {
     if (b.tmsg && b.tmsg.which === w && (window.performance ? performance.now() : 0) < b.tmsg.until) b.showWhy(w, b.tmsg.msg);
     else b.showWhy(w, why.join(' · '));
   });
-  // ⑥ 자유 모드: 지금 조작 가능한 컨트롤만 활성
+  // ⑤ 자유 모드: 지금 조작 가능한 컨트롤만 활성
   if (b.k.modes) {
     var m = b.uiMode;
     var enable = { p: m === 'isothermal', t: (m === 'isobaric' || m === 'isochoric'), n: m === 'amount' };
@@ -1806,7 +1742,7 @@ function deletePoint(store, idx) {
   state[store].points.splice(idx, 1);
   save(); renderStore(store); paintAllLocks(); paintProgress(); invalidateExport();
 }
-function coherentP(store, pt) { return (store === 'gaylussac' || store === 'combine') ? pt.pTheory : pt.pExternal; }
+function coherentP(store, pt) { return store === 'combine' ? pt.pTheory : pt.pExternal; }
 
 /* ---------- 표 ---------- */
 function renderStore(store) {
@@ -1840,9 +1776,6 @@ function renderTable(store) {
       // ④ 는 ℃ 로만 본다 — K 는 절편을 맞힌 뒤 아래 K 표(charlesK)에서 처음 등장한다.
       html += '<tr><td>' + (i + 1) + '</td><td>' + Math.round(celsius(p.t)) + '</td><td>' + fmt(p.v, 1) + '</td>' +
         '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
-    } else if (store === 'gaylussac') {
-      html += '<tr><td>' + (i + 1) + '</td><td>' + Math.round(p.t) + '</td><td>' + fmt(p.pTheory, 3) + '</td><td>' + fmt(p.pTheory / p.t, 5) + '</td>' +
-        '<td><button class="del" data-del="' + store + '" data-i="' + i + '"' + (ro ? ' disabled' : '') + ' aria-label="' + (i + 1) + '번 점 삭제">✕</button></td></tr>';
     }
   }
   tb.innerHTML = html || '<tr><td colspan="5" style="text-align:center;color:var(--ink3)">아직 기록한 점이 없어요</td></tr>';
@@ -1863,7 +1796,7 @@ function renderAllTable() {
   var tb = $('#allTable tbody');
   if (!tb) return;
   var rows = [], html = '';
-  [['boyle', '③ 등온'], ['charles', '④ 등압'], ['gaylussac', '⑤ 등적'], ['combine', '⑥ 자유']].forEach(function (pair) {
+  [['boyle', '③ 등온'], ['charles', '④ 등압'], ['combine', '⑤ 자유']].forEach(function (pair) {
     state[pair[0]].points.forEach(function (p, i) { rows.push({ store: pair[0], label: pair[1], p: p, i: i }); });
   });
   var ro6 = false;
@@ -2018,20 +1951,11 @@ function renderGraphs() {
     fit: 'line', extendToOrigin: true, includeZeroY: true, includeZeroX: true, clampY0: true, zeroX: true, zeroY: true,
     forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
   });
-  var gp = state.gaylussac.points;
-  drawGraph($('[data-graph="gaylussac"]'), {
-    pts: gp.map(function (p) { return { x: p.t, y: p.pTheory }; }),
-    xl: 'T 온도 (K)', yl: 'P 압력 (atm)', fit: 'line', includeZeroY: true, includeZeroX: true, zeroX: true, zeroY: true,
-    forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
-  });
   drawGraph($('[data-graph="mini_boyle"]'), {
     pts: bp.map(function (p) { return { x: p.v, y: p.pExternal }; }), xl: 'V (L)', yl: 'P (atm)', fit: 'hyperbola', zeroX: true, zeroY: true, fx: function (v) { return v.toFixed(0); }
   });
   drawGraph($('[data-graph="mini_charles"]'), {
     pts: cp.map(function (p) { return { x: p.t, y: p.v }; }), xl: 'T (K)', yl: 'V (L)', fit: 'line', includeZeroY: true, includeZeroX: true, zeroX: true, zeroY: true, forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
-  });
-  drawGraph($('[data-graph="mini_gaylussac"]'), {
-    pts: gp.map(function (p) { return { x: p.t, y: p.pTheory }; }), xl: 'T (K)', yl: 'P (atm)', fit: 'line', includeZeroY: true, includeZeroX: true, zeroX: true, zeroY: true, forceX: [0], forceY: [0], fx: function (v) { return v.toFixed(0); }
   });
 }
 
@@ -2192,15 +2116,9 @@ function paintCompare() {
     return '<b>② 에서 네 예상은 “' + p[key] + '”</b> 였어. 실제 결과는 <b>“' + real + '”</b> — ' +
       (same ? '예상이 맞았어! 👍' : '예상과 달랐네. 왜 그런지 위 관찰로 설명해 보자.');
   };
-  var c3 = $('#cmp3'), c4 = $('#cmp4'), c5 = $('#cmp5');
+  var c3 = $('#cmp3'), c4 = $('#cmp4');
   if (c3) c3.innerHTML = mk('pv', '작아진다');
   if (c4) c4.innerHTML = mk('vt', '커진다');
-  if (c5) c5.innerHTML = mk('pt', '커진다');
-  var c35 = $('#cmp35');
-  if (c35) c35.innerHTML =
-    '<b>③ 등온(압축)</b> — 입자 속력은 그대로라 <b>1회 충격은 변하지 않고</b>, 갈 거리가 짧아져 <b>충돌 빈도만</b> 올라갔어.<br>' +
-    '<b>⑤ 등적(가열)</b> — 입자가 빨라져서 <b>1회 충격도 커지고</b> 더 자주 부딪혀 <b>빈도도</b> 올라갔어.<br>' +
-    '→ 압력은 <b>빈도 × 1회 충격</b> 두 가지가 정하는 값이야.';
 }
 /* 절대온도 도입 시점에 온도 표기가 쓰인 모든 곳을 다시 그린다 */
 function refreshTempUnits() {
@@ -2227,9 +2145,9 @@ function exportReadyWhy() {
   if (IS_ADMIN) return '';
   if (!submitGate.open) return submitGate.why || '지금은 제출할 수 없어요.';
   if (!rNameOk(state.combine.rAnswer)) return 'PV/nT 값의 이름을 먼저 맞혀 주세요.';
-  if (!tx(state.assess.a1) || !tx(state.assess.a2) || !tx(state.assess.a3)) return '형성평가 3문항을 모두 써 주세요.';
-  if (!a3WordsOk(state.assess.a3)) return '3번은 ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.';
-  if (distinctVals(state.combine.points, 'n').length < 2) return '⑥에서 n이 서로 다른 점을 2개 이상 기록해 주세요 — 지금 ' + distinctVals(state.combine.points, 'n').length + '개';
+  if (!tx(state.assess.a1) || !tx(state.assess.a3)) return '형성평가 2문항을 모두 써 주세요.';
+  if (!a3WordsOk(state.assess.a3)) return '2번은 ‘빈도’와 ‘세기’ 두 낱말을 써서 설명해요.';
+  if (distinctVals(state.combine.points, 'n').length < 2) return '⑤에서 n이 서로 다른 점을 2개 이상 기록해 주세요 — 지금 ' + distinctVals(state.combine.points, 'n').length + '개';
   return '';
 }
 function invalidateExport() {
@@ -2484,13 +2402,13 @@ function doExport() {
   }
   var btn = $('#exportBtn');
   if (!CONFIG.AI_CHECK || IS_ADMIN) { finishExport(); return; }
-  // §3.3 내보내기 시도 = ⑥의 AI 검수 트리거. AI_CHECK=true 면 종결까지 대기(상한 16 s).
+  // §3.3 내보내기 시도 = ⑤의 AI 검수 트리거. AI_CHECK=true 면 종결까지 대기(상한 16 s).
   btn.disabled = true;
   var old = btn.textContent; btn.textContent = '확인 중…';
   if (note) { note.style.display = 'block'; note.className = 'note'; note.textContent = '⏳ 서술 응답을 확인하는 중이에요… (최대 16초)'; }
-  waitAi(AI_KEYS_BY_STEP[6]).then(function () {
+  waitAi(AI_KEYS_BY_STEP[5]).then(function () {
     btn.textContent = old; btn.disabled = false;
-    var failed = AI_KEYS_BY_STEP[6].filter(function (k) {
+    var failed = AI_KEYS_BY_STEP[5].filter(function (k) {
       var r = state.aiCheck[k];
       return r && r.status === 'fail' && r.textHash === hash32(aiText(k));
     });
@@ -2582,16 +2500,16 @@ function applyManual() {
 
 /* ===================== 하이드레이션 ===================== */
 function hydrate() {
-  ['pv', 'vt', 'pt'].forEach(function (k) {
+  ['pv', 'vt'].forEach(function (k) {
     $$('input[name="' + k + '"]').forEach(function (r) { r.checked = (r.value === state.predict[k]); });
   });
   var map = {
     '#introConditions': 'intro.conditions',
-    '#predReasonPv': 'predict.reasonPv', '#predReasonVt': 'predict.reasonVt', '#predReasonPt': 'predict.reasonPt',
+    '#predReasonPv': 'predict.reasonPv', '#predReasonVt': 'predict.reasonVt',
     '#q_boyle_q1': 'boyle.q1', '#q_boyle_q2': 'boyle.q2',
     '#q_charles_whyK': 'charles.whyKelvin',
-    '#q_charles_relation': 'charles.relation', '#q_gaylussac_relation': 'gaylussac.relation',
-    '#q_assess_a1': 'assess.a1', '#q_assess_a2': 'assess.a2', '#q_assess_a3': 'assess.a3',
+    '#q_charles_relation': 'charles.relation',
+    '#q_assess_a1': 'assess.a1', '#q_assess_a3': 'assess.a3',
     '#interceptIn': 'charles.intercept', '#rAnswer': 'combine.rAnswer'
   };
   Object.keys(map).forEach(function (sel) { var el = $(sel); if (el) el.value = getPath(state, map[sel]) || ''; });
@@ -2599,7 +2517,7 @@ function hydrate() {
   $('#invToggle').setAttribute('aria-pressed', String(invView));
   $('#invToggle').textContent = invView ? 'P–V 로 보기' : '1/V 로 보기';
   $('#pvTitle').textContent = invView ? 'P–1/V 그래프' : 'P–V 그래프';
-  ['boyle', 'charles', 'gaylussac'].forEach(renderTable);
+  ['boyle', 'charles'].forEach(renderTable);
   renderCharlesK();
   renderAllTable(); renderGraphs(); paintCompare(); paintAxisNote();
   paintIntercept(); paintR(); paintA3();
@@ -2656,7 +2574,7 @@ function bindText(sel, path) {
   });
 }
 function bindAll() {
-  ['pv', 'vt', 'pt'].forEach(function (k) {
+  ['pv', 'vt'].forEach(function (k) {
     $$('input[name="' + k + '"]').forEach(function (r) {
       r.addEventListener('change', function () {
         state.predict[k] = r.value; save(); paintAllLocks(); paintCompare(); invalidateExport();
@@ -2665,13 +2583,11 @@ function bindAll() {
   });
   bindText('#predReasonPv', 'predict.reasonPv');
   bindText('#predReasonVt', 'predict.reasonVt');
-  bindText('#predReasonPt', 'predict.reasonPt');
   bindText('#introConditions', 'intro.conditions');
   bindText('#q_boyle_q1', 'boyle.q1'); bindText('#q_boyle_q2', 'boyle.q2');
   bindText('#q_charles_whyK', 'charles.whyKelvin');
   bindText('#q_charles_relation', 'charles.relation');
-  bindText('#q_gaylussac_relation', 'gaylussac.relation');
-  bindText('#q_assess_a1', 'assess.a1'); bindText('#q_assess_a2', 'assess.a2'); bindText('#q_assess_a3', 'assess.a3');
+  bindText('#q_assess_a1', 'assess.a1'); bindText('#q_assess_a3', 'assess.a3');
   bindText('#interceptIn', 'charles.intercept'); bindText('#rAnswer', 'combine.rAnswer');
 
   $('#invToggle').addEventListener('click', function () {
@@ -2690,7 +2606,7 @@ function bindAll() {
     this.hidden = true;
     sendIntroCheckpoint();
   });
-  [2, 3, 4, 5].forEach(function (step) {
+  [2, 3, 4].forEach(function (step) {
     var btn = document.getElementById('next' + step);
     if (!btn) return;
     btn.addEventListener('click', function () { onNext(step, btn); });
@@ -2715,7 +2631,7 @@ function bindAll() {
     state = defaultState();
     if (S) { state.student.name = S.name || ''; state.student.sid = S.sid || ''; state.student.fromSite = true; }
     unlocked = 1; invView = false;
-    for (var k = 2; k <= 6; k++) { var sec = document.getElementById('s' + k); if (sec) sec.classList.add('hidden'); }
+    for (var k = 2; k <= 5; k++) { var sec = document.getElementById('s' + k); if (sec) sec.classList.add('hidden'); }
     var en = $('#exportNote'); if (en) en.style.display = 'none';
     blocks.forEach(function (b) {
       b.sim = new E.Sim({ mode: b.k.mode, t: 273, n: 1, p: 1.0, v: b.k.mode === 'isochoric' ? E.volumeOf(1, 273, 1) : undefined, seed: 20250726 + b.kind.length });
@@ -2732,7 +2648,7 @@ function bindAll() {
 function proceed(step) {
   var g = gate(step);
   if (!g.ok) { paintLock(step); return; }
-  if (unlocked < step + 1) { unlocked = Math.min(6, step + 1); save(); }
+  if (unlocked < step + 1) { unlocked = Math.min(5, step + 1); save(); }
   revealTo(unlocked, true);
   paintAllLocks(); paintProgress(); renderGraphs();
 }
@@ -2791,11 +2707,6 @@ function init() {
 
   // 시뮬레이터 생성
   $$('.simblock').forEach(function (el) { var b = buildBlock(el); if (io) io.observe(el); });
-  // ⑤ 등적: 부피 고정 22.4 L
-  blocks.forEach(function (b) {
-    if (b.kind === 'gaylussac') b.sim.setVolumeLocked(E.volumeOf(1, 273, 1));
-  });
-
   // 렌더 루프를 '먼저' 띄운다 — 아래 초기화 중 어디서 예외가 나더라도
   // 시뮬레이터가 통째로 빈 화면이 되는 일은 없게(한 번 겪은 회귀).
   requestAnimationFrame(frame);
