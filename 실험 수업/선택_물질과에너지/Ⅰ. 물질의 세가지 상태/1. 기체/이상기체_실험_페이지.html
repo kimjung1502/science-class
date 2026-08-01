@@ -309,10 +309,11 @@
     </div>
 
     <div class="card" id="manualBox" hidden>
-      <div class="note signal" id="manualNote">⚠️ 로그인 정보가 없어요. 이름과 학번을 직접 입력해 주세요.</div>
+      <div class="note signal" id="manualNote">⚠️ 이름·학번·분반을 입력하고 저장을 눌러 주세요.</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
         <div style="flex:1 1 150px"><label class="fld" for="mName">이름</label><input type="text" id="mName" autocomplete="off"></div>
         <div style="flex:1 1 150px"><label class="fld" for="mSid">학번</label><input type="text" id="mSid" inputmode="numeric" autocomplete="off"></div>
+        <div style="flex:0 1 110px"><label class="fld" for="mKlass">분반</label><select id="mKlass" style="font:inherit;padding:8px 10px;border-radius:9px;border:1px solid var(--paper3);background:#fff;color:var(--ink);width:100%"><option value="">선택</option><option>F</option><option>I</option><option>J</option></select></div>
         <div style="align-self:flex-end"><button class="btn sm ghost" id="mSave">저장</button></div>
       </div>
       <div class="lockmsg" id="manualMsg"></div>
@@ -870,7 +871,7 @@ var activeKey = IS_ADMIN ? KEY_PREFIX + 'teacher' : (S && S.sid ? KEY_PREFIX + S
 function defaultState() {
   return {
     version: 'v1',
-    student: { name: (S && S.name) || '', sid: (S && S.sid) || '', fromSite: !!S },
+    student: { name: (S && S.name) || '', sid: (S && S.sid) || '', klass: '', fromSite: !!S },
     updatedAt: null,
     unlockedStep: 1,
     intro: { started: false, conditions: '', submittedAt: null },
@@ -998,6 +999,7 @@ function migrate(o) {
       o.charles.whyKelvinLegacy = true;
     }
   }
+  if (o.student && typeof o.student.klass !== 'string') o.student.klass = '';
   // ② 예상 근거가 문항별 3칸으로 분리됨 — 옛 공용 근거는 세 문항 공통 답이었으므로 세 칸 모두에 복사
   if (o.predict && typeof o.predict.reasonPv !== 'string') {
     var legacyReason = typeof o.predict.reason === 'string' ? o.predict.reason : '';
@@ -1172,6 +1174,8 @@ function gate(step) {
   if (IS_ADMIN) return { ok: true, why: '' };   // §3.2 교사 미리보기 = 전 단계 우회
   var s = state, d, span, need = CONFIG.MIN_POINTS;
   if (step === 1) {
+    if (!S && !(tx(s.student.sid) && tx(s.student.name) && tx(s.student.klass)))
+      return { ok: false, why: '위 카드에서 이름·학번·분반을 입력하고 저장을 눌러 주세요.' };
     if (!tx(s.intro.conditions) && !s.intro.fromLegacy)
       return { ok: false, why: '운동하고 있는 기체 입자들의 특징을 한 줄 이상 작성해 주세요.' };
     if (!s.intro.started) return { ok: false, why: '‘응답 제출하고 시작하기’를 눌러 주세요.' };
@@ -2182,13 +2186,14 @@ function dueInputValue(d) {
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 function callWindow(extra) {
-  var payload = { subject_id: CONFIG.SUBJECT_ID, title: CONFIG.EXPERIMENT_TITLE }, k;
+  var payload = { subject_id: CONFIG.SUBJECT_ID, title: CONFIG.EXPERIMENT_TITLE, class_letter: state.student.klass || '' }, k;
   for (k in extra) payload[k] = extra[k];
   return freshSiteToken().then(function (tk) {
-    if (!tk) throw new Error('로그인 정보를 찾지 못했어요');
+    var headers = { 'apikey': CONFIG.SUPABASE_ANON, 'Content-Type': 'application/json' };
+    if (tk) headers['Authorization'] = 'Bearer ' + tk;
     return fetch(WINDOW_URL, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + tk, 'apikey': CONFIG.SUPABASE_ANON, 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(payload)
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (o) {
@@ -2280,7 +2285,7 @@ function saveJsonFile() {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');                   // §9.2 window.open 금지 → <a download>
   a.href = url;
-  a.download = '이상기체_' + (state.student.sid || 'anon') + '_' + (state.student.name || '이름없음') + '_' + fileStamp() + '.json';
+  a.download = '이상기체_' + (state.student.klass ? state.student.klass + '_' : '') + (state.student.sid || 'anon') + '_' + (state.student.name || '이름없음') + '_' + fileStamp() + '.json';
   document.body.appendChild(a); a.click();
   setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
   return a.download;
@@ -2312,14 +2317,20 @@ function freshSiteToken() {
   return Promise.resolve(siteToken());
 }
 /* 결과를 선생님 드라이브로 보낸다(학교›년도›학기›과목›분반›실험명 / 학번_이름.json).
-   다시 눌러 보내면 같은 파일을 덮어쓴다. */
+   다시 눌러 보내면 같은 파일을 덮어쓴다.
+   로그인 토큰이 있으면 계정 기준(사이트 안), 없으면 입력한 이름·학번·분반 기준(단독 페이지). */
 function sendResult() {
   return freshSiteToken().then(function (tk) {
-    if (!tk) throw new Error('로그인 정보를 찾지 못했어요');
+    var headers = { 'apikey': CONFIG.SUPABASE_ANON, 'Content-Type': 'application/json' };
+    if (tk) headers['Authorization'] = 'Bearer ' + tk;
     return fetch(SUBMIT_URL, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + tk, 'apikey': CONFIG.SUPABASE_ANON, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject_id: CONFIG.SUBJECT_ID, title: CONFIG.EXPERIMENT_TITLE, payload: state })
+      headers: headers,
+      body: JSON.stringify({
+        subject_id: CONFIG.SUBJECT_ID, title: CONFIG.EXPERIMENT_TITLE,
+        student: { sid: state.student.sid, name: state.student.name, klass: state.student.klass },
+        payload: state
+      })
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (o) {
         if (!r.ok) { var err = new Error(o.error || ('전송 실패 ' + r.status)); err.closeAt = o.close_at || null; throw err; }
@@ -2362,6 +2373,12 @@ function submitIntro(btn) {
     state.intro.started = true;
     state.intro.submittedAt = new Date().toISOString();
     save(true); proceed(1);
+    return;
+  }
+  if (!S && !(tx(state.student.sid) && tx(state.student.name) && tx(state.student.klass))) {
+    paintLock(1);
+    var mb = $('#manualBox');
+    if (mb) mb.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
     return;
   }
   if (!tx(state.intro.conditions)) {
@@ -2440,17 +2457,18 @@ function doPrint() {
 /* ===================== §3.2 수동 학번 입력·이관 ===================== */
 function applyManual() {
   var name = tx($('#mName').value), sid = tx($('#mSid').value);
+  var klass = $('#mKlass') ? tx($('#mKlass').value) : '';
   var msg = $('#manualMsg');
   var show = function (t, ok) { msg.className = 'lockmsg show' + (ok ? ' ok' : ''); msg.textContent = t; };
   if (!sid) {
-    state.student.name = name; save(true);
+    state.student.name = name; state.student.klass = klass; save(true);
     $('#whochip').textContent = (state.student.sid || '학번') + ' · ' + (name || '이름');
     show('이름을 저장했어요. 학번도 입력하면 학번별로 저장돼요.', true);
     return;
   }
   var target = KEY_PREFIX + sid;
   if (target === getActiveKeyName()) {
-    state.student.name = name; state.student.sid = sid; save(true);
+    state.student.name = name; state.student.sid = sid; state.student.klass = klass; save(true);
     $('#whochip').textContent = sid + ' · ' + (name || '이름');
     show('저장했어요.', true); return;
   }
@@ -2458,16 +2476,16 @@ function applyManual() {
   if (res.broken) { backup(target, res.raw); res = { empty: true }; }
   if (res.empty) {
     // ② 대상이 비었음 — 순서 고정: 메모리 갱신 → 대상 저장 → 재확인 → 활성 키 교체 → _anon 삭제
-    var prevName = state.student.name, prevSid = state.student.sid;
-    state.student.name = name; state.student.sid = sid; state.student.fromSite = false;
+    var prevName = state.student.name, prevSid = state.student.sid, prevKlass = state.student.klass;
+    state.student.name = name; state.student.sid = sid; state.student.klass = klass; state.student.fromSite = false;
     state.updatedAt = new Date().toISOString(); state.unlockedStep = unlocked;
     try { localStorage.setItem(target, JSON.stringify(state)); } catch (e) {
-      state.student.name = prevName; state.student.sid = prevSid;
+      state.student.name = prevName; state.student.sid = prevSid; state.student.klass = prevKlass;
       show('저장에 실패했어요. 잠시 뒤 다시 시도해 주세요.'); return;
     }
     var back = readKey(target);
     if (!back.data) {
-      state.student.name = prevName; state.student.sid = prevSid;
+      state.student.name = prevName; state.student.sid = prevSid; state.student.klass = prevKlass;
       show('저장 확인에 실패했어요. 다시 시도해 주세요.'); return;
     }
     var oldKey = getActiveKeyName();
@@ -2483,13 +2501,14 @@ function applyManual() {
     state = migrate(res.data);
     state.student.name = name || state.student.name;
     state.student.sid = sid;
+    state.student.klass = klass || state.student.klass;
     setActiveKeyName(target);                              // _anon 은 삭제하지 않고 그대로 둠
     unlocked = recomputeUnlocked();
     hydrate(); save(true);
     show('저장된 데이터를 불러왔어요. (이전 화면의 내용은 버려졌어요)', true);
   } else {
     var fresh = defaultState();
-    fresh.student.name = name; fresh.student.sid = sid; fresh.student.fromSite = false;
+    fresh.student.name = name; fresh.student.sid = sid; fresh.student.klass = klass; fresh.student.fromSite = false;
     state = fresh;
     setActiveKeyName(target);
     unlocked = 1; hydrate(); save(true);
@@ -2704,6 +2723,7 @@ function init() {
   }
   if ($('#mName')) $('#mName').value = state.student.name || '';
   if ($('#mSid')) $('#mSid').value = state.student.sid || '';
+  if ($('#mKlass')) $('#mKlass').value = state.student.klass || '';
 
   // 시뮬레이터 생성
   $$('.simblock').forEach(function (el) { var b = buildBlock(el); if (io) io.observe(el); });
