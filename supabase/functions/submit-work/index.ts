@@ -61,6 +61,16 @@ async function uploadDrive(token: string, folderId: string, filename: string, by
   const ud = await ur.json(); if (!ur.ok) throw new Error('drive upload failed'); return { id: ud.id, link: ud.webViewLink }
 }
 
+// 새 스키마는 학생↔auth 연결을 student_identities 로 분리했다(students.auth_user_id 없음).
+async function getStudent(admin: any, user: any) {
+  const { data: ident } = await admin.from('student_identities')
+    .select('student_id').eq('auth_user_id', user.id).is('disabled_at', null).maybeSingle()
+  if (!ident) return null
+  const { data: st } = await admin.from('students')
+    .select('id, name, student_number, is_active').eq('id', ident.student_id).maybeSingle()
+  return st
+}
+
 // 지금 제출이 열려 있는지.
 // ① 실험 페이지에서 정한 마감 시각이 있으면 그것만 본다(보강·결석생용 임시 연장).
 // ② 없으면 분반 시간표(class_periods × school_periods)를 보고 수업 시간에만 연다.
@@ -158,7 +168,7 @@ Deno.serve(async (req) => {
 
     // ---------- 학생: 폼 응답 제출/수정 ----------
     if (op === 'submit') {
-      const { data: student } = await admin.from('students').select('id, name, student_number, is_active').eq('auth_user_id', user.id).maybeSingle()
+      const student = await getStudent(admin, user)
       if (!student) return json({ error: '학생만 제출할 수 있습니다.' }, 403)
       if (student.is_active === false) return json({ error: '비활성(자퇴) 계정입니다.' }, 403)
       const body = await req.json().catch(() => ({}))
@@ -186,7 +196,7 @@ Deno.serve(async (req) => {
     // 구글 드라이브 연결 시: 선생님 드라이브(학교›년도›학기›과목›분반›과제명)에
     // '학번_이름_항목.ext'로 저장하고 { drive_id }를 반환. 미연결·실패 시 기존 버킷 폴백.
     if (op === 'upload-file') {
-      const { data: student } = await admin.from('students').select('id, name, student_number, is_active').eq('auth_user_id', user.id).maybeSingle()
+      const student = await getStudent(admin, user)
       if (!student) return json({ error: '학생만 업로드할 수 있습니다.' }, 403)
       if (student.is_active === false) return json({ error: '비활성(자퇴) 계정입니다.' }, 403)
       const assignmentId = u.searchParams.get('assignment_id')
@@ -246,7 +256,7 @@ Deno.serve(async (req) => {
         if (error) return json({ error: error.message }, 400)
         return json({ ok: true, close_at: closeAt ? closeAt.toISOString() : null })
       }
-      const { data: st } = await admin.from('students').select('id').eq('auth_user_id', user.id).maybeSingle()
+      const st = await getStudent(admin, user)
       const cls = st ? await resolveClass(admin, st.id, subjectId) : null
       const g = await submitGate(admin, subjectId, title, cls?.classId || null)
       return json({ ok: true, close_at: g.close_at, open: g.open, until: g.until || null, why: g.why || null })
@@ -256,7 +266,7 @@ Deno.serve(async (req) => {
     // 자립형 실험 HTML 이 직접 부른다. 제출 과제(assignment) 없이 과목·분반만으로
     // 학교›년도›학기›과목›분반›<실험명> 에 '학번_이름.json' 으로 저장(같은 이름이면 내용 교체 = 재제출).
     if (op === 'experiment') {
-      const { data: student } = await admin.from('students').select('id, name, student_number, is_active').eq('auth_user_id', user.id).maybeSingle()
+      const student = await getStudent(admin, user)
       if (!student) return json({ error: '학생 계정으로 로그인해야 제출할 수 있습니다.' }, 403)
       if (student.is_active === false) return json({ error: '비활성(자퇴) 계정입니다.' }, 403)
       const body = await req.json().catch(() => ({}))
@@ -293,7 +303,7 @@ Deno.serve(async (req) => {
       if (!path) return json({ error: 'path가 필요합니다.' }, 400)
       let allowed = await checkAdmin(admin, user)
       if (!allowed && assignmentId) {
-        const { data: st } = await admin.from('students').select('id').eq('auth_user_id', user.id).maybeSingle()
+        const st = await getStudent(admin, user)
         if (st) {
           const { data: mine } = await admin.from('submissions').select('answers').eq('assignment_id', assignmentId).eq('student_id', st.id).maybeSingle()
           if (mine) allowed = collectPaths(mine.answers).includes(path)

@@ -7,17 +7,11 @@ const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-cron-secret',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 function json(o: unknown, status = 200) { return new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json' } }) }
 
-function isClosed(asg: any): boolean {
-  const now = Date.now()
-  if (asg.due_at) return new Date(asg.due_at).getTime() < now
-  if (asg.due_date) return new Date(asg.due_date + 'T23:59:59.999+09:00').getTime() < now
-  return false
-}
 function kst(iso: string | null): string {
   if (!iso) return ''
   try { return new Date(iso).toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).slice(0, 16) } catch { return '' }
@@ -79,7 +73,10 @@ async function uploadDrive(token: string, folderId: string, filename: string, by
 }
 
 async function signFileUrl(admin: any, path: string): Promise<string> {
-  const { data } = await admin.storage.from('submissions').createSignedUrl(path, 31536000)
+  // ponytail: 구 버전은 31536000초(1년)짜리 링크를 XLSX 셀에 영구히 박아 넣었다.
+  // restore-plan-v2 Q4 가 최대 300초로 못박은 항목이라 5분으로 줄인다. 내보낸 파일의
+  // 링크는 그만큼 빨리 죽으므로, 오래된 시트에서는 사이트에서 다시 받아야 한다.
+  const { data } = await admin.storage.from('submissions').createSignedUrl(path, 300)
   return data?.signedUrl || ''
 }
 
@@ -309,24 +306,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
     const admin = createClient(url, service)
-    const cronSecret = req.headers.get('x-cron-secret') || ''
 
-    if (cronSecret) {
-      const { data: cfg } = await admin.from('app_config').select('archive_cron_secret').eq('id', 1).maybeSingle()
-      if (!cfg?.archive_cron_secret || cronSecret !== cfg.archive_cron_secret) return json({ error: 'invalid cron secret' }, 403)
-      const { data: cands } = await admin.from('submission_assignments').select('id, due_at, due_date, export_status').eq('is_active', true).neq('export_status', 'done')
-      const due = (cands || []).filter((a: any) => isClosed(a))
-      const summary: any[] = []
-      for (const a of due) {
-        await admin.from('submission_assignments').update({ export_status: 'exporting' }).eq('id', a.id)
-        try {
-          const r = await exportAssignment(admin, a.id)
-          if (r.ok) { await admin.from('submission_assignments').update({ export_status: 'done', exported_at: new Date().toISOString(), export_error: '' }).eq('id', a.id); summary.push({ id: a.id, ok: true, classes: r.results?.length || 0 }) }
-          else { await admin.from('submission_assignments').update({ export_status: 'error', export_error: r.error || '' }).eq('id', a.id); summary.push({ id: a.id, ok: false, error: r.error }) }
-        } catch (e) { await admin.from('submission_assignments').update({ export_status: 'error', export_error: String(e) }).eq('id', a.id); summary.push({ id: a.id, ok: false, error: String(e) }) }
-      }
-      return json({ ok: true, processed: summary.length, summary })
-    }
+    // 구 버전에는 x-cron-secret 헤더로 도는 자동 일괄 내보내기가 있었다.
+    // 비밀값을 app_config 테이블에 두는 구조였는데 그 테이블을 복원하지 않기로 했고
+    // (restore-plan-v2 Q2), 교사가 직접 내보내는 지금은 필요도 없어 제거했다.
 
     const authHeader = req.headers.get('Authorization') || ''
     const caller = createClient(url, anon, { global: { headers: { Authorization: authHeader } } })

@@ -96,28 +96,21 @@
 
   // ---------- 스토리지 업로드/삭제 (Edge Function storage-admin 경유) ----------
   // storage RLS 컨텍스트에서 관리자 판정(is_admin 등)이 신뢰 불가(auth.uid는 오지만 함수가 false)라,
-  // 서비스롤 Edge Function 이 관리자 검증 후 업로드/삭제(RLS 우회). manage-students 와 같은 패턴.
-  async function callStorageAdmin(qs, body, contentType) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const headers = {
-      'Authorization': `Bearer ${(session && session.access_token) || ''}`,
-      'apikey': SUPABASE_KEY,
-    };
-    if (contentType) headers['Content-Type'] = contentType;
-    const res = await fetch(`${FUNCTIONS_URL}/storage-admin?${qs}`, { method: 'POST', headers, body });
-    const out = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(out.error || `요청 실패 (${res.status})`);
-    return out;
-  }
-
+  // storage-admin Edge Function 은 폐기 때 소스까지 소실됐다. 되살리는 대신 storage.objects
+  // 정책으로 열었다 — is_admin() 이 Storage RLS 안에서 정상 동작하는 것을 실측 확인했다
+  // (관리자 업로드/삭제 200, 학생 업로드 400). 그래서 클라이언트가 직접 올린다.
   async function uploadToBucket(bucket, path, file) {
-    const qs = `op=upload&bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}`;
-    return callStorageAdmin(qs, file, file.type || 'application/octet-stream');
+    const { error } = await supabase.storage.from(bucket).upload(path, file, {
+      contentType: file.type || 'application/octet-stream',
+      upsert: true,
+    });
+    if (error) throw new Error(error.message || '업로드에 실패했습니다.');
+    return { path };
   }
 
   async function removeFromBucket(bucket, paths) {
-    const qs = `op=remove&bucket=${encodeURIComponent(bucket)}&paths=${encodeURIComponent((paths || []).join(','))}`;
-    try { await callStorageAdmin(qs, null, null); return true; } catch (_e) { return false; }
+    const { error } = await supabase.storage.from(bucket).remove(paths || []);
+    return !error;
   }
 
   // manage-students Edge Function 은 폐기 때 소스까지 소실됐다. 하는 일이 전부 DB 조작이라
