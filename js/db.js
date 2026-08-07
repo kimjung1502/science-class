@@ -65,9 +65,13 @@
   async function currentStudent() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    // 새 스키마는 auth 연결을 student_identities 로 분리했다. RLS students_self_read 가
-    // current_student_id() 로 자기 행만 돌려주므로 여기서 따로 거를 필요가 없다.
-    const { data } = await supabase.from('students').select('*').maybeSingle();
+    // 새 스키마는 auth 연결을 student_identities 로 분리했다.
+    // 교사는 RLS students_admin_read 로 전체 학생을 보므로 select 결과만으로 본인을
+    // 판정하면 안 된다(학생이 1명일 때 교사가 그 학생으로 잡힌다). 학생 계정인지는
+    // current_student_id() 로만 가른다 — 교사면 null 이다.
+    const { data: sid } = await supabase.rpc('current_student_id');
+    if (!sid) return null;
+    const { data } = await supabase.from('students').select('*').eq('id', sid).maybeSingle();
     return data;
   }
 
