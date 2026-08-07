@@ -4,10 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>스펙트럼 관찰 실험</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- 외부 폰트(jsDelivr·Google Fonts) 제거: 불러오면 학생 IP가 그 서버로 전송된다.
+     시스템에 있는 폰트만 사용해 파일 하나로 완결되게 한다. -->
 <style>
   :root{
     --bg:#FBFAF6; --surface:#ffffff; --surface-2:#F4F2E9; --line:#E5E0D0;
@@ -181,7 +179,6 @@
     <div class="topmeta">
       <span class="step" id="stepnow">STEP 01</span>
       <span id="steplabel">도입 · 안전</span>
-      <span class="chip" id="whochip">학번 · 이름</span>
     </div>
   </div>
 
@@ -494,37 +491,24 @@
   <div class="lightbox" id="lightbox"><span class="x" id="lbx">×</span><img id="lbimg" alt="확대 사진"></div>
 
 <script>
-  const HINT_PW="1234";
-  const REQUIRE_PHOTOS=!(window.__SITE_STUDENT__&&window.__SITE_STUDENT__.isAdmin); // 학생은 사진 필수 · 교사·관리자 미리보기는 사진 없이도 ④ 통과
+  /* ── 공개 배포판(2026-08) ────────────────────────────────────────
+     원본 사본에서 개인정보와 네트워크 전송을 걷어냈다. 원본은 그대로 있다.
+     제거: 이름·학번 자동 주입, 로그인 안내, AI 검수(Gemini) 전송, 외부 폰트.
+     사진은 브라우저 안에서 미리보기만 하고 어디에도 저장·전송되지 않는다.
+     ──────────────────────────────────────────────────────────── */
+  const REQUIRE_PHOTOS=true;          // 사진은 계속 요구하되 검사는 로컬에서만
   const TOTAL=6;
-  // ④ 제출물이 이 실험과 무관한(장난) 사진·글인지 Claude로 가볍게 확인하는 서버 엔드포인트.
-  // 공개(publishable) 키라 그대로 노출해도 안전 — 실제 채점 로직·API 키는 서버(Edge Function)에만 있음.
-  const AI_CHECK_URL="https://dnyocyknmcmxglgkjdfx.supabase.co/functions/v1/check-experiment-response";
-  const AI_CHECK_APIKEY="sb_publishable_W8MIkrTVrQAskWLrpZaPNw_f6eRhWj1";
-  // 교사·관리자 계정으로 미리보기할 때는 아무 사진·글로 빠르게 넘겨볼 수 있게 AI 확인을 건너뜀.
-  const AI_CHECK_ENABLED=!(window.__SITE_STUDENT__&&window.__SITE_STUDENT__.isAdmin);
-  const state={name:"",sid:"",unlocked:1,pred:{sun:"",bulb:""},slitOk:false,photos:{slitWide:false,slitNarrow:false,bulb:false,sun:false}};
+  const state={unlocked:1,pred:{sun:"",bulb:""},slitOk:false,photos:{slitWide:false,slitNarrow:false,bulb:false,sun:false}};
   const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
-  const railfill=$("#railfill"),stepnow=$("#stepnow"),steplabel=$("#steplabel"),whochip=$("#whochip");
+  const railfill=$("#railfill"),stepnow=$("#stepnow"),steplabel=$("#steplabel");
   const LABELS={1:"도입 · 안전",2:"스펙트럼 복습",3:"예상",4:"관찰 · 기록",5:"설명",6:"정리 · 평가"};
   function setProgress(n){state.unlocked=Math.max(state.unlocked,n);railfill.style.width=(state.unlocked/TOTAL*100)+"%";stepnow.textContent="STEP "+String(n).padStart(2,"0");steplabel.textContent=LABELS[n]||"";}
   function reveal(id,step){const el=$(id);el.classList.remove("hidden");setProgress(step);el.scrollIntoView({behavior:"smooth",block:"start"});}
 
-  // ---- Stage 1 : 이름·학번은 사이트 로그인 정보를 그대로 사용(수동 입력창 없음) ----
+  // ---- Stage 1 : 로그인 없음. 학생을 식별하지 않는다 ----
   const startBtn=$("#startBtn"), wholine=$("#wholine");
-  (function(){
-    const site = window.__SITE_STUDENT__ || null;
-    state.name = (site && site.name) || "";
-    state.sid = (site && site.sid) || "";
-    whochip.textContent = (state.sid||"학번")+" · "+(state.name||"이름");
-    if (!site) {
-      wholine.textContent = "⚠️ 로그인 정보를 확인할 수 없어요 — 수업 사이트를 통해 들어와 주세요.";
-    } else if (site.isAdmin) {
-      wholine.textContent = "🧑‍🏫 교사 미리보기 모드예요(AI 확인 건너뜀). 학생 계정으로 열면 이름·학번이 자동으로 채워지고 AI 확인도 켜져요.";
-    } else {
-      wholine.textContent = "🙋 " + (site.sid||"학번 없음") + " · " + (site.name||"이름 없음") + " 로 로그인되어 있어요";
-    }
-  })();
+  wholine.innerHTML = "ℹ️ 이 페이지는 <b>이름·학번을 묻지 않아요.</b> 올린 사진은 이 브라우저 안에서만 보이고 "
+    + "어디에도 저장되거나 전송되지 않아요. 사진에는 <b>스펙트럼 띠만</b> 담기게 찍어 주세요(얼굴·명찰 X).";
   startBtn.addEventListener("click",()=>{reveal("#s2",2);setTimeout(()=>$("#s2 input[type=text]").focus(),400);});
 
   // ---- Stage 2 ----
@@ -568,50 +552,10 @@
 
   function checkNext4(){const p=state.photos;const slitPhotos=p.slitWide&&p.slitNarrow;const obsPhotos=p.bulb&&p.sun;const photosOk=REQUIRE_PHOTOS?(slitPhotos&&obsPhotos):true;const bulbOk=$("#bulbType").value==="연속";const sunAns=document.querySelector('input[name=sunDark]:checked');const common=$("#obsCommon").value.trim();const diff=$("#obsDiff").value.trim();const ok=photosOk&&state.slitOk&&(!REQUIRE_PHOTOS||slitPhotos)&&bulbOk&&sunAns&&common&&diff;$("#next4").disabled=!ok;$("#lock4").style.display=ok?"none":"block";}
 
-  // ---- ④ 통과 전, 사진·서술형이 이 실험과 무관한지 Claude로 1차 확인 ----
-  const AI_ITEM_LABEL={slitWide:"슬릿 넓게 사진",slitNarrow:"슬릿 좁게 사진",bulb:"백열등 사진",sun:"태양 사진",obsCommon:"공통점",obsDiff:"차이점"};
-  function dataUrlParts(u){const m=/^data:([^;]+);base64,(.*)$/.exec(u||"");return m?{mediaType:m[1],base64:m[2]}:null;}
-  function clearAiMarks(){$$(".slot").forEach(s=>s.classList.remove("ai-bad"));$("#obsCommon").classList.remove("ai-bad");$("#obsDiff").classList.remove("ai-bad");$("#aiCheck4").style.display="none";}
-  function markAiBad(key){const slotEl=document.querySelector('.slot[data-slot="'+key+'"]');if(slotEl){slotEl.classList.add("ai-bad");return;}const ta=$("#"+key);if(ta)ta.classList.add("ai-bad");}
-  async function aiCheckStage4(){
-    const items=[];
-    [
-      {slot:"slitWide",expect:"간이 분광기 슬릿을 '넓게' 두고 빛(광원)을 촬영해 스펙트럼 띠가 보이는 사진"},
-      {slot:"slitNarrow",expect:"간이 분광기 슬릿을 '좁게' 두고 빛을 촬영해 스펙트럼 선이 더 또렷하게 보이는 사진"},
-      {slot:"bulb",expect:"백열등 빛을 분광기로 촬영한 스펙트럼 사진"},
-      {slot:"sun",expect:"태양 빛을 분광기로 촬영한 스펙트럼 사진(태양을 직접 찍은 사진이 아니라 분광된 빛의 사진)"},
-    ].forEach(d=>{
-      const img=document.querySelector('.slot[data-slot="'+d.slot+'"] .thumb');
-      const parts=img&&img.src?dataUrlParts(img.src):null;
-      if(parts)items.push({key:d.slot,kind:"photo",imageBase64:parts.base64,mediaType:parts.mediaType,expect:d.expect});
-    });
-    items.push({key:"obsCommon",kind:"text",text:$("#obsCommon").value,expect:"백열등과 태양의 스펙트럼을 관찰한 공통점 서술"});
-    items.push({key:"obsDiff",kind:"text",text:$("#obsDiff").value,expect:"백열등과 태양의 스펙트럼을 관찰한 차이점 서술"});
-    const res=await fetch(AI_CHECK_URL,{method:"POST",headers:{"content-type":"application/json","apikey":AI_CHECK_APIKEY},body:JSON.stringify({items})});
-    if(!res.ok)throw new Error("AI 확인 요청 실패 ("+res.status+")");
-    const data=await res.json();
-    return Array.isArray(data.results)?data.results:[];
-  }
-  $("#next4").addEventListener("click",async()=>{
-    const btn=$("#next4"),statusEl=$("#aiCheck4"),old=btn.textContent;
-    if(!AI_CHECK_ENABLED){$("#num4").classList.add("done");reveal("#s5",5);return;}
-    btn.disabled=true;btn.textContent="🤖 AI가 확인하고 있어요…";clearAiMarks();
-    try{
-      const results=await aiCheckStage4();
-      const bad=results.filter(r=>r&&r.ok===false);
-      if(bad.length){
-        statusEl.style.display="block";statusEl.style.color="var(--bad)";
-        statusEl.textContent="🤖 다시 확인해줘 — "+bad.map(b=>(AI_ITEM_LABEL[b.key]||b.key)+(b.reason?"("+b.reason+")":"")).join(", ");
-        bad.forEach(b=>markAiBad(b.key));
-        btn.textContent=old;btn.disabled=false;
-        return;
-      }
-      $("#num4").classList.add("done");reveal("#s5",5);btn.textContent=old;
-    }catch(e){
-      console.warn("AI 확인을 건너뜁니다:",e);
-      $("#num4").classList.add("done");reveal("#s5",5);btn.textContent=old;
-    }finally{btn.disabled=false;}
-  });
+  // ---- ④ 통과: AI 검수 제거. 로컬 조건(사진 4장·서술 2개·선택 정답)만 확인한다 ----
+  // 원본은 사진과 서술을 Google Gemini 로 보내 판정했다. 해당 API 약관이 18세 미만 대상
+  // 서비스 사용을 금지하므로 삭제했다. 되살리지 말 것.
+  $("#next4").addEventListener("click",()=>{ $("#num4").classList.add("done"); reveal("#s5",5); });
 
   // ---- Stage 5 : 에너지 준위 · 전자 전이 ----
   (function(){

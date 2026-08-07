@@ -1,8 +1,8 @@
 // 공용 Supabase 클라이언트 및 헬퍼 (일반 스크립트 — file:// 직접 실행 지원)
 // 이 파일보다 먼저 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> 를 로드해야 함
 (function () {
-  const SUPABASE_URL = 'https://razxfewnttqbqaxgypju.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_I4a3qah7BkbvUr_NS1dHfA_fURwDbw9';
+  const SUPABASE_URL = 'https://dnyocyknmcmxglgkjdfx.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_W8MIkrTVrQAskWLrpZaPNw_f6eRhWj1';
   const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 
   // ---------- 외부 리소스(CDN) 로드 실패 안내 ----------
@@ -65,7 +65,9 @@
   async function currentStudent() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const { data } = await supabase.from('students').select('*').eq('auth_user_id', user.id).maybeSingle();
+    // 새 스키마는 auth 연결을 student_identities 로 분리했다. RLS students_self_read 가
+    // current_student_id() 로 자기 행만 돌려주므로 여기서 따로 거를 필요가 없다.
+    const { data } = await supabase.from('students').select('*').maybeSingle();
     return data;
   }
 
