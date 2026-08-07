@@ -835,10 +835,11 @@
   }
 
   function renderClasses(classes, subjects, links) {
-    const subjName = (id) => subjects.find((s) => s.id === id)?.name || '';
+    // 칩은 좁아서 전체 과목명이 잘린다. 축약(통과2·물질·화반)으로 보여 주고 원래 이름은 tooltip.
+    const subjOf = (id) => subjects.find((s) => s.id === id) || null;
     const card = (c) => {
-      const subs = links.filter((l) => l.class_id === c.id).map((l) => subjName(l.subject_id)).filter(Boolean);
-      const chips = subs.length ? subs.map((n) => `<span class="text-caption bg-primary-fixed text-primary px-2 py-0.5 rounded-full">${esc(n)}</span>`).join(' ') : '<span class="text-caption text-on-surface-variant">배정된 과목 없음</span>';
+      const subs = links.filter((l) => l.class_id === c.id).map((l) => subjOf(l.subject_id)).filter(Boolean);
+      const chips = subs.length ? subs.map((s) => `<span class="text-caption bg-primary-fixed text-primary px-2 py-0.5 rounded-full" title="${esc(s.name)}">${esc(s.short_name || s.name)}</span>`).join(' ') : '<span class="text-caption text-on-surface-variant">배정된 과목 없음</span>';
       const h = !!c.hidden_at;
       const delDate = h ? ymd(new Date(new Date(c.hidden_at).setMonth(new Date(c.hidden_at).getMonth() + 6))) : '';
       const term = (c.acad_year && c.semester) ? `${c.acad_year}학년도 ${c.semester}학기` : '';
