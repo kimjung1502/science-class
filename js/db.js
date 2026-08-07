@@ -120,20 +120,12 @@
     try { await callStorageAdmin(qs, null, null); return true; } catch (_e) { return false; }
   }
 
+  // manage-students Edge Function 은 폐기 때 소스까지 소실됐다. 하는 일이 전부 DB 조작이라
+  // 같은 payload 를 받는 manage_students RPC 로 대체했다(호출부는 그대로 쓴다).
   async function callManageStudents(payload) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${FUNCTIONS_URL}/manage-students`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token || ''}`,
-        'apikey': SUPABASE_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
-    const out = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(out.error || '요청에 실패했습니다.');
-    return out;
+    const { data, error } = await supabase.rpc('manage_students', { p: payload });
+    if (error) throw new Error(error.message || '요청에 실패했습니다.');
+    return data || {};
   }
 
   // 자료 유형 정의 (아이콘·색상·액션)
