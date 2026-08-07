@@ -161,13 +161,15 @@
       return `<span class="font-mono text-[10px] font-bold text-ink2 bg-paper2 border border-faint px-1.5 py-0.5 rounded shrink-0">~${fmtDT(m.visible_until)}</span>`;
     return '';
   }
-  // 저장소에 함께 배포되는 실험 HTML은 업로드 당시의 스토리지 사본보다 최신 배포본을 우선한다.
-  // 앞으로 이 파일을 수정해 GitHub Pages에 배포하면 관리자 페이지에서 다시 업로드하지 않아도 반영된다.
+  // 저장소에 함께 배포되는 실험 HTML은 url 에 '실험 수업/…' 같은 상대 경로로 등록한다.
+  // 그러면 스토리지에 사본을 올리지 않아도 되고, 파일을 고쳐 배포하면 바로 반영된다.
+  // (예전에는 '이상 기체' 이름을 정규식으로 잡아 경로를 코드에 박아 뒀다. 실험이 늘 때마다
+  //  코드를 고쳐야 해서, 절대 URL 이 아니면 번들로 보는 방식으로 바꿨다.)
   function bundledHtmlUrl(m) {
     if (!m || m.type !== 'html') return '';
-    const key = [m.name, m.original_filename, m.url].filter(Boolean).join(' ');
-    if (!/(이상\s*기체|%EC%9D%B4%EC%83%81%EA%B8%B0%EC%B2%B4|ideal.?gas)/i.test(key)) return '';
-    return new URL('실험 수업/선택_물질과에너지/Ⅰ. 물질의 세가지 상태/1. 기체/이상기체_실험_페이지.html', window.location.href).href;
+    const u = String(m.url || '').trim();
+    if (!u || /^(https?:)?\/\//i.test(u)) return '';   // 빈 값·외부 절대 URL 은 번들이 아니다
+    return new URL(u, window.location.href).href;
   }
   function materialCard(m) {
     const t = MATERIAL_TYPES[m.type];
