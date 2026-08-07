@@ -825,11 +825,12 @@
       const h = !!c.hidden_at;
       const delDate = h ? ymd(new Date(new Date(c.hidden_at).setMonth(new Date(c.hidden_at).getMonth() + 6))) : '';
       const term = (c.acad_year && c.semester) ? `${c.acad_year}학년도 ${c.semester}학기` : '';
+      const meta = [c.grade ? `${c.grade}학년` : '', term, c.room ? `교실 ${c.room}` : ''].filter(Boolean).join(' · ');
       const hideDate = (!h && c.acad_year && c.semester) ? autoHideDate(c.acad_year, c.semester) : '';
       return `<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center gap-3">
         <div class="p-2 rounded-lg bg-surface-container text-primary shrink-0"><span class="material-symbols-outlined">${h ? 'visibility_off' : 'group'}</span></div>
         <div class="flex-1 min-w-0">
-          <p class="text-label-md font-bold text-on-surface truncate">${esc(c.name)}${term ? `<span class="ml-2 text-caption font-normal text-on-surface-variant">${term}</span>` : ''}</p>
+          <p class="text-label-md font-bold text-on-surface truncate">${esc(c.name)}${meta ? `<span class="ml-2 text-caption font-normal text-on-surface-variant">${esc(meta)}</span>` : ''}</p>
           <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
           ${h ? `<p class="text-caption text-error mt-1">${delDate} 자동 삭제 예정</p>` : ''}
           ${hideDate ? `<p class="text-caption text-on-surface-variant mt-1">${hideDate} 자동 숨김 예정 (그 뒤 6개월이면 삭제)</p>` : ''}
@@ -866,10 +867,20 @@
     const assigned = new Set(links.filter((l) => cls && l.class_id === cls.id).map((l) => l.subject_id));
     const nowTerm = currentTerm();
     const curSem = editing ? (cls.semester ?? '') : nowTerm.sem;   // 새로 만들 때는 지금 학기를 미리 골라 둔다
+    const curGrade = editing ? (cls.grade ?? '') : '';
     $('modal-title').textContent = editing ? '분반 수정' : '분반 추가';
     $('modal-form').innerHTML = `
-      <div><label class="text-label-md text-on-surface-variant">분반 이름 *</label>
-        <input name="class_name" type="text" required value="${editing ? esc(cls.name) : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학2 3반"></div>
+      <div><label class="text-label-md text-on-surface-variant">학년</label>
+        <select name="grade" id="cls-grade" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">
+          <option value="" ${!curGrade ? 'selected' : ''}>지정 안 함</option>
+          <option value="1" ${curGrade === 1 ? 'selected' : ''}>1학년 (학급 단위)</option>
+          <option value="2" ${curGrade === 2 ? 'selected' : ''}>2학년 (선택과목 분반)</option>
+          <option value="3" ${curGrade === 3 ? 'selected' : ''}>3학년 (선택과목 분반)</option>
+        </select></div>
+      <div><label class="text-label-md text-on-surface-variant" id="cls-name-label">분반 이름 *</label>
+        <input name="class_name" id="cls-name" type="text" required value="${editing ? esc(cls.name) : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학2 3반"></div>
+      <div id="cls-room-wrap" class="hidden"><label class="text-label-md text-on-surface-variant">수업 교실</label>
+        <input name="room" type="text" value="${editing ? esc(cls.room || '') : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 과학실 1"></div>
       <div class="grid grid-cols-2 gap-2">
         <div><label class="text-label-md text-on-surface-variant">학년도</label>
           <input name="acad_year" type="number" min="2000" max="2100" value="${editing ? (cls.acad_year ?? '') : nowTerm.year}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: ${nowTerm.year}"></div>
@@ -890,6 +901,16 @@
         <button type="submit" id="class-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">저장</button>
       </div>`;
     const form = $('modal-form');
+    // 학년에 따라 두 번째 칸의 뜻이 달라진다. 1학년은 학급(반), 2·3학년은 선택과목 분반 + 교실.
+    const syncGradeFields = () => {
+      const g = $('cls-grade').value;
+      $('cls-name-label').textContent = g === '1' ? '반 *' : (g ? '분반 *' : '분반 이름 *');
+      $('cls-name').placeholder = g === '1' ? '예: 1학년 3반' : (g ? '예: F' : '예: 통합과학2 3반');
+      $('cls-room-wrap').classList.toggle('hidden', g !== '2' && g !== '3');
+    };
+    $('cls-grade').addEventListener('change', syncGradeFields);
+    syncGradeFields();
+
     form.onsubmit = async (e) => {
       e.preventDefault();
       const btn = $('class-save'); btn.disabled = true; btn.textContent = '저장 중…';
@@ -903,12 +924,17 @@
         const term = (yearRaw && semRaw)
           ? { acad_year: parseInt(yearRaw, 10), semester: parseInt(semRaw, 10) }
           : { acad_year: null, semester: null };
+        const gradeRaw = String(fd.get('grade') || '').trim();
+        const grade = gradeRaw ? parseInt(gradeRaw, 10) : null;
+        // 교실은 선택과목 분반에서만 쓴다. 1학년이나 미지정으로 바꾸면 남은 값을 지운다.
+        const room = (grade === 2 || grade === 3) ? (String(fd.get('room') || '').trim() || null) : null;
+        const meta = { ...term, grade, room };
         let classId = cls?.id;
         if (editing) {
-          const { error } = await supabase.from('classes').update({ name, ...term }).eq('id', classId);
+          const { error } = await supabase.from('classes').update({ name, ...meta }).eq('id', classId);
           if (error) throw error;
         } else {
-          const { data, error } = await supabase.from('classes').insert({ name, ...term }).select('id').single();
+          const { data, error } = await supabase.from('classes').insert({ name, ...meta }).select('id').single();
           if (error) throw error;
           classId = data.id;
         }
