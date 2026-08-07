@@ -591,6 +591,18 @@
   async function driveSaveClient(clientId, clientSecret, pickerApiKey) {
     return callGoogleOAuth('op=saveclient', { client_id: clientId, client_secret: clientSecret, picker_api_key: pickerApiKey });
   }
+
+  // ---------- 외부 AI API 키 ----------
+  // 키 값은 어떤 경로로도 돌려받지 않는다. 상태는 등록 여부·꼬리 4자·저장 시각만 준다.
+  async function saveApiKey(provider, key) {
+    const { error } = await supabase.rpc('save_api_key', { p_provider: provider, p_key: key });
+    if (error) throw new Error(error.message);
+  }
+  async function apiKeyStatus() {
+    const { data, error } = await supabase.rpc('api_key_status');
+    if (error) throw new Error(error.message);
+    return data || {};
+  }
   // Picker용: 연결된 refresh_token으로 액세스 토큰 발급(+API키/appId 동봉). 관리자 전용.
   async function driveAccessToken() { return callGoogleOAuth('op=accesstoken'); }
   // Picker로 고른 파일을 "링크가 있는 모든 사용자 보기"로 공유(학생이 로그인 없이 보게)
@@ -804,7 +816,7 @@
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
-    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, driveShareAnyone,
+    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, driveShareAnyone,
     uploadMaterialToDrive, removeMaterialFile, driveProxyUrl, materialDriveName,
   };
 })();

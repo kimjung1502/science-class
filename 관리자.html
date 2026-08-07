@@ -73,6 +73,7 @@
       <button id="tab-students" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">학생 관리</button>
       <button id="tab-timetable" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">수업 시간표</button>
       <button id="tab-drive" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">드라이브</button>
+      <button id="tab-apikeys" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">API 키</button>
       <button id="tab-admins" class="tab hidden px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">관리자 관리</button>
     </div>
 
@@ -178,6 +179,17 @@
         <button id="drive-save-settings" class="mt-2 bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">폴더 설정 저장</button>
         <p class="text-caption text-on-surface-variant mt-1">학년도·학기는 제출 시점 날짜로 자동 계산합니다(3~7월 1학기, 8~12월 2학기, 1~2월은 전년도 2학기).</p>
       </div>
+    </div>
+
+    <!-- API 키 -->
+    <div id="apikeys-view" class="hidden space-y-md">
+      <h2 class="text-title-lg text-on-surface">API 키</h2>
+      <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-md text-caption text-on-surface-variant space-y-1">
+        <p><b class="text-on-surface">지금은 이 키를 쓰는 기능이 없습니다.</b> 나중에 붙일 때를 위해 보관만 합니다.</p>
+        <p>저장한 키는 화면으로 다시 내려보내지 않습니다(등록 여부와 끝 4자리만 표시). 학생·비로그인은 테이블도 함수도 열 수 없습니다.</p>
+        <p class="text-error"><b>학생에게 여는 기능에는 그대로 쓸 수 없습니다.</b> 세 곳 모두 약관상 미성년자 대상 서비스 이용을 제한합니다. 교사가 직접 쓰는 도구로만 사용하세요.</p>
+      </div>
+      <div id="apikeys-list" class="space-y-2"></div>
     </div>
 
     <!-- 관리자 관리 (소유자 전용) -->
@@ -286,11 +298,11 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260807e"></script>
+<script src="js/db.js?v=20260807f"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone,
-          driveStatus, driveAuthUrl, driveDisconnect, driveSaveSettings, driveSaveClient } = window.DB;
+          driveStatus, driveAuthUrl, driveDisconnect, driveSaveSettings, driveSaveClient, saveApiKey, apiKeyStatus, fmtDateTime } = window.DB;
 
   const $ = (id) => document.getElementById(id);
   const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2200); };
@@ -714,7 +726,7 @@
 
   // ---------------- 탭 전환 ----------------
   let isOwner = false;
-  const TABS = ['curriculum', 'classes', 'students', 'timetable', 'drive', 'admins'];
+  const TABS = ['curriculum', 'classes', 'students', 'timetable', 'drive', 'apikeys', 'admins'];
   function switchTab(which) {
     TABS.forEach((t) => {
       $(`${t}-view`).classList.toggle('hidden', t !== which);
@@ -725,9 +737,62 @@
     if (which === 'classes') loadClasses();
     if (which === 'timetable') loadTimetable();
     if (which === 'drive') loadDrive();
+    if (which === 'apikeys') loadApiKeys();
     if (which === 'admins') loadAdmins();
   }
   TABS.forEach((t) => $(`tab-${t}`).addEventListener('click', () => switchTab(t)));
+
+  // ---------------- API 키 ----------------
+  // 키는 저장만 하고 절대 되읽지 않는다. 상태는 등록 여부·끝 4자리·저장 시각뿐이다.
+  const AI_PROVIDERS = [
+    { id: 'gemini', label: 'Google Gemini', hint: 'AIza…' },
+    { id: 'claude', label: 'Anthropic Claude', hint: 'sk-ant-…' },
+    { id: 'openai', label: 'OpenAI (ChatGPT)', hint: 'sk-…' },
+  ];
+
+  async function loadApiKeys() {
+    $('apikeys-list').innerHTML = '<p class="text-caption text-on-surface-variant">불러오는 중…</p>';
+    let st = {};
+    try { st = await apiKeyStatus(); }
+    catch (e) { $('apikeys-list').innerHTML = `<p class="text-error">불러오지 못했습니다: ${esc(e.message)}</p>`; return; }
+
+    $('apikeys-list').innerHTML = AI_PROVIDERS.map((p) => {
+      const s = st[p.id];
+      const badge = s
+        ? `<span class="text-caption text-emerald-700 font-bold">등록됨 · 끝자리 ${esc(s.tail || '')}</span>`
+        : '<span class="text-caption text-on-surface-variant">없음</span>';
+      const when = s && s.updated_at ? `<span class="text-caption text-on-surface-variant ml-2">${fmtDateTime(s.updated_at)}</span>` : '';
+      return `<div class="rounded-xl border border-outline-variant p-md">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <p class="text-label-md font-bold text-on-surface">${esc(p.label)}</p>
+          <div>${badge}${when}</div>
+        </div>
+        <div class="mt-2 flex items-center gap-2 flex-wrap">
+          <input type="password" autocomplete="new-password" data-key="${p.id}" placeholder="${esc(p.hint)}"
+                 class="flex-1 min-w-[200px] rounded-lg border-outline-variant focus:border-primary focus:ring-primary">
+          <button data-save-key="${p.id}" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">저장</button>
+          ${s ? `<button data-del-key="${p.id}" class="border border-outline-variant px-md py-2 rounded-lg text-label-md hover:bg-surface-container">삭제</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    $('apikeys-list').querySelectorAll('[data-save-key]').forEach((btn) => btn.addEventListener('click', async () => {
+      const id = btn.dataset.saveKey;
+      const input = $('apikeys-list').querySelector(`[data-key="${id}"]`);
+      const v = input.value.trim();
+      if (!v) { alert('키를 넣어 주세요.'); return; }
+      btn.disabled = true;
+      try { await saveApiKey(id, v); input.value = ''; toast('저장했습니다.'); await loadApiKeys(); }
+      catch (e) { alert('저장 실패: ' + e.message); btn.disabled = false; }
+    }));
+    $('apikeys-list').querySelectorAll('[data-del-key]').forEach((btn) => btn.addEventListener('click', async () => {
+      const id = btn.dataset.delKey;
+      if (!confirm(`${id} 키를 지울까요?`)) return;
+      btn.disabled = true;
+      try { await saveApiKey(id, ''); toast('삭제했습니다.'); await loadApiKeys(); }
+      catch (e) { alert('삭제 실패: ' + e.message); btn.disabled = false; }
+    }));
+  }
 
   // ---------------- 구글 드라이브 ----------------
   // 자격증명은 화면에서 직접 넣는다. client_secret 은 저장 뒤 되돌려 받지 않고(status 는
