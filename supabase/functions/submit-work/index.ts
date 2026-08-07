@@ -86,7 +86,8 @@ async function submitGate(admin: any, subjectId: string, title: string, classId:
       : { open: true, close_at: closeAt, until: closeAt }
   }
   if (!classId) return { open: true, close_at: null }
-  const { data: slots } = await admin.from('class_periods').select('weekday, period').eq('class_id', classId)
+  // 시간표는 (분반 × 과목) 단위다. 과목을 안 걸면 다른 과목 시간에도 제출이 열린다.
+  const { data: slots } = await admin.from('class_periods').select('weekday, period').eq('class_id', classId).eq('subject_id', subjectId)
   if (!slots || !slots.length) return { open: true, close_at: null }
   const { data: periods } = await admin.from('school_periods').select('period, start_time, end_time')
   const pmap = new Map((periods || []).map((p: any) => [p.period, p]))

@@ -231,7 +231,7 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260807c"></script>
+<script src="js/db.js?v=20260807d"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone } = window.DB;
@@ -691,12 +691,15 @@
     .map((r) => WD[r.weekday - 1] + r.period).join(', ');
 
   async function loadTimetable() {
-    const [pRes, cRes, tRes] = await Promise.all([
+    const [pRes, cRes, tRes, sRes, lRes] = await Promise.all([
       supabase.from('school_periods').select('*').order('period'),
       supabase.from('classes').select('id, name').is('hidden_at', null).order('name'),
       supabase.from('class_periods').select('*'),
+      supabase.from('subjects').select('id, name').order('sort_order'),
+      supabase.from('class_subjects').select('*'),
     ]);
     const periods = pRes.data || [], classes = cRes.data || [], slots = tRes.data || [];
+    const subjects = sRes.data || [], links = lRes.data || [];
     const hhmm = (t) => (t ? String(t).slice(0, 5) : '');
     $('periods-list').innerHTML = Array.from({ length: PERIODS_SHOWN }, (_, i) => {
       const p = periods.find((x) => x.period === i + 1) || {};
@@ -707,13 +710,27 @@
         <input type="time" data-period="${i + 1}" data-k="end" value="${hhmm(p.end_time)}" class="flex-1 min-w-0 rounded-lg border-outline-variant text-body-md">
       </div>`;
     }).join('');
-    $('timetable-list').innerHTML = classes.map((c) => `<div class="flex items-center gap-2">
-        <span class="text-label-md text-on-surface truncate" style="flex:0 0 42%">${esc(c.name)}</span>
-        <input type="text" data-class="${c.id}" value="${esc(slotsText(slots.filter((s) => s.class_id === c.id)))}" placeholder="예: 화3, 목5"
+    // 한 분반이 여러 과목을 들으면 과목마다 요일·교시가 다르다. 그래서 분반×과목으로 한 줄씩.
+    const rows = [];
+    for (const c of classes) {
+      const subjIds = links.filter((l) => l.class_id === c.id).map((l) => l.subject_id);
+      if (!subjIds.length) {
+        rows.push(`<div class="text-caption text-on-surface-variant py-1">${esc(c.name)} — 배정된 과목이 없습니다. 분반 관리에서 과목을 먼저 배정하세요.</div>`);
+        continue;
+      }
+      for (const sid of subjIds) {
+        const sname = (subjects.find((s) => s.id === sid) || {}).name || '';
+        const mine = slots.filter((s) => s.class_id === c.id && s.subject_id === sid);
+        rows.push(`<div class="flex items-center gap-2">
+        <span class="text-label-md text-on-surface truncate" style="flex:0 0 42%">${esc(c.name)}<span class="text-caption text-on-surface-variant ml-1">${esc(sname)}</span></span>
+        <input type="text" data-class="${c.id}" data-subject="${sid}" value="${esc(slotsText(mine))}" placeholder="예: 화3, 목5"
                class="flex-1 min-w-0 rounded-lg border-outline-variant text-body-md">
-        <button data-save="${c.id}" class="bg-primary text-white px-3 py-2 rounded-lg text-label-md font-bold shrink-0">저장</button>
-      </div>`).join('') || '<p class="text-caption text-on-surface-variant">분반이 없습니다.</p>';
-    $('timetable-list').querySelectorAll('[data-save]').forEach((btn) => btn.addEventListener('click', () => saveClassSlots(btn.dataset.save, btn)));
+        <button data-save="${c.id}" data-subject="${sid}" class="bg-primary text-white px-3 py-2 rounded-lg text-label-md font-bold shrink-0">저장</button>
+      </div>`);
+      }
+    }
+    $('timetable-list').innerHTML = rows.join('') || '<p class="text-caption text-on-surface-variant">분반이 없습니다.</p>';
+    $('timetable-list').querySelectorAll('[data-save]').forEach((btn) => btn.addEventListener('click', () => saveClassSlots(btn.dataset.save, btn.dataset.subject, btn)));
   }
 
   // 1교시 시작·점심시간만 넣으면 나머지는 '50분 수업 + 10분 쉬는 시간'으로 채운다.
@@ -762,13 +779,13 @@
     toast('교시 시각을 저장했습니다.');
   });
 
-  async function saveClassSlots(classId, btn) {
-    const input = $('timetable-list').querySelector(`[data-class="${classId}"]`);
+  async function saveClassSlots(classId, subjectId, btn) {
+    const input = $('timetable-list').querySelector(`[data-class="${classId}"][data-subject="${subjectId}"]`);
     const slots = parseSlots(input.value);
     btn.disabled = true;
-    await supabase.from('class_periods').delete().eq('class_id', classId);
+    await supabase.from('class_periods').delete().eq('class_id', classId).eq('subject_id', subjectId);
     if (slots.length) {
-      const { error } = await supabase.from('class_periods').insert(slots.map((s) => ({ class_id: classId, weekday: s.weekday, period: s.period })));
+      const { error } = await supabase.from('class_periods').insert(slots.map((s) => ({ class_id: classId, subject_id: subjectId, weekday: s.weekday, period: s.period })));
       if (error) { alert('저장 실패: ' + error.message); btn.disabled = false; return; }
     }
     input.value = slotsText(slots);            // 알아들은 대로 되돌려 보여 준다
@@ -788,7 +805,7 @@
   async function loadClasses() {
     const [cRes, sRes, lRes] = await Promise.all([
       supabase.from('classes').select('*').order('name'),
-      supabase.from('subjects').select('id, name').order('sort_order'),
+      supabase.from('subjects').select('id, name, short_name').order('sort_order'),
       supabase.from('class_subjects').select('*'),
     ]);
     if (cRes.error) { $('classes-list').innerHTML = `<p class="text-error py-md">불러오기 실패: ${esc(cRes.error.message)}</p>`; return; }
@@ -877,10 +894,15 @@
           <option value="2" ${curGrade === 2 ? 'selected' : ''}>2학년 (선택과목 분반)</option>
           <option value="3" ${curGrade === 3 ? 'selected' : ''}>3학년 (선택과목 분반)</option>
         </select></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div id="cls-div-wrap" class="hidden"><label class="text-label-md text-on-surface-variant">분반 기호</label>
+          <input name="division" id="cls-division" type="text" value="${editing ? esc(cls.division || '') : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: F"></div>
+        <div id="cls-room-wrap" class="hidden"><label class="text-label-md text-on-surface-variant" id="cls-room-label">수업 교실</label>
+          <input name="room" id="cls-room" type="text" value="${editing ? esc(cls.room || '') : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 204"></div>
+      </div>
       <div><label class="text-label-md text-on-surface-variant" id="cls-name-label">분반 이름 *</label>
-        <input name="class_name" id="cls-name" type="text" required value="${editing ? esc(cls.name) : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학2 3반"></div>
-      <div id="cls-room-wrap" class="hidden"><label class="text-label-md text-on-surface-variant">수업 교실</label>
-        <input name="room" type="text" value="${editing ? esc(cls.room || '') : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 과학실 1"></div>
+        <input name="class_name" id="cls-name" type="text" required value="${editing ? esc(cls.name) : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학2 3반">
+        <p class="text-caption text-on-surface-variant mt-1" id="cls-name-hint"></p></div>
       <div class="grid grid-cols-2 gap-2">
         <div><label class="text-label-md text-on-surface-variant">학년도</label>
           <input name="acad_year" type="number" min="2000" max="2100" value="${editing ? (cls.acad_year ?? '') : nowTerm.year}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: ${nowTerm.year}"></div>
@@ -901,14 +923,44 @@
         <button type="submit" id="class-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">저장</button>
       </div>`;
     const form = $('modal-form');
-    // 학년에 따라 두 번째 칸의 뜻이 달라진다. 1학년은 학급(반), 2·3학년은 선택과목 분반 + 교실.
+    // 학년에 따라 받는 항목이 다르다.
+    //   1학년   = 학급 단위       → 교실(반)만.        이름 "통과2(109)"
+    //   2·3학년 = 선택과목 분반   → 기호 + 교실.       이름 "물질F(204)"
+    // 이름은 자동으로 조합해 주되, 한 번이라도 직접 고치면 더는 덮어쓰지 않는다.
+    let nameTouched = editing;   // 수정 중이면 기존 이름을 함부로 바꾸지 않는다
+    $('cls-name').addEventListener('input', () => { nameTouched = true; });
+
+    const shortOf = () => {
+      const first = form.querySelector('input[name="subj"]:checked');
+      if (!first) return '';
+      const s = subjects.find((x) => x.id === first.value);
+      return (s && (s.short_name || s.name)) || '';
+    };
+    const buildName = () => {
+      const g = $('cls-grade').value;
+      const short = shortOf();
+      if (!g || !short) return '';
+      const div = g === '1' ? '' : ($('cls-division').value || '').trim();
+      const room = ($('cls-room').value || '').trim();
+      return `${short}${div}${room ? `(${room})` : ''}`;
+    };
     const syncGradeFields = () => {
       const g = $('cls-grade').value;
-      $('cls-name-label').textContent = g === '1' ? '반 *' : (g ? '분반 *' : '분반 이름 *');
-      $('cls-name').placeholder = g === '1' ? '예: 1학년 3반' : (g ? '예: F' : '예: 통합과학2 3반');
-      $('cls-room-wrap').classList.toggle('hidden', g !== '2' && g !== '3');
+      $('cls-div-wrap').classList.toggle('hidden', g !== '2' && g !== '3');
+      $('cls-room-wrap').classList.toggle('hidden', !g);
+      $('cls-room-label').textContent = g === '1' ? '교실(반)' : '수업 교실';
+      $('cls-room').placeholder = g === '1' ? '예: 109' : '예: 204';
+      $('cls-name-label').textContent = g === '1' ? '반 이름 *' : (g ? '분반 이름 *' : '분반 이름 *');
+      const suggested = buildName();
+      $('cls-name-hint').textContent = suggested
+        ? (nameTouched ? `자동 이름 예시: ${suggested}` : '과목·기호·교실을 고치면 이름이 따라 바뀝니다. 직접 고치면 멈춥니다.')
+        : '';
+      if (!nameTouched && suggested) $('cls-name').value = suggested;
     };
     $('cls-grade').addEventListener('change', syncGradeFields);
+    $('cls-division').addEventListener('input', syncGradeFields);
+    $('cls-room').addEventListener('input', syncGradeFields);
+    form.querySelectorAll('input[name="subj"]').forEach((el) => el.addEventListener('change', syncGradeFields));
     syncGradeFields();
 
     form.onsubmit = async (e) => {
@@ -926,9 +978,10 @@
           : { acad_year: null, semester: null };
         const gradeRaw = String(fd.get('grade') || '').trim();
         const grade = gradeRaw ? parseInt(gradeRaw, 10) : null;
-        // 교실은 선택과목 분반에서만 쓴다. 1학년이나 미지정으로 바꾸면 남은 값을 지운다.
-        const room = (grade === 2 || grade === 3) ? (String(fd.get('room') || '').trim() || null) : null;
-        const meta = { ...term, grade, room };
+        const room = grade ? (String(fd.get('room') || '').trim() || null) : null;
+        // 분반 기호는 선택과목(2·3학년)에만 있다. 1학년이나 미지정으로 되돌리면 지운다.
+        const division = (grade === 2 || grade === 3) ? (String(fd.get('division') || '').trim() || null) : null;
+        const meta = { ...term, grade, room, division };
         let classId = cls?.id;
         if (editing) {
           const { error } = await supabase.from('classes').update({ name, ...meta }).eq('id', classId);
