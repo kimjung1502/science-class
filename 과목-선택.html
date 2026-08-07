@@ -54,6 +54,13 @@
   </main>
 </div>
 
+<footer class="border-t border-ink/15 bg-paper2/50 px-5 py-5">
+  <div class="max-w-max-width mx-auto font-mono text-[11px] text-ink3 flex flex-wrap items-center gap-x-4 gap-y-1">
+    <span>정환쌤과 함께하는 과학 수업</span>
+    <a href="privacy.html" class="underline decoration-lime underline-offset-4 hover:text-signal">개인정보 처리방침</a>
+  </div>
+</footer>
+
 <!-- Mobile Bottom NavBar -->
 <nav class="md:hidden sticky bottom-0 left-0 right-0 bg-paper/90 backdrop-blur border-t border-ink/15 flex justify-around py-2 z-40">
   <span class="flex flex-col items-center gap-0.5 text-ink min-w-[64px] py-1"><span class="material-symbols-outlined text-[22px]">menu_book</span><span class="font-mono text-[10px]">과목</span></span>
@@ -61,7 +68,7 @@
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808b"></script>
+<script src="js/db.js?v=20260808c"></script>
 <script>
 (async () => {
   const { fetchSubjects, ACCENTS, esc, requireLogin, signOut, supabase } = window.DB;
