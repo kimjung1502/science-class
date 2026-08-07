@@ -228,8 +228,9 @@
           <button type="button" id="rubric-add" class="text-[12px] text-signal font-bold flex items-center gap-1 hover:underline"><span class="material-symbols-outlined text-[18px]">add</span>항목 추가</button>
         </div>
         <div class="hidden sm:grid grid-cols-12 gap-2 px-1 font-mono text-[11px] text-ink3">
-          <span class="col-span-4">평가 요소</span><span class="col-span-2">배점</span><span class="col-span-5">기준</span><span class="col-span-1"></span>
+          <span class="col-span-2">영역</span><span class="col-span-3">평가 요소</span><span class="col-span-2">배점</span><span class="col-span-4">기준</span><span class="col-span-1"></span>
         </div>
+        <p class="text-[11.5px] text-ink3 -mt-1">위아래 줄의 <b class="text-ink2">영역</b>이 같으면 학생 화면에서 한 칸으로 합쳐집니다(계획서 표의 병합 칸처럼). 배점도 같은 값이면 합쳐집니다.</p>
         <div id="rubric-rows" class="space-y-2"></div>
       </div>
 
@@ -245,7 +246,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808a"></script>
+<script src="js/db.js?v=20260808b"></script>
 <script>
 (function () {
   const {
@@ -336,13 +337,48 @@
     </div>`;
   }
 
+  // 위아래로 같은 값이면 한 칸으로 합친다 — 계획서 PDF 의 병합 칸을 그대로 살린다.
+  // 경계는 맨 왼쪽 칸(영역)만 친다. 왼쪽 칸을 전부 경계로 삼으면 "같은 영역 안에서 평가 요소는
+  // 다른데 배점은 하나" 라는, 정작 병합이 제일 필요한 경우가 안 합쳐진다.
+  // 반환값 n: n>0 이면 그 칸을 rowspan=n 으로 그리고, 0 이면 위 칸에 먹혔으니 그리지 않는다.
+  function rowSpans(rows, keys, k) {
+    const val = (r, x) => String(r[x] || '').trim();
+    const sig = (r) => (k === 0 ? '' : val(r, keys[0]) + ' ␟ ') + val(r, keys[k]);
+    const out = new Array(rows.length).fill(0);
+    let i = 0;
+    while (i < rows.length) {
+      let j = i + 1;
+      // 빈 칸은 합치지 않는다(빈칸끼리 뭉쳐 보이면 오히려 헷갈린다)
+      if (val(rows[i], keys[k])) { const s = sig(rows[i]); while (j < rows.length && sig(rows[j]) === s) j++; }
+      out[i] = j - i;
+      i = j;
+    }
+    return out;
+  }
   function rubricTable(rubric) {
     if (!Array.isArray(rubric) || !rubric.length) return '';
-    const rows = rubric.map((r, i) => `<tr class="${i % 2 ? 'bg-paper/60' : ''}">
-      <td class="p-3 bg-paper2 font-bold align-top text-ink">${esc(r.element || '')}</td>
-      <td class="p-3 align-top whitespace-nowrap font-mono text-signal font-bold">${esc(r.points || '')}</td>
-      <td class="p-3 text-ink3 align-top">${esc(r.criteria || '')}</td>
-    </tr>`).join('');
+    const hasGroup = rubric.some((r) => String(r.group || '').trim());
+    const keys = hasGroup ? ['group', 'element', 'points', 'criteria'] : ['element', 'points', 'criteria'];
+    const spanOf = keys.map((_k, i) => rowSpans(rubric, keys, i));
+    // 칸 경계는 tr 이 아니라 td 에 준다 — tbody 에 divide-y 를 쓰면 병합 칸을 가로질러 선이 그어진다
+    const b = 'border-t border-faint ';
+    const cellCls = {
+      group:    b + 'p-3 bg-paper2 font-bold align-top text-ink whitespace-nowrap',
+      element:  b + 'p-3 align-top text-ink' + (hasGroup ? '' : ' bg-paper2 font-bold'),
+      points:   b + 'p-3 align-top whitespace-nowrap font-mono text-signal font-bold',
+      criteria: b + 'p-3 text-ink3 align-top',
+    };
+    const head = { group: '영역', element: '평가 요소', points: '배점', criteria: '기준' };
+    const rows = rubric.map((r, i) => {
+      const tds = keys.map((k, ki) => {
+        const n = spanOf[ki][i];
+        if (!n) return '';   // 위 칸이 rowspan 으로 먹었다
+        return `<td class="${cellCls[k]}"${n > 1 ? ` rowspan="${n}"` : ''}>${esc(r[k] || '')}</td>`;
+      }).join('');
+      // 병합된 칸이 걸쳐 있는 줄에 줄무늬를 넣으면 경계가 어긋나 보인다 — 병합이 있으면 줄무늬를 끈다
+      const zebra = (!hasGroup && i % 2) ? ' class="bg-paper/60"' : '';
+      return `<tr${zebra}>${tds}</tr>`;
+    }).join('');
     return `<section>
       <div class="flex items-center gap-3 mb-3">
         <h5 class="text-ink font-extrabold text-[15px]">평가 기준</h5>
@@ -350,11 +386,11 @@
         <span class="font-mono text-[11px] uppercase tracking-[0.15em] text-ink3">Rubric</span>
       </div>
       <div class="border border-faint rounded-lg overflow-hidden overflow-x-auto">
-        <table class="w-full text-left text-[13.5px] min-w-[420px]">
+        <table class="w-full text-left text-[13.5px] min-w-[420px] border-collapse">
           <thead class="bg-ink text-paper">
-            <tr><th class="p-3 font-mono text-[11px] uppercase tracking-wide font-bold">평가 요소</th><th class="p-3 font-mono text-[11px] uppercase tracking-wide font-bold">배점</th><th class="p-3 font-mono text-[11px] uppercase tracking-wide font-bold">기준</th></tr>
+            <tr>${keys.map((k) => `<th class="p-3 font-mono text-[11px] uppercase tracking-wide font-bold">${head[k]}</th>`).join('')}</tr>
           </thead>
-          <tbody class="divide-y divide-faint">${rows}</tbody>
+          <tbody>${rows}</tbody>
         </table>
       </div>
     </section>`;
@@ -533,10 +569,12 @@
 
   function rubricRowHtml(r) {
     r = r || {};
+    const cls = 'px-2 py-2 rounded-lg border border-faint focus:border-ink focus:ring-2 focus:ring-lime/60 bg-paper outline-none text-[13.5px] text-ink';
     return `<div class="rubric-row grid grid-cols-12 gap-2 items-center">
-      <input class="rr-element col-span-4 px-2 py-2 rounded-lg border border-faint focus:border-ink focus:ring-2 focus:ring-lime/60 bg-paper outline-none text-[13.5px] text-ink" placeholder="평가 요소" value="${esc(r.element || '')}">
-      <input class="rr-points col-span-2 px-2 py-2 rounded-lg border border-faint focus:border-ink focus:ring-2 focus:ring-lime/60 bg-paper outline-none text-[13.5px] text-ink" placeholder="배점" value="${esc(r.points || '')}">
-      <input class="rr-criteria col-span-5 px-2 py-2 rounded-lg border border-faint focus:border-ink focus:ring-2 focus:ring-lime/60 bg-paper outline-none text-[13.5px] text-ink" placeholder="기준" value="${esc(r.criteria || '')}">
+      <input class="rr-group col-span-2 ${cls}" placeholder="영역(선택)" value="${esc(r.group || '')}">
+      <input class="rr-element col-span-3 ${cls}" placeholder="평가 요소" value="${esc(r.element || '')}">
+      <input class="rr-points col-span-2 ${cls}" placeholder="배점" value="${esc(r.points || '')}">
+      <input class="rr-criteria col-span-4 ${cls}" placeholder="기준" value="${esc(r.criteria || '')}">
       <button type="button" class="rr-del col-span-1 flex items-center justify-center text-ink3 hover:text-signal"><span class="material-symbols-outlined text-[20px]">remove_circle_outline</span></button>
     </div>`;
   }
@@ -549,10 +587,11 @@
   }
   function collectRubric() {
     return Array.from($('rubric-rows').querySelectorAll('.rubric-row')).map((row) => ({
+      group: row.querySelector('.rr-group').value.trim(),
       element: row.querySelector('.rr-element').value.trim(),
       points: row.querySelector('.rr-points').value.trim(),
       criteria: row.querySelector('.rr-criteria').value.trim(),
-    })).filter((r) => r.element || r.points || r.criteria);
+    })).filter((r) => r.group || r.element || r.points || r.criteria);
   }
 
   // ---------- PDF 자동 작성 ----------
