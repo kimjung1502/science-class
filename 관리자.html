@@ -179,6 +179,16 @@
         <button id="drive-save-settings" class="mt-2 bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">폴더 설정 저장</button>
         <p class="text-caption text-on-surface-variant mt-1">학년도·학기는 제출 시점 날짜로 자동 계산합니다(3~7월 1학기, 8~12월 2학기, 1~2월은 전년도 2학기).</p>
       </div>
+
+      <div class="rounded-xl border border-outline-variant p-md">
+        <p class="text-label-md font-bold text-on-surface">4. 공유 링크 회수</p>
+        <p class="text-caption text-on-surface-variant mt-1">
+          자료 파일은 이제 <b class="text-on-surface">비공개</b>로 두고 이 사이트를 거쳐서만 엽니다(교사 전용·공개 기간이 그때 적용됩니다).
+          예전에 올린 자료에는 “링크가 있는 모든 사용자 보기”가 걸려 있어 드라이브 주소만 알면 누구나 열립니다 — 아래 버튼으로 되돌리세요.
+        </p>
+        <button id="drive-unshare" class="mt-2 border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">기존 공유 링크 회수</button>
+        <p id="drive-unshare-out" class="text-caption text-on-surface-variant mt-1"></p>
+      </div>
     </div>
 
     <!-- API 키 -->
@@ -304,11 +314,11 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260807i"></script>
+<script src="js/db.js?v=20260808a"></script>
 <script>
 (function () {
-  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone, wireFileDrop,
-          driveStatus, driveAuthUrl, driveDisconnect, driveSaveSettings, driveSaveClient, saveApiKey, apiKeyStatus, apiKeyLog, fmtDateTime } = window.DB;
+  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, wireFileDrop,
+          driveStatus, driveAuthUrl, driveDisconnect, driveUnshareAll, driveSaveSettings, driveSaveClient, saveApiKey, apiKeyStatus, apiKeyLog, fmtDateTime } = window.DB;
 
   const $ = (id) => document.getElementById(id);
   const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2200); };
@@ -519,6 +529,7 @@
         <p id="drive-picked" class="text-caption text-primary mt-1 hidden"></p>
         <input type="hidden" name="drive_url" id="drive-url">
         <input type="hidden" name="drive_name" id="drive-name">
+        <input type="hidden" name="drive_id" id="drive-id">
       </div>
       <div id="url-field" class="hidden"><label class="text-label-md text-on-surface-variant">링크 주소 (URL)</label>
         <input name="url" type="url" value="${esc(item && !item.storage_path && item.url && item.url !== '#' ? item.url : '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="https://..."></div>
@@ -593,18 +604,17 @@
     btn.disabled = false; btn.innerHTML = old;
     if (!doc) return;
     const picked = $('drive-picked'); if (!picked) return;
-    picked.classList.remove('hidden'); picked.textContent = '공유 설정 중…';
-    try {
-      await driveShareAnyone(doc.id, doc.token);
+    picked.classList.remove('hidden');
+    // 공유 권한은 걸지 않는다 — 프록시가 선생님 토큰으로 읽어 오므로 파일은 비공개로 두면 된다.
+    {
+      $('drive-id').value = doc.id;
       $('drive-url').value = doc.url;
       $('drive-name').value = doc.name;
       const nameInput = document.querySelector('[name="name"]');
       if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name;
       const fi = document.querySelector('[name="file"]'); if (fi) fi.value = '';
       const sb = $('m-split'); if (sb) { sb.classList.add('hidden'); $('m-range').value = ''; }
-      picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 링크로 등록됩니다.';
-    } catch (e) {
-      picked.textContent = '공유 설정 실패: ' + e.message;
+      picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 등록됩니다(파일은 비공개 그대로).';
     }
   }
 
@@ -637,9 +647,10 @@
           const driveUrl = (fd.get('drive_url') || '').trim();
           const urlInput = (fd.get('url') || '').trim(); // upload 허용 유형(교과서)은 링크칸도 있음
           if (driveUrl) {
-            // 구글 드라이브에서 선택한 파일: 링크만 저장(Supabase 용량 0)
+            // 구글 드라이브에서 선택한 선생님 원본(Supabase 용량 0).
+            // 'gdriveref:' 로 두면 프록시가 서빙하고, 자료를 지워도 원본 파일은 안 지운다.
             payload.url = driveUrl;
-            payload.storage_path = '';
+            payload.storage_path = 'gdriveref:' + (fd.get('drive_id') || '').trim();
             payload.original_filename = (fd.get('drive_name') || '').trim();
             if (editingItem && editingItem.storage_path) await removeMaterialFile(editingItem.storage_path);
           } else {
@@ -895,6 +906,18 @@
     if (!confirm('드라이브 연결을 해제할까요?\n이미 올라간 파일은 그대로 남지만, 새 업로드와 엑셀 내보내기가 막힙니다.')) return;
     try { await driveDisconnect(); toast('연결을 해제했습니다.'); await loadDrive(); }
     catch (e) { alert('해제 실패: ' + e.message); }
+  });
+
+  $('drive-unshare').addEventListener('click', async (e) => {
+    const btn = e.currentTarget, out = $('drive-unshare-out');
+    if (!confirm('등록된 자료 파일의 "링크가 있는 모든 사용자" 공유를 모두 해제할까요?\n학생은 계속 이 사이트를 통해 볼 수 있습니다.')) return;
+    btn.disabled = true; btn.textContent = '회수 중…'; out.textContent = '드라이브 권한을 확인하는 중…';
+    try {
+      const r = await driveUnshareAll();
+      out.innerHTML = `검사 ${r.checked}개 · <b class="text-on-surface">공유 해제 ${r.revoked}개</b> · 이미 비공개 ${r.alreadyPrivate}개`
+        + (r.failed && r.failed.length ? ` · <span class="text-error">실패 ${r.failed.length}개</span>` : '');
+    } catch (err) { out.innerHTML = `<span class="text-error">회수 실패: ${esc(err.message)}</span>`; }
+    btn.disabled = false; btn.textContent = '기존 공유 링크 회수';
   });
 
   $('drive-save-settings').addEventListener('click', async (e) => {

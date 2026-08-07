@@ -119,11 +119,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260807i"></script>
+<script src="js/db.js?v=20260808a"></script>
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
-  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeMaterialFile, uploadMaterialToDrive, driveShareAnyone, pdfPageCount, splitPdfFile, safeStorageName, toLocalInput, wireSidebar, pickDriveFile } = window.DB;
+  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeMaterialFile, uploadMaterialToDrive, driveProxyUrl, driveIdOf, pdfPageCount, splitPdfFile, safeStorageName, toLocalInput, wireSidebar, pickDriveFile } = window.DB;
 
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
@@ -176,10 +176,12 @@
     if (!t) return '';
     const name = m.name || t.label;
     const bundledUrl = bundledHtmlUrl(m);
-    // 파일형인데 storage_path가 없거나 드라이브 저장('gdrive:')이면 외부 링크 취급 → 새 탭으로 열기, ?download 미부여
-    const isDriveStored = !bundledUrl && !!(m.storage_path && m.storage_path.indexOf('gdrive:') === 0);
-    const isExternal = !bundledUrl && t.file && (isDriveStored || !m.storage_path) && m.url && m.url !== '#';
-    let href = bundledUrl || m.url || '#';
+    // 드라이브 자료는 드라이브 링크가 아니라 프록시로 연다. 드라이브 직링크는 교사전용·공개기간·
+    // 로그인 검사를 전부 우회하고, 한 번 새면 회수도 안 된다. 프록시만이 그 규칙을 건다.
+    const driveId = !bundledUrl ? driveIdOf(m.storage_path) : '';
+    // 파일형인데 storage_path가 아예 없으면 진짜 외부 링크다 → 새 탭, ?download 미부여
+    const isExternal = !bundledUrl && t.file && !driveId && !m.storage_path && m.url && m.url !== '#';
+    let href = bundledUrl || (driveId ? driveProxyUrl(driveId) : (m.url || '#'));
 
     // html 자료(실험 페이지 등): 링크로 열지 않고 카드 아래에 아코디언으로 펼쳐서 바로 보여준다.
     // (Supabase 공개 오브젝트가 XSS 방지로 text/html을 text/plain으로 내려서 그냥 링크로 열면 소스가 보임
@@ -188,11 +190,12 @@
       return materialHtmlCard(m, t, name, href);
     }
 
-    const newTab = t.newTab || isExternal;
+    const newTab = t.newTab || isExternal || !!driveId;
     const tabAttr = newTab ? ' target="_blank" rel="noopener"' : '';
     const meta = m.meta || (newTab ? '새 탭에서 열기' : '');
     // 업로드 파일(Supabase): 다운로드 시 원본(한글) 파일명으로 받게 ?download 부여 (영상·외부링크 제외)
-    if (t.file && !isExternal && m.original_filename && m.type !== 'video' && href !== '#') {
+    // 드라이브 자료는 프록시가 Content-Disposition 으로 원본 이름을 이미 붙여 준다 → 제외
+    if (t.file && !isExternal && !driveId && m.original_filename && m.type !== 'video' && href !== '#') {
       href += (href.indexOf('?') >= 0 ? '&' : '?') + 'download=' + encodeURIComponent(m.original_filename);
     }
     const teacherBadge = (m.teacher_only ? '<span class="font-mono text-[10px] font-bold text-signal bg-signal-soft px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '') + visibilityBadge(m);
@@ -261,8 +264,8 @@
     }
   }
 
-  // 판서로 열 수 있는 PDF인지: 우리 스토리지(공개 URL) 또는 이 사이트가 올린 드라이브 파일('gdrive:' → drive-file 프록시로 fetch 가능).
-  // (Picker로 링크만 등록한 외부 드라이브 파일은 storage_path가 비어 있어 제외 — CORS로 판서 뷰어가 못 읽음)
+  // 판서로 열 수 있는 PDF인지: 우리 스토리지(공개 URL) 또는 드라이브 파일(→ drive-file 프록시로 fetch 가능).
+  // Picker 로 고른 파일도 이제 storage_path('gdriveref:')를 갖고 프록시로 읽히므로 함께 열린다.
   function isPdfMaterial(m) {
     if (!m) return false;
     const direct = m.storage_path && m.url && m.url !== '#';
@@ -272,7 +275,8 @@
   function drawHref(m) {
     const t = MATERIAL_TYPES[m.type];
     const name = m.name || (t && t.label) || 'PDF';
-    const src = (m.storage_path && m.storage_path.indexOf('gdrive:') === 0) ? window.DB.driveProxyUrl(m.storage_path.slice(7)) : m.url;
+    const id = driveIdOf(m.storage_path);
+    const src = id ? driveProxyUrl(id) : m.url;
     return `PDF-판서.html?src=${encodeURIComponent(src)}&title=${encodeURIComponent(name)}`;
   }
 
@@ -530,7 +534,7 @@
         <div class="mt-2 flex items-center gap-2"><span class="text-caption text-on-surface-variant">또는</span>
           <button type="button" id="m2-drive" class="inline-flex items-center gap-1 text-caption px-2.5 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[16px] text-primary">add_to_drive</span>구글 드라이브에서 선택 <span class="text-outline">(용량 0)</span></button></div>
         <p id="m2-picked" class="text-caption text-primary mt-1 hidden"></p>
-        <input type="hidden" name="drive_url" id="m2-drive-url"><input type="hidden" name="drive_name" id="m2-drive-name"></div>
+        <input type="hidden" name="drive_url" id="m2-drive-url"><input type="hidden" name="drive_name" id="m2-drive-name"><input type="hidden" name="drive_id" id="m2-drive-id"></div>
       <div id="m2-url-field" class="hidden"><label class="text-label-md text-on-surface-variant">링크 주소 (URL)</label>
         <input name="url" id="m2-url" type="url" value="${esc(urlVal)}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="https://..."></div>
       <div><label class="text-label-md text-on-surface-variant">부가 설명 <span class="text-outline">(선택)</span></label>
@@ -593,16 +597,17 @@
     btn.disabled = false; btn.innerHTML = old;
     if (!doc) return;
     const picked = form.querySelector('#m2-picked');
-    picked.classList.remove('hidden'); picked.textContent = '공유 설정 중…';
-    try {
-      await driveShareAnyone(doc.id, doc.token);
+    picked.classList.remove('hidden');
+    // 공유 권한은 걸지 않는다 — 프록시가 선생님 토큰으로 읽어 오므로 파일은 비공개로 두면 된다.
+    {
+      form.querySelector('#m2-drive-id').value = doc.id;
       form.querySelector('#m2-drive-url').value = doc.url;
       form.querySelector('#m2-drive-name').value = doc.name;
       const nameInput = form.querySelector('#m2-name'); if (nameInput && !nameInput.value.trim()) nameInput.value = doc.name;
       const fi = form.querySelector('#m2-file'); if (fi) fi.value = '';
       const sb = form.querySelector('#m2-split'); if (sb) { sb.classList.add('hidden'); form.querySelector('#m2-range').value = ''; }
-      picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 링크로 등록';
-    } catch (e) { picked.textContent = '공유 설정 실패: ' + e.message; }
+      picked.textContent = '✓ 드라이브 파일 선택됨: ' + (doc.name || doc.id) + ' — 저장하면 등록됩니다(파일은 비공개 그대로).';
+    }
   }
   // 소단원 id → [대단원명, 중단원명] (드라이브 폴더 경로용)
   function unitPathNames(subId) {
@@ -632,7 +637,10 @@
         const file = fd.get('file');
         const urlInput = (fd.get('url') || '').trim(); // upload 허용 유형(교과서)은 링크칸도 있음
         if (driveUrl) {
-          payload.url = driveUrl; payload.storage_path = ''; payload.original_filename = (fd.get('drive_name') || '').trim();
+          // Picker 로 고른 선생님 원본. 'gdriveref:' 로 두면 프록시가 서빙하고, 자료를 지워도 파일은 안 지운다.
+          payload.url = driveUrl;
+          payload.storage_path = 'gdriveref:' + (fd.get('drive_id') || '').trim();
+          payload.original_filename = (fd.get('drive_name') || '').trim();
           if (editing && editing.storage_path) await removeMaterialFile(editing.storage_path);
         } else if (file && file.size) {
           let up = file;

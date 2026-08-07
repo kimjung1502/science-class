@@ -644,15 +644,11 @@
   }
   // Picker용: 연결된 refresh_token으로 액세스 토큰 발급(+API키/appId 동봉). 관리자 전용.
   async function driveAccessToken() { return callGoogleOAuth('op=accesstoken'); }
-  // Picker로 고른 파일을 "링크가 있는 모든 사용자 보기"로 공유(학생이 로그인 없이 보게)
-  async function driveShareAnyone(fileId, accessToken) {
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?supportsAllDrives=true`, {
-      method: 'POST', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-    });
-    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error('드라이브 공유 설정 실패: ' + ((e.error && e.error.message) || res.status)); }
-    return true;
-  }
+  // (삭제됨) driveShareAnyone — 자료를 "링크가 있는 모든 사용자 보기"로 열던 함수.
+  // 그 링크는 drive-file 프록시를 우회해서 교사전용·공개기간·로그인 검사를 전부 건너뛴다.
+  // 학생 화면에 드라이브 주소가 그대로 뜨니 한 번 새면 회수도 안 된다.
+  // 지금은 모든 자료를 프록시로만 연다 — 프록시가 선생님 토큰으로 바이트를 받아오므로
+  // 파일이 비공개여도 학생이 볼 수 있다. 공유 권한 자체가 필요 없다.
 
   // ---------- 구글 드라이브 직접 업로드 (교사 수업자료) ----------
   // 같은 이름의 폴더가 있으면 재사용, 없으면 생성 → 폴더 id
@@ -727,7 +723,6 @@
     let parent = 'root';
     for (const n of names) parent = await driveEnsureFolder(access_token, n, parent);
     const up = await driveUploadBytes(access_token, parent, driveName || file.name, file);
-    await driveShareAnyone(up.id, access_token);
     return { url: up.url, storage_path: 'gdrive:' + up.id, original_filename: file.name };
   }
   // 드라이브에 저장할 파일 이름 규칙: "자료이름_유형라벨(_발췌면 대단원-중단원).확장자"
@@ -754,14 +749,36 @@
       return true;
     } catch (_e) { return false; }
   }
-  // 자료 파일 정리: 'gdrive:<id>'면 드라이브 휴지통, 아니면 materials 버킷에서 삭제
+  // 드라이브에 있는 자료의 파일 id. 접두어 두 가지를 구분한다:
+  //   'gdrive:<id>'    사이트가 올린 파일 — 자료를 지우면 이 파일도 휴지통으로
+  //   'gdriveref:<id>' 선생님이 원래 갖고 있던 걸 Picker 로 고른 것 — 자료를 지워도 파일은 그대로
+  function driveIdOf(storagePath) {
+    const p = String(storagePath || '');
+    if (p.indexOf('gdriveref:') === 0) return p.slice(10);
+    if (p.indexOf('gdrive:') === 0) return p.slice(7);
+    return '';
+  }
+  // 자료 파일 정리: 사이트가 올린 드라이브 파일이면 휴지통, 아니면 materials 버킷에서 삭제
   async function removeMaterialFile(storagePath) {
     if (!storagePath) return true;
+    // Picker 로 고른 선생님 원본은 절대 건드리지 않는다 — 자료 카드만 지우는 것이다
+    if (storagePath.indexOf('gdriveref:') === 0) return true;
     if (storagePath.indexOf('gdrive:') === 0) return driveTrashFile(storagePath.slice(7));
     return removeFromBucket('materials', [storagePath]);
   }
-  // 드라이브 자료를 브라우저에서 fetch할 수 있는 프록시 주소 (PDF 판서 등 CORS 필요 시)
+  // 드라이브 자료를 여는 유일한 주소. 교사전용·공개기간 검사가 여기서 걸린다.
   function driveProxyUrl(fileId) { return `${FUNCTIONS_URL}/drive-file?id=${encodeURIComponent(fileId)}`; }
+  // 예전에 자료에 걸어 둔 '링크가 있는 모든 사용자' 공유를 되돌린다(관리자 전용, 1회성).
+  async function driveUnshareAll() {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${FUNCTIONS_URL}/drive-file?op=unshare`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}`, 'apikey': SUPABASE_KEY },
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || out.error) throw new Error(out.error || `요청 실패 (${res.status})`);
+    return out;
+  }
 
   // 제출 파일 다운로드 서명 URL (storage_path 기준). 관리자 또는 본인만.
   async function signSubmissionFile(path, opts) {
@@ -870,7 +887,7 @@
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
-    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop, driveShareAnyone,
-    uploadMaterialToDrive, removeMaterialFile, driveProxyUrl, materialDriveName,
+    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop,
+    uploadMaterialToDrive, removeMaterialFile, driveProxyUrl, driveIdOf, driveUnshareAll, materialDriveName,
   };
 })();
