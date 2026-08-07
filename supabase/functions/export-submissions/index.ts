@@ -84,8 +84,11 @@ async function signFileUrl(admin: any, path: string): Promise<string> {
 async function exportAssignment(admin: any, assignmentId: string): Promise<{ ok: boolean; results?: any[]; error?: string }> {
   const { data: asg } = await admin.from('submission_assignments').select('id, subject_id, title, fields, due_at, due_date').eq('id', assignmentId).maybeSingle()
   if (!asg) return { ok: false, error: '과제를 찾을 수 없습니다.' }
-  const { data: subj } = await admin.from('subjects').select('name').eq('id', asg.subject_id).maybeSingle()
+  const { data: subj } = await admin.from('subjects').select('name, drive_folder').eq('id', asg.subject_id).maybeSingle()
   const subjectName = subj?.name || '과목'
+  // 드라이브에는 "03. 물질과에너지" 처럼 번호가 붙은 폴더가 이미 있다. 폴더는 그 이름을 쓰고,
+  // 시트 파일명에는 읽기 좋은 과목명을 그대로 쓴다.
+  const subjectFolder = subj?.drive_folder || subjectName
 
   const { data: cfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()
   if (!cfg || !cfg.refresh_token) return { ok: false, error: '구글 드라이브가 연결되어 있지 않습니다.' }
@@ -94,7 +97,7 @@ async function exportAssignment(admin: any, assignmentId: string): Promise<{ ok:
   const fSchool = await ensureFolder(token, cfg.school_name || '학교', 'root')
   const fYear = await ensureFolder(token, ys.year, fSchool)
   const fSem = await ensureFolder(token, ys.sem, fYear)
-  const fSubj = await ensureFolder(token, subjectName, fSem)
+  const fSubj = await ensureFolder(token, subjectFolder, fSem)
 
   const fields = (Array.isArray(asg.fields) ? asg.fields : []).filter((f: any) => f && f.type && f.type !== 'section' && f.type !== 'pagebreak')
 
@@ -209,8 +212,9 @@ async function exportExperiment(admin: any, opts: any): Promise<{ ok: boolean; r
     .map((c: any) => ({ path: c.path, label: String(c.label || c.path) }))
     .slice(0, 100)
 
-  const { data: subj } = await admin.from('subjects').select('name').eq('id', subjectId).maybeSingle()
+  const { data: subj } = await admin.from('subjects').select('name, drive_folder').eq('id', subjectId).maybeSingle()
   const subjectName = subj?.name || '과목'
+  const subjectFolder = subj?.drive_folder || subjectName   // 폴더는 "03. 물질과에너지" 같은 실제 이름
   const { data: cfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()
   if (!cfg || !cfg.refresh_token) return { ok: false, error: '구글 드라이브가 연결되어 있지 않습니다.' }
   const token = await getDriveToken(admin, cfg)
@@ -220,7 +224,7 @@ async function exportExperiment(admin: any, opts: any): Promise<{ ok: boolean; r
   let fBase: string | null = await findFolder(token, cfg.school_name || '학교', 'root')
   if (fBase) fBase = await findFolder(token, ys.year, fBase)
   if (fBase) fBase = await findFolder(token, ys.sem, fBase)
-  if (fBase) fBase = await findFolder(token, sanitizeName(subjectName), fBase)
+  if (fBase) fBase = await findFolder(token, sanitizeName(subjectFolder), fBase)
   if (!fBase) return { ok: false, error: '드라이브에서 제출 폴더를 찾지 못했습니다 — 아직 제출이 없는 것 같아요.' }
 
   const { data: scs } = await admin.from('class_subjects').select('class_id').eq('subject_id', subjectId)

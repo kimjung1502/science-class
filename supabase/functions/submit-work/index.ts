@@ -220,12 +220,12 @@ Deno.serve(async (req) => {
       if (gcfg?.refresh_token && gcfg?.client_id && gcfg?.client_secret) {
         try {
           const token = await getDriveToken(admin, gcfg)
-          const { data: subj } = await admin.from('subjects').select('name').eq('id', asg.subject_id).maybeSingle()
+          const { data: subj } = await admin.from('subjects').select('name, drive_folder').eq('id', asg.subject_id).maybeSingle()
           const ys = acadYearSem()
           const fSchool = await ensureFolder(token, gcfg.school_name || '학교', 'root')
           const fYear = await ensureFolder(token, ys.year, fSchool)
           const fSem = await ensureFolder(token, ys.sem, fYear)
-          const fSubj = await ensureFolder(token, subj?.name || '과목', fSem)
+          const fSubj = await ensureFolder(token, subj?.drive_folder || subj?.name || '과목', fSem)
           const fClass = await ensureFolder(token, cls.className || '미분류', fSubj)
           const fAsg = await ensureFolder(token, sanitizeName(asg.title || '과제'), fClass)
           const dfName = sanitizeName(`${student.student_number || sn}_${student.name || ''}_${fieldId}`) + '.' + ext
@@ -281,13 +281,13 @@ Deno.serve(async (req) => {
       if (!gate.open) return json({ error: gate.why, close_at: gate.close_at }, 403)
       const { data: gcfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()
       if (!(gcfg?.refresh_token && gcfg?.client_id && gcfg?.client_secret)) return json({ error: '선생님 드라이브가 연결되어 있지 않습니다.' }, 503)
-      const { data: subj } = subjectId ? await admin.from('subjects').select('name').eq('id', subjectId).maybeSingle() : { data: null }
+      const { data: subj } = subjectId ? await admin.from('subjects').select('name, drive_folder').eq('id', subjectId).maybeSingle() : { data: null }
       const token = await getDriveToken(admin, gcfg)
       const ys = acadYearSem()
       let f = await ensureFolder(token, gcfg.school_name || '학교', 'root')
       f = await ensureFolder(token, ys.year, f)
       f = await ensureFolder(token, ys.sem, f)
-      f = await ensureFolder(token, sanitizeName(subj?.name || '과목'), f)
+      f = await ensureFolder(token, sanitizeName(subj?.drive_folder || subj?.name || '과목'), f)
       f = await ensureFolder(token, sanitizeName(cls?.className || '미분류'), f)
       f = await ensureFolder(token, title, f)
       const fname = sanitizeName(`${student.student_number || ''}_${student.name || ''}`) + '.json'

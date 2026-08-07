@@ -298,7 +298,7 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260807g"></script>
+<script src="js/db.js?v=20260807h"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone, wireFileDrop,
@@ -757,27 +757,50 @@
     try { st = await apiKeyStatus(); }
     catch (e) { $('apikeys-list').innerHTML = `<p class="text-error">불러오지 못했습니다: ${esc(e.message)}</p>`; return; }
 
+    // 이미 등록된 키는 칸을 잠가 둔다 — 실수로 덮어쓰는 걸 막고, 바꿔야 할 때만 "수정"으로 연다.
     $('apikeys-list').innerHTML = AI_PROVIDERS.map((p) => {
       const s = st[p.id];
       const badge = s
         ? `<span class="text-caption text-emerald-700 font-bold">등록됨 · 끝자리 ${esc(s.tail || '')}</span>`
         : '<span class="text-caption text-on-surface-variant">없음</span>';
       const when = s && s.updated_at ? `<span class="text-caption text-on-surface-variant ml-2">${fmtDateTime(s.updated_at)}</span>` : '';
+      const locked = !!s;
       return `<div class="rounded-xl border border-outline-variant p-md">
         <div class="flex items-center justify-between gap-2 flex-wrap">
           <p class="text-label-md font-bold text-on-surface">${esc(p.label)}</p>
           <div>${badge}${when}</div>
         </div>
         <div class="mt-2 flex items-center gap-2 flex-wrap">
-          <input type="password" autocomplete="new-password" data-key="${p.id}" placeholder="${esc(p.hint)}"
-                 class="flex-1 min-w-[200px] rounded-lg border-outline-variant focus:border-primary focus:ring-primary">
-          <button data-save-key="${p.id}" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">저장</button>
+          <input type="password" autocomplete="new-password" data-key="${p.id}"
+                 ${locked ? 'disabled value="••••••••••••" class="flex-1 min-w-[200px] rounded-lg border-outline-variant bg-surface-container text-on-surface-variant cursor-not-allowed"'
+                          : `placeholder="${esc(p.hint)}" class="flex-1 min-w-[200px] rounded-lg border-outline-variant focus:border-primary focus:ring-primary"`}>
+          ${locked
+            ? `<button data-edit-key="${p.id}" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">수정</button>`
+            : `<button data-save-key="${p.id}" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">저장</button>`}
           ${s ? `<button data-del-key="${p.id}" class="border border-outline-variant px-md py-2 rounded-lg text-label-md hover:bg-surface-container">삭제</button>` : ''}
         </div>
+        ${locked ? '<p class="text-caption text-on-surface-variant mt-1">키가 새어 나갔다면 <b>수정</b>을 눌러 새 키로 바꾸세요. 이전 키는 덮어써집니다.</p>' : ''}
       </div>`;
     }).join('');
 
-    $('apikeys-list').querySelectorAll('[data-save-key]').forEach((btn) => btn.addEventListener('click', async () => {
+    // "수정" → 칸을 열고 버튼을 저장으로 바꾼다(다시 그리지 않고 그 자리에서).
+    $('apikeys-list').querySelectorAll('[data-edit-key]').forEach((btn) => btn.addEventListener('click', () => {
+      const id = btn.dataset.editKey;
+      const input = $('apikeys-list').querySelector(`[data-key="${id}"]`);
+      const provider = AI_PROVIDERS.find((x) => x.id === id) || { hint: '' };
+      input.disabled = false;
+      input.value = '';
+      input.placeholder = provider.hint;
+      input.className = 'flex-1 min-w-[200px] rounded-lg border-outline-variant focus:border-primary focus:ring-primary';
+      input.focus();
+      btn.textContent = '저장';
+      btn.className = 'bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold';
+      delete btn.dataset.editKey;
+      btn.dataset.saveKey = id;
+      btn.addEventListener('click', () => saveKeyFrom(btn), { once: true });
+    }));
+
+    async function saveKeyFrom(btn) {
       const id = btn.dataset.saveKey;
       const input = $('apikeys-list').querySelector(`[data-key="${id}"]`);
       const v = input.value.trim();
@@ -785,7 +808,8 @@
       btn.disabled = true;
       try { await saveApiKey(id, v); input.value = ''; toast('저장했습니다.'); await loadApiKeys(); }
       catch (e) { alert('저장 실패: ' + e.message); btn.disabled = false; }
-    }));
+    }
+    $('apikeys-list').querySelectorAll('[data-save-key]').forEach((btn) => btn.addEventListener('click', () => saveKeyFrom(btn)));
     $('apikeys-list').querySelectorAll('[data-del-key]').forEach((btn) => btn.addEventListener('click', async () => {
       const id = btn.dataset.delKey;
       if (!confirm(`${id} 키를 지울까요?`)) return;

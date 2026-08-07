@@ -695,12 +695,27 @@
   // subPath: 개정 아래로 이어질 폴더 이름 배열(예: [과목, 대단원, 중단원]) — 빈 값은 건너뜀.
   // 반환: { url, storage_path: 'gdrive:<id>', original_filename }
   // 드라이브 미연결이면 driveAccessToken()에서 throw → 호출부가 버킷 업로드로 폴백한다.
+  // 드라이브에 이미 "03. 물질과에너지" 처럼 번호가 붙은 과목 폴더가 있다. 과목명을 그대로
+  // 쓰면 그 옆에 새 폴더가 생기므로, subjects.drive_folder 가 있으면 그 이름으로 바꿔 준다.
+  let _driveFolderMap = null;
+  async function subjectDriveFolder(name) {
+    if (!name) return name;
+    if (!_driveFolderMap) {
+      const { data } = await supabase.from('subjects').select('name, drive_folder');
+      _driveFolderMap = new Map((data || []).map((s) => [s.name, s.drive_folder]));
+    }
+    return _driveFolderMap.get(name) || name;
+  }
+
   async function uploadMaterialToDrive(file, subPath, driveName) {
     const { access_token } = await driveAccessToken();
     const s = await driveStatus().catch(() => ({}));
     const names = [s.school || '학교', '수업자료'];
     if (s.curriculum) names.push(s.curriculum);
-    (Array.isArray(subPath) ? subPath : [subPath]).forEach((n) => { if (n) names.push(String(n)); });
+    // subPath 의 첫 항목은 과목 이름이다(호출부가 그렇게 넘긴다).
+    const parts = (Array.isArray(subPath) ? subPath : [subPath]).filter(Boolean).map(String);
+    if (parts.length) parts[0] = await subjectDriveFolder(parts[0]);
+    parts.forEach((n) => { if (n) names.push(n); });
     let parent = 'root';
     for (const n of names) parent = await driveEnsureFolder(access_token, n, parent);
     const up = await driveUploadBytes(access_token, parent, driveName || file.name, file);

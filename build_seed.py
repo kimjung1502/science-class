@@ -8,14 +8,16 @@ wb = openpyxl.load_workbook(SRC, data_only=True)
 # short: 분반 이름 조합("통과2(109)", "물질F(204)")과 좁은 칩에 쓰는 약어.
 # 규칙으로 뽑을 수 없어서(통합과학→통과 는 두 단어 첫 글자, 물질과 에너지→물질 은 앞 두 글자)
 # 여기에 직접 적는다. seed.sql 이 subjects 를 지우고 다시 넣으므로 약어도 여기 있어야 살아남는다.
+# folder: 선생님 드라이브에 이미 있는 폴더명("01. 통합과학2"). 여기 적힌 이름으로 자료를 넣는다.
+# 비어 있으면 과목명 그대로 쓴다 — 새 폴더가 생기므로 실제 드라이브를 보고 채울 것.
 META = {
-    '통합과학1':      ('통합과학 1',      '통과1', 'public',     'blue',    '과학의 기초부터 물질·시스템·생명까지 자연 현상을 통합적으로 이해합니다.'),
-    '통합과학2':      ('통합과학 2',      '통과2', 'public',     'blue',    '변화와 다양성, 환경과 에너지, 과학과 미래 사회를 탐구합니다.'),
-    '과학탐구실험1':  ('과학탐구실험 1',  '과탐1', 'experiment', 'emerald', '과학사 속 탐구를 직접 체험하며 과학의 본성과 탐구 과정을 익힙니다.'),
-    '과학탐구실험2':  ('과학탐구실험 2',  '과탐2', 'experiment', 'emerald', '생활 속 과학과 첨단 과학을 직접 실험하고 탐구합니다.'),
-    '화학':           ('화학',            '화학',  'labs',       'orange',  '화학의 언어부터 물질의 구조, 화학 평형과 역동적 반응까지 탐구합니다.'),
-    '물질과 에너지':  ('물질과 에너지',   '물질',  'bolt',       'violet',  '물질의 상태와 용액, 화학 변화의 자발성과 반응 속도를 다룹니다.'),
-    '화학반응의세계': ('화학반응의 세계', '반응',  'science',    'rose',    '산·염기 평형, 산화·환원, 탄소 화합물 반응을 깊이 있게 탐구합니다.'),
+    '통합과학1':      ('통합과학 1',      '통과1', 'public',     'blue',    '과학의 기초부터 물질·시스템·생명까지 자연 현상을 통합적으로 이해합니다.', ''),
+    '통합과학2':      ('통합과학 2',      '통과2', 'public',     'blue',    '변화와 다양성, 환경과 에너지, 과학과 미래 사회를 탐구합니다.', '01. 통합과학2'),
+    '과학탐구실험1':  ('과학탐구실험 1',  '과탐1', 'experiment', 'emerald', '과학사 속 탐구를 직접 체험하며 과학의 본성과 탐구 과정을 익힙니다.', ''),
+    '과학탐구실험2':  ('과학탐구실험 2',  '과탐2', 'experiment', 'emerald', '생활 속 과학과 첨단 과학을 직접 실험하고 탐구합니다.', '02. 과학탐구실험2'),
+    '화학':           ('화학',            '화학',  'labs',       'orange',  '화학의 언어부터 물질의 구조, 화학 평형과 역동적 반응까지 탐구합니다.', ''),
+    '물질과 에너지':  ('물질과 에너지',   '물질',  'bolt',       'violet',  '물질의 상태와 용액, 화학 변화의 자발성과 반응 속도를 다룹니다.', '03. 물질과에너지'),
+    '화학반응의세계': ('화학반응의 세계', '반응',  'science',    'rose',    '산·염기 평형, 산화·환원, 탄소 화합물 반응을 깊이 있게 탐구합니다.', ''),
 }
 
 def strip_num(s):
@@ -40,10 +42,10 @@ for ws in wb.worksheets:
         c_subj, c_unit, c_mid, c_sub = cells[0], cells[1], cells[2], cells[3]
 
         if c_subj:
-            name, short, icon, accent, desc = META[c_subj]
+            name, short, icon, accent, desc, folder = META[c_subj]
             s_ord += 1
             cur_subj = uuid.uuid4().hex
-            subjects.append((cur_subj, name, short, desc, icon, accent, s_ord))
+            subjects.append((cur_subj, name, short, desc, icon, accent, s_ord, folder))
             cur_unit = cur_mid = None
             u_ord = 0
         if c_unit:
@@ -79,7 +81,7 @@ def q(s):
 # id -> 이름 조회용
 u_name = {i: n for (i, p, n, o) in units}
 u_subj = {i: p for (i, p, n, o) in units}
-s_name = {i: n for (i, n, sh, d, ic, ac, o) in subjects}
+s_name = {i: n for (i, n, sh, d, ic, ac, o, fo) in subjects}
 m_name = {i: n for (i, p, n, o) in mids}
 m_unit = {i: p for (i, p, n, o) in mids}
 
@@ -87,9 +89,9 @@ lines = []
 lines.append('-- 엑셀(교과별 단원.xlsx) 기반 교육과정 시드 (이름 기준 연결, UUID 불필요)')
 lines.append('delete from subjects;')  # cascade 로 하위 전부 삭제
 
-lines.append('insert into subjects (name,short_name,description,icon,accent,sort_order,is_active) values')
+lines.append('insert into subjects (name,short_name,description,icon,accent,sort_order,is_active,drive_folder) values')
 lines.append(',\n'.join(
-    f'({q(n)},{q(sh)},{q(d)},{q(ic)},{q(ac)},{o},true)' for (i,n,sh,d,ic,ac,o) in subjects) + ';')
+    f'({q(n)},{q(sh)},{q(d)},{q(ic)},{q(ac)},{o},true,{q(fo) if fo else "null"})' for (i,n,sh,d,ic,ac,o,fo) in subjects) + ';')
 
 lines.append('insert into units (subject_id,name,sort_order,is_active)')
 lines.append('select s.id, v.name, v.ord, true from (values')
