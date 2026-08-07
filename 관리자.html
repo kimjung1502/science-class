@@ -796,19 +796,44 @@
     renderClasses(cRes.data || [], sRes.data || [], lRes.data || []);
   }
 
+  // 로컬(KST) 기준 YYYY-MM-DD. toISOString() 은 UTC 로 바꾸므로 KST 에서 하루 빨라진다
+  // (2025-09-01 00:00 KST → "2025-08-31"). 날짜만 보여 줄 때는 반드시 이걸 쓴다.
+  const ymd = (d) => { const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+  // 수업 기간의 끝 — 1학기는 7월 말, 2학기는 12월 말. DB 의 class_term_end() 와 같은 규칙.
+  function termEnd(year, sem) {
+    if (!year || !sem) return null;
+    return sem === 1 ? new Date(year, 7, 1) : new Date(year + 1, 0, 1);
+  }
+  // 자동 숨김 예정일 = 수업 기간 종료 + 1개월 (그 뒤 6개월이 지나면 삭제)
+  function autoHideDate(year, sem) {
+    const end = termEnd(year, sem);
+    if (!end) return '';
+    end.setMonth(end.getMonth() + 1);
+    return ymd(end);
+  }
+  // 지금이 몇 학년도 몇 학기인지 (1~2월은 전년도 2학기)
+  function currentTerm() {
+    const d = new Date(), m = d.getMonth() + 1;
+    return { year: d.getFullYear() - (m <= 2 ? 1 : 0), sem: (m >= 3 && m <= 7) ? 1 : 2 };
+  }
+
   function renderClasses(classes, subjects, links) {
     const subjName = (id) => subjects.find((s) => s.id === id)?.name || '';
     const card = (c) => {
       const subs = links.filter((l) => l.class_id === c.id).map((l) => subjName(l.subject_id)).filter(Boolean);
       const chips = subs.length ? subs.map((n) => `<span class="text-caption bg-primary-fixed text-primary px-2 py-0.5 rounded-full">${esc(n)}</span>`).join(' ') : '<span class="text-caption text-on-surface-variant">배정된 과목 없음</span>';
       const h = !!c.hidden_at;
-      const delDate = h ? new Date(new Date(c.hidden_at).setMonth(new Date(c.hidden_at).getMonth() + 6)).toISOString().slice(0, 10) : '';
+      const delDate = h ? ymd(new Date(new Date(c.hidden_at).setMonth(new Date(c.hidden_at).getMonth() + 6))) : '';
+      const term = (c.acad_year && c.semester) ? `${c.acad_year}학년도 ${c.semester}학기` : '';
+      const hideDate = (!h && c.acad_year && c.semester) ? autoHideDate(c.acad_year, c.semester) : '';
       return `<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center gap-3">
         <div class="p-2 rounded-lg bg-surface-container text-primary shrink-0"><span class="material-symbols-outlined">${h ? 'visibility_off' : 'group'}</span></div>
         <div class="flex-1 min-w-0">
-          <p class="text-label-md font-bold text-on-surface truncate">${esc(c.name)}</p>
+          <p class="text-label-md font-bold text-on-surface truncate">${esc(c.name)}${term ? `<span class="ml-2 text-caption font-normal text-on-surface-variant">${term}</span>` : ''}</p>
           <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
           ${h ? `<p class="text-caption text-error mt-1">${delDate} 자동 삭제 예정</p>` : ''}
+          ${hideDate ? `<p class="text-caption text-on-surface-variant mt-1">${hideDate} 자동 숨김 예정 (그 뒤 6개월이면 삭제)</p>` : ''}
+          ${(!h && !term) ? `<p class="text-caption text-on-surface-variant mt-1">학년도·학기 미지정 — 자동 정리 안 됨</p>` : ''}
         </div>
         ${h
           ? `<button data-cact="show" data-id="${c.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="다시 보이기"><span class="material-symbols-outlined text-[20px]">visibility</span></button>`
@@ -839,10 +864,23 @@
   function openClassModal(cls, subjects, links) {
     const editing = !!cls;
     const assigned = new Set(links.filter((l) => cls && l.class_id === cls.id).map((l) => l.subject_id));
+    const nowTerm = currentTerm();
+    const curSem = editing ? (cls.semester ?? '') : nowTerm.sem;   // 새로 만들 때는 지금 학기를 미리 골라 둔다
     $('modal-title').textContent = editing ? '분반 수정' : '분반 추가';
     $('modal-form').innerHTML = `
       <div><label class="text-label-md text-on-surface-variant">분반 이름 *</label>
         <input name="class_name" type="text" required value="${editing ? esc(cls.name) : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학2 3반"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="text-label-md text-on-surface-variant">학년도</label>
+          <input name="acad_year" type="number" min="2000" max="2100" value="${editing ? (cls.acad_year ?? '') : nowTerm.year}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: ${nowTerm.year}"></div>
+        <div><label class="text-label-md text-on-surface-variant">학기</label>
+          <select name="semester" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">
+            <option value="">지정 안 함</option>
+            <option value="1" ${curSem === 1 ? 'selected' : ''}>1학기 (3~7월)</option>
+            <option value="2" ${curSem === 2 ? 'selected' : ''}>2학기 (8~12월)</option>
+          </select></div>
+      </div>
+      <p class="text-caption text-on-surface-variant -mt-1">수업 기간이 끝나고 <b>1개월</b> 뒤 자동으로 숨겨지고, 숨긴 날부터 <b>6개월</b> 뒤 삭제됩니다. 활성 분반이 하나도 남지 않은 학생은 함께 비활성 처리됩니다. 비워 두면 자동 정리하지 않습니다.</p>
       <div><label class="text-label-md text-on-surface-variant">볼 수 있는 과목</label>
         <div class="mt-1 space-y-0.5 max-h-56 overflow-y-auto border border-outline-variant rounded-lg p-2">
           ${subjects.map((s) => `<label class="flex items-center gap-2 p-1 cursor-pointer hover:bg-surface-container rounded"><input type="checkbox" name="subj" value="${s.id}" ${assigned.has(s.id) ? 'checked' : ''} class="rounded text-primary focus:ring-primary"><span class="text-body-md">${esc(s.name)}</span></label>`).join('')}
@@ -859,12 +897,18 @@
         const fd = new FormData(form);
         const name = fd.get('class_name').trim();
         const subjectIds = fd.getAll('subj');
+        // 둘 다 있어야 자동 정리 대상이 된다. 한쪽만 채우면 DB 가 판정할 수 없으므로 같이 비운다.
+        const yearRaw = String(fd.get('acad_year') || '').trim();
+        const semRaw = String(fd.get('semester') || '').trim();
+        const term = (yearRaw && semRaw)
+          ? { acad_year: parseInt(yearRaw, 10), semester: parseInt(semRaw, 10) }
+          : { acad_year: null, semester: null };
         let classId = cls?.id;
         if (editing) {
-          const { error } = await supabase.from('classes').update({ name }).eq('id', classId);
+          const { error } = await supabase.from('classes').update({ name, ...term }).eq('id', classId);
           if (error) throw error;
         } else {
-          const { data, error } = await supabase.from('classes').insert({ name }).select('id').single();
+          const { data, error } = await supabase.from('classes').insert({ name, ...term }).select('id').single();
           if (error) throw error;
           classId = data.id;
         }
