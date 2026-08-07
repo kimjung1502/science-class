@@ -72,6 +72,7 @@
       <button id="tab-classes" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">분반 관리</button>
       <button id="tab-students" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">학생 관리</button>
       <button id="tab-timetable" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">수업 시간표</button>
+      <button id="tab-drive" class="tab px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">드라이브</button>
       <button id="tab-admins" class="tab hidden px-md py-2 text-label-md font-bold border-b-2 border-transparent text-on-surface-variant hover:text-primary -mb-px">관리자 관리</button>
     </div>
 
@@ -124,6 +125,58 @@
       <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 space-y-2">
         <h3 class="text-label-md font-bold text-on-surface">분반별 수업 시간 <span class="text-caption font-normal text-on-surface-variant">— 예: <code>화3, 목5</code> (요일+교시, 쉼표로 구분)</span></h3>
         <div id="timetable-list" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- 구글 드라이브 -->
+    <div id="drive-view" class="hidden space-y-md">
+      <h2 class="text-title-lg text-on-surface">구글 드라이브</h2>
+      <p class="text-caption text-on-surface-variant">수업자료와 학생 제출 파일을 선생님 드라이브에 저장합니다. Supabase 무료 저장소는 1GB라 과목 자료를 담기에 부족해서 드라이브를 씁니다.</p>
+
+      <div id="drive-status" class="rounded-xl border border-outline-variant p-md text-body-md">불러오는 중…</div>
+
+      <details class="rounded-xl border border-outline-variant p-md" id="drive-client-box">
+        <summary class="text-label-md font-bold text-on-surface cursor-pointer select-none">1. OAuth 클라이언트 등록</summary>
+        <p class="text-caption text-on-surface-variant mt-2">
+          Google Cloud 콘솔 → <b>API 및 서비스 → 사용자 인증 정보</b>에서 <b>OAuth 클라이언트 ID(웹 애플리케이션)</b>를 만든 뒤 값을 넣으세요.
+          <b>승인된 리디렉션 URI</b>에 아래 주소를 그대로 등록해야 합니다.
+        </p>
+        <div class="mt-2 flex items-center gap-2 flex-wrap">
+          <code id="drive-redirect" class="text-caption bg-surface-container px-2 py-1 rounded select-all"></code>
+          <button id="drive-copy-redirect" class="border border-outline-variant px-2 py-1 rounded-lg text-caption">복사</button>
+        </div>
+        <div class="mt-3 space-y-2">
+          <div><label class="text-label-md text-on-surface-variant">클라이언트 ID</label>
+            <input id="drive-client-id" type="text" autocomplete="off" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="000000000000-xxxxxxxx.apps.googleusercontent.com"></div>
+          <div><label class="text-label-md text-on-surface-variant">클라이언트 보안 비밀</label>
+            <input id="drive-client-secret" type="password" autocomplete="new-password" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="GOCSPX-…">
+            <p class="text-caption text-on-surface-variant mt-1">저장 후에는 다시 보여 주지 않습니다. 비워 두면 기존 값을 그대로 둡니다.</p></div>
+          <div><label class="text-label-md text-on-surface-variant">Picker API 키 <span class="text-on-surface-variant">(선택 — 드라이브에서 파일 고르기)</span></label>
+            <input id="drive-picker-key" type="text" autocomplete="off" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="AIza…"></div>
+          <button id="drive-save-client" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">클라이언트 저장</button>
+        </div>
+      </details>
+
+      <div class="rounded-xl border border-outline-variant p-md">
+        <p class="text-label-md font-bold text-on-surface">2. 구글 계정 연결</p>
+        <p class="text-caption text-on-surface-variant mt-1">클라이언트를 저장한 뒤 연결하세요. 자료를 보관할 드라이브 계정으로 로그인합니다.</p>
+        <div class="mt-2 flex items-center gap-2 flex-wrap">
+          <button id="drive-connect" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">구글 계정 연결</button>
+          <button id="drive-disconnect" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">연결 해제</button>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-outline-variant p-md">
+        <p class="text-label-md font-bold text-on-surface">3. 저장 폴더</p>
+        <p class="text-caption text-on-surface-variant mt-1">드라이브에 <span class="font-mono">학교 › 학년도 › 학기 › 과목 › 분반 › 과제</span> 순서로 폴더를 만들어 저장합니다.</p>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <div><label class="text-label-md text-on-surface-variant">학교 이름</label>
+            <input id="drive-school" type="text" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 능곡고등학교"></div>
+          <div><label class="text-label-md text-on-surface-variant">교육과정</label>
+            <input id="drive-curriculum" type="text" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 2022 개정"></div>
+        </div>
+        <button id="drive-save-settings" class="mt-2 bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">폴더 설정 저장</button>
+        <p class="text-caption text-on-surface-variant mt-1">학년도·학기는 제출 시점 날짜로 자동 계산합니다(3~7월 1학기, 8~12월 2학기, 1~2월은 전년도 2학기).</p>
       </div>
     </div>
 
@@ -233,10 +286,11 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260807d"></script>
+<script src="js/db.js?v=20260807e"></script>
 <script>
 (function () {
-  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone } = window.DB;
+  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone,
+          driveStatus, driveAuthUrl, driveDisconnect, driveSaveSettings, driveSaveClient } = window.DB;
 
   const $ = (id) => document.getElementById(id);
   const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2200); };
@@ -660,7 +714,7 @@
 
   // ---------------- 탭 전환 ----------------
   let isOwner = false;
-  const TABS = ['curriculum', 'classes', 'students', 'timetable', 'admins'];
+  const TABS = ['curriculum', 'classes', 'students', 'timetable', 'drive', 'admins'];
   function switchTab(which) {
     TABS.forEach((t) => {
       $(`${t}-view`).classList.toggle('hidden', t !== which);
@@ -670,9 +724,85 @@
     if (which === 'students') loadStudents();
     if (which === 'classes') loadClasses();
     if (which === 'timetable') loadTimetable();
+    if (which === 'drive') loadDrive();
     if (which === 'admins') loadAdmins();
   }
   TABS.forEach((t) => $(`tab-${t}`).addEventListener('click', () => switchTab(t)));
+
+  // ---------------- 구글 드라이브 ----------------
+  // 자격증명은 화면에서 직접 넣는다. client_secret 은 저장 뒤 되돌려 받지 않고(status 는
+  // 존재 여부만 알려 준다), 빈 칸으로 저장하면 기존 값을 그대로 둔다.
+  const driveRedirect = () => new URL('google-callback.html', location.href).href;
+
+  async function loadDrive() {
+    $('drive-redirect').textContent = driveRedirect();
+    $('drive-status').innerHTML = '<span class="text-on-surface-variant">불러오는 중…</span>';
+    try {
+      const s = await driveStatus();
+      $('drive-client-id').value = s.clientId || '';
+      $('drive-school').value = s.school || '';
+      $('drive-curriculum').value = s.curriculum || '';
+      const mark = (ok, yes, no) => `<span class="${ok ? 'text-emerald-700 font-bold' : 'text-on-surface-variant'}">${ok ? '✔ ' + yes : '· ' + no}</span>`;
+      const flags = [mark(s.hasClient, '클라이언트 ID', '클라이언트 ID 없음'),
+                     mark(s.hasSecret, '보안 비밀', '보안 비밀 없음'),
+                     mark(s.pickerReady, 'Picker 키', 'Picker 키 없음')].join(' · ');
+      $('drive-status').innerHTML = s.connected
+        ? `<p class="text-label-md font-bold text-emerald-700">연결됨 — ${esc(s.email || '')}</p><p class="text-caption mt-1">${flags}</p>`
+        : `<p class="text-label-md font-bold text-on-surface">아직 연결되지 않았습니다.</p><p class="text-caption mt-1">${flags}</p>`
+          + '<p class="text-caption text-on-surface-variant mt-1">수업자료 업로드와 엑셀 내보내기는 연결한 뒤에 동작합니다.</p>';
+      if (!s.hasClient || !s.hasSecret) $('drive-client-box').open = true;
+    } catch (e) {
+      $('drive-status').innerHTML = `<p class="text-error">상태를 불러오지 못했습니다: ${esc(e.message)}</p>`;
+    }
+  }
+
+  $('drive-copy-redirect').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(driveRedirect()); toast('리디렉션 URI를 복사했습니다.'); }
+    catch (_e) { prompt('아래 주소를 복사해 Google Cloud 콘솔에 등록하세요.', driveRedirect()); }
+  });
+
+  $('drive-save-client').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const id = $('drive-client-id').value.trim();
+    if (!id) { alert('클라이언트 ID를 넣어 주세요.'); return; }
+    btn.disabled = true; btn.textContent = '저장 중…';
+    try {
+      await driveSaveClient(id, $('drive-client-secret').value, $('drive-picker-key').value.trim());
+      $('drive-client-secret').value = '';   // 화면에 남기지 않는다
+      $('drive-picker-key').value = '';
+      toast('클라이언트를 저장했습니다.');
+      await loadDrive();
+    } catch (err) { alert('저장 실패: ' + err.message); }
+    btn.disabled = false; btn.textContent = '클라이언트 저장';
+  });
+
+  $('drive-connect').addEventListener('click', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true;
+    try {
+      // google-callback.html 이 읽는 키 이름을 그대로 쓴다.
+      const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      sessionStorage.setItem('drive_oauth_state', state);
+      sessionStorage.setItem('drive_return_to', '관리자.html');
+      const r = await driveAuthUrl(driveRedirect(), state);
+      location.href = r.url;
+    } catch (err) { alert('연결을 시작하지 못했습니다: ' + err.message); btn.disabled = false; }
+  });
+
+  $('drive-disconnect').addEventListener('click', async () => {
+    if (!confirm('드라이브 연결을 해제할까요?\n이미 올라간 파일은 그대로 남지만, 새 업로드와 엑셀 내보내기가 막힙니다.')) return;
+    try { await driveDisconnect(); toast('연결을 해제했습니다.'); await loadDrive(); }
+    catch (e) { alert('해제 실패: ' + e.message); }
+  });
+
+  $('drive-save-settings').addEventListener('click', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true; btn.textContent = '저장 중…';
+    try {
+      // 학년도·학기는 제출 시점에 자동 계산하므로 저장하지 않는다.
+      await driveSaveSettings($('drive-school').value.trim(), '', '', $('drive-curriculum').value.trim());
+      toast('폴더 설정을 저장했습니다.');
+    } catch (err) { alert('저장 실패: ' + err.message); }
+    btn.disabled = false; btn.textContent = '폴더 설정 저장';
+  });
 
   // ---------------- 수업 시간표 ----------------
   // 여기 등록한 요일·교시에만 실험 결과 제출이 열린다(실제 판정은 서버가 한다).

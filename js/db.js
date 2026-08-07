@@ -587,6 +587,10 @@
   async function driveExchange(code, redirectUri) { return callGoogleOAuth('op=exchange', { code, redirect_uri: redirectUri }); }
   async function driveDisconnect() { return callGoogleOAuth('op=disconnect'); }
   async function driveSaveSettings(school, year, semester, curriculum) { return callGoogleOAuth('op=savesettings', { school, year, semester, curriculum }); }
+  // OAuth 클라이언트 자격증명 저장. client_secret 은 빈 문자열로 보내면 기존 값을 유지한다.
+  async function driveSaveClient(clientId, clientSecret, pickerApiKey) {
+    return callGoogleOAuth('op=saveclient', { client_id: clientId, client_secret: clientSecret, picker_api_key: pickerApiKey });
+  }
   // Picker용: 연결된 refresh_token으로 액세스 토큰 발급(+API키/appId 동봉). 관리자 전용.
   async function driveAccessToken() { return callGoogleOAuth('op=accesstoken'); }
   // Picker로 고른 파일을 "링크가 있는 모든 사용자 보기"로 공유(학생이 로그인 없이 보게)
@@ -800,7 +804,7 @@
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
-    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveAccessToken, driveShareAnyone,
+    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, driveShareAnyone,
     uploadMaterialToDrive, removeMaterialFile, driveProxyUrl, materialDriveName,
   };
 })();
