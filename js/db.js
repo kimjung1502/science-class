@@ -592,6 +592,37 @@
     return callGoogleOAuth('op=saveclient', { client_id: clientId, client_secret: clientSecret, picker_api_key: pickerApiKey });
   }
 
+  // ---------- 파일 입력에 드래그앤드롭 붙이기 ----------
+  // 기존 <input type="file"> 은 그대로 두고 바로 아래에 드롭 영역을 만든다.
+  // 떨어뜨린 파일을 input.files 에 넣고 change 를 쏘므로, 원래 핸들러가 그대로 동작한다.
+  function wireFileDrop(input) {
+    if (!input || input.dataset.dropWired) return;
+    input.dataset.dropWired = '1';
+    const zone = document.createElement('div');
+    zone.className = 'mt-1.5 rounded-lg border-2 border-dashed border-outline-variant px-3 py-3 text-center text-caption text-on-surface-variant cursor-pointer select-none transition-colors';
+    zone.textContent = '여기로 파일을 끌어다 놓아도 됩니다';
+    input.insertAdjacentElement('afterend', zone);
+
+    const lit = (on) => {
+      zone.classList.toggle('border-primary', on);
+      zone.classList.toggle('text-primary', on);
+    };
+    ['dragenter', 'dragover'].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); lit(true); }));
+    ['dragleave', 'dragend'].forEach((ev) => zone.addEventListener(ev, () => lit(false)));
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      lit(false);
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f) return;
+      const dt = new DataTransfer();   // input.files 는 직접 대입이 안 되므로 DataTransfer 로 감싼다
+      dt.items.add(f);
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      zone.textContent = `${f.name} — 다른 파일을 놓으면 바뀝니다`;
+    });
+  }
+
   // ---------- 외부 AI API 키 ----------
   // 키 값은 어떤 경로로도 돌려받지 않는다. 상태는 등록 여부·꼬리 4자·저장 시각만 준다.
   async function saveApiKey(provider, key) {
@@ -816,7 +847,7 @@
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
-    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, driveShareAnyone,
+    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, wireFileDrop, driveShareAnyone,
     uploadMaterialToDrive, removeMaterialFile, driveProxyUrl, materialDriveName,
   };
 })();

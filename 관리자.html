@@ -298,10 +298,10 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260807f"></script>
+<script src="js/db.js?v=20260807g"></script>
 <script>
 (function () {
-  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone,
+  const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone, wireFileDrop,
           driveStatus, driveAuthUrl, driveDisconnect, driveSaveSettings, driveSaveClient, saveApiKey, apiKeyStatus, fmtDateTime } = window.DB;
 
   const $ = (id) => document.getElementById(id);
@@ -497,7 +497,7 @@
         <select name="type" id="mtype" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary">${typeOpts}</select></div>
       <div><label class="text-label-md text-on-surface-variant">이름 <span class="text-outline">(비우면 유형 기본 이름)</span></label>
         <input name="name" type="text" value="${esc(item?.name || '')}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학 교과서"></div>
-      <div id="file-field" class="hidden"><label class="text-label-md text-on-surface-variant">파일 업로드 <span class="text-outline">(Supabase 저장)</span></label>
+      <div id="file-field" class="hidden"><label class="text-label-md text-on-surface-variant">파일 업로드 <span class="text-outline">(구글 드라이브에 저장 · HTML은 사이트 저장소)</span></label>
         <input name="file" type="file" class="w-full mt-1 text-caption"><p class="text-caption text-on-surface-variant mt-1" id="cur-file"></p>
         <div id="m-split" class="hidden mt-2 rounded-lg bg-surface-container border border-outline-variant p-2.5">
           <label class="text-caption font-bold">일부만 올리기 — 페이지 범위 <span class="text-outline font-normal">(선택, 비우면 전체)</span></label>
@@ -550,6 +550,7 @@
 
   function wireMaterialForm(item) {
     const sel = $('mtype');
+    wireFileDrop($('file-field').querySelector('input[name="file"]'));   // 두 번 붙지 않게 내부에서 막는다
     const sync = () => {
       const t = MATERIAL_TYPES[sel.value];
       $('file-field').classList.toggle('hidden', !(t.file || t.upload));

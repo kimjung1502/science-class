@@ -119,7 +119,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260807f"></script>
+<script src="js/db.js?v=20260807g"></script>
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
@@ -565,6 +565,7 @@
     sel.addEventListener('change', sync); sync();
     // PDF를 고르면 "일부만 올리기(페이지 범위)" 칸 표시 + 전체 쪽수 안내
     const fileInput = form.querySelector('#m2-file');
+    window.DB.wireFileDrop(fileInput);
     fileInput.addEventListener('change', async () => {
       const box = form.querySelector('#m2-split'); const note = form.querySelector('#m2-split-note');
       const f = fileInput.files && fileInput.files[0];
