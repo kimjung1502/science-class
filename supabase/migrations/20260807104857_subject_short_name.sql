@@ -19,7 +19,7 @@ update public.subjects set short_name = case name
   when '과학탐구실험 2'  then '과탐2'
   when '화학'            then '화학'
   when '물질과 에너지'   then '물질'
-  when '화학반응의 세계' then '화반'
+  when '화학반응의 세계' then '반응'
   else left(replace(name, ' ', ''), 2)
 end
 where short_name is null;

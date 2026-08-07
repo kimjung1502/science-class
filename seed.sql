@@ -1,13 +1,13 @@
 -- 엑셀(교과별 단원.xlsx) 기반 교육과정 시드 (이름 기준 연결, UUID 불필요)
 delete from subjects;
-insert into subjects (name,description,icon,accent,sort_order,is_active) values
-('통합과학 1','과학의 기초부터 물질·시스템·생명까지 자연 현상을 통합적으로 이해합니다.','public','blue',1,true),
-('통합과학 2','변화와 다양성, 환경과 에너지, 과학과 미래 사회를 탐구합니다.','public','blue',2,true),
-('과학탐구실험 1','과학사 속 탐구를 직접 체험하며 과학의 본성과 탐구 과정을 익힙니다.','experiment','emerald',3,true),
-('과학탐구실험 2','생활 속 과학과 첨단 과학을 직접 실험하고 탐구합니다.','experiment','emerald',4,true),
-('화학','화학의 언어부터 물질의 구조, 화학 평형과 역동적 반응까지 탐구합니다.','labs','orange',5,true),
-('물질과 에너지','물질의 상태와 용액, 화학 변화의 자발성과 반응 속도를 다룹니다.','bolt','violet',6,true),
-('화학반응의 세계','산·염기 평형, 산화·환원, 탄소 화합물 반응을 깊이 있게 탐구합니다.','science','rose',7,true);
+insert into subjects (name,short_name,description,icon,accent,sort_order,is_active) values
+('통합과학 1','통과1','과학의 기초부터 물질·시스템·생명까지 자연 현상을 통합적으로 이해합니다.','public','blue',1,true),
+('통합과학 2','통과2','변화와 다양성, 환경과 에너지, 과학과 미래 사회를 탐구합니다.','public','blue',2,true),
+('과학탐구실험 1','과탐1','과학사 속 탐구를 직접 체험하며 과학의 본성과 탐구 과정을 익힙니다.','experiment','emerald',3,true),
+('과학탐구실험 2','과탐2','생활 속 과학과 첨단 과학을 직접 실험하고 탐구합니다.','experiment','emerald',4,true),
+('화학','화학','화학의 언어부터 물질의 구조, 화학 평형과 역동적 반응까지 탐구합니다.','labs','orange',5,true),
+('물질과 에너지','물질','물질의 상태와 용액, 화학 변화의 자발성과 반응 속도를 다룹니다.','bolt','violet',6,true),
+('화학반응의 세계','반응','산·염기 평형, 산화·환원, 탄소 화합물 반응을 깊이 있게 탐구합니다.','science','rose',7,true);
 insert into units (subject_id,name,sort_order,is_active)
 select s.id, v.name, v.ord, true from (values
 ('통합과학 1','Ⅰ. 과학의 기초',1),

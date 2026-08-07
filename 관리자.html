@@ -843,12 +843,20 @@
       const h = !!c.hidden_at;
       const delDate = h ? ymd(new Date(new Date(c.hidden_at).setMonth(new Date(c.hidden_at).getMonth() + 6))) : '';
       const term = (c.acad_year && c.semester) ? `${c.acad_year}학년도 ${c.semester}학기` : '';
-      const meta = [c.grade ? `${c.grade}학년` : '', term, c.room ? `교실 ${c.room}` : ''].filter(Boolean).join(' · ');
+      // 제목은 학년에 따라 다르게 부른다. 1학년은 학급이라 "1-9", 2·3학년은 선택과목이라
+      // "물질F"(과목 약어 + 분반 기호). 저장된 name 은 반 번호나 기호만 담는다.
+      const label = c.grade === 1
+        ? `${c.grade}-${c.name}`
+        : ((c.grade === 2 || c.grade === 3) && subs.length
+            ? `${subs[0].short_name || subs[0].name}${c.division || c.name}`
+            : c.name);
+      // 1학년은 제목에 이미 학년이 들어가니 빼고, 2·3학년은 제목에 없으니 남긴다.
+      const meta = [(c.grade && c.grade !== 1) ? `${c.grade}학년` : '', term, c.room ? `교실 ${c.room}` : ''].filter(Boolean).join(' · ');
       const hideDate = (!h && c.acad_year && c.semester) ? autoHideDate(c.acad_year, c.semester) : '';
       return `<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center gap-3">
         <div class="p-2 rounded-lg bg-surface-container text-primary shrink-0"><span class="material-symbols-outlined">${h ? 'visibility_off' : 'group'}</span></div>
         <div class="flex-1 min-w-0">
-          <p class="text-label-md font-bold text-on-surface truncate">${esc(c.name)}${meta ? `<span class="ml-2 text-caption font-normal text-on-surface-variant">${esc(meta)}</span>` : ''}</p>
+          <p class="text-label-md font-bold text-on-surface truncate">${esc(label)}${meta ? `<span class="ml-2 text-caption font-normal text-on-surface-variant">${esc(meta)}</span>` : ''}</p>
           <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
           ${h ? `<p class="text-caption text-error mt-1">${delDate} 자동 삭제 예정</p>` : ''}
           ${hideDate ? `<p class="text-caption text-on-surface-variant mt-1">${hideDate} 자동 숨김 예정 (그 뒤 6개월이면 삭제)</p>` : ''}
@@ -895,15 +903,11 @@
           <option value="2" ${curGrade === 2 ? 'selected' : ''}>2학년 (선택과목 분반)</option>
           <option value="3" ${curGrade === 3 ? 'selected' : ''}>3학년 (선택과목 분반)</option>
         </select></div>
-      <div class="grid grid-cols-2 gap-2">
-        <div id="cls-div-wrap" class="hidden"><label class="text-label-md text-on-surface-variant">분반 기호</label>
-          <input name="division" id="cls-division" type="text" value="${editing ? esc(cls.division || '') : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: F"></div>
-        <div id="cls-room-wrap" class="hidden"><label class="text-label-md text-on-surface-variant" id="cls-room-label">수업 교실</label>
-          <input name="room" id="cls-room" type="text" value="${editing ? esc(cls.room || '') : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 204"></div>
-      </div>
       <div><label class="text-label-md text-on-surface-variant" id="cls-name-label">분반 이름 *</label>
         <input name="class_name" id="cls-name" type="text" required value="${editing ? esc(cls.name) : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 통합과학2 3반">
         <p class="text-caption text-on-surface-variant mt-1" id="cls-name-hint"></p></div>
+      <div id="cls-room-wrap" class="hidden"><label class="text-label-md text-on-surface-variant" id="cls-room-label">수업 교실</label>
+        <input name="room" id="cls-room" type="text" value="${editing ? esc(cls.room || '') : ''}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: 204"></div>
       <div class="grid grid-cols-2 gap-2">
         <div><label class="text-label-md text-on-surface-variant">학년도</label>
           <input name="acad_year" type="number" min="2000" max="2100" value="${editing ? (cls.acad_year ?? '') : nowTerm.year}" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="예: ${nowTerm.year}"></div>
@@ -924,42 +928,30 @@
         <button type="submit" id="class-save" class="flex-1 bg-primary text-white py-2.5 rounded-lg text-label-md font-bold">저장</button>
       </div>`;
     const form = $('modal-form');
-    // 학년에 따라 받는 항목이 다르다.
-    //   1학년   = 학급 단위       → 교실(반)만.        이름 "통과2(109)"
-    //   2·3학년 = 선택과목 분반   → 기호 + 교실.       이름 "물질F(204)"
-    // 이름은 자동으로 조합해 주되, 한 번이라도 직접 고치면 더는 덮어쓰지 않는다.
-    let nameTouched = editing;   // 수정 중이면 기존 이름을 함부로 바꾸지 않는다
-    $('cls-name').addEventListener('input', () => { nameTouched = true; });
-
+    // 학년에 따라 받는 것이 다르다. 이름 칸에는 반 번호(1학년)나 분반 기호(2·3학년)만 넣고,
+    // 목록에 보이는 "1-9" · "물질F" 는 표시할 때 조합한다(renderClasses 의 label).
     const shortOf = () => {
       const first = form.querySelector('input[name="subj"]:checked');
       if (!first) return '';
       const s = subjects.find((x) => x.id === first.value);
       return (s && (s.short_name || s.name)) || '';
     };
-    const buildName = () => {
-      const g = $('cls-grade').value;
-      const short = shortOf();
-      if (!g || !short) return '';
-      const div = g === '1' ? '' : ($('cls-division').value || '').trim();
-      const room = ($('cls-room').value || '').trim();
-      return `${short}${div}${room ? `(${room})` : ''}`;
-    };
     const syncGradeFields = () => {
       const g = $('cls-grade').value;
-      $('cls-div-wrap').classList.toggle('hidden', g !== '2' && g !== '3');
       $('cls-room-wrap').classList.toggle('hidden', !g);
       $('cls-room-label').textContent = g === '1' ? '교실(반)' : '수업 교실';
       $('cls-room').placeholder = g === '1' ? '예: 109' : '예: 204';
-      $('cls-name-label').textContent = g === '1' ? '반 이름 *' : (g ? '분반 이름 *' : '분반 이름 *');
-      const suggested = buildName();
-      $('cls-name-hint').textContent = suggested
-        ? (nameTouched ? `자동 이름 예시: ${suggested}` : '과목·기호·교실을 고치면 이름이 따라 바뀝니다. 직접 고치면 멈춥니다.')
-        : '';
-      if (!nameTouched && suggested) $('cls-name').value = suggested;
+      $('cls-name-label').textContent = g === '1' ? '반 *' : (g ? '분반 기호 *' : '분반 이름 *');
+      $('cls-name').placeholder = g === '1' ? '예: 9' : (g ? '예: F' : '예: 통합과학2 3반');
+      const nm = ($('cls-name').value || '').trim();
+      const short = shortOf();
+      $('cls-name-hint').textContent = (!g || !nm) ? ''
+        : (g === '1' ? `목록에는 "${g}-${nm}" 으로 표시됩니다.`
+                     : (short ? `목록에는 "${short}${nm}" 으로 표시됩니다.`
+                              : '과목을 고르면 "물질F" 처럼 과목 약어가 앞에 붙습니다.'));
     };
     $('cls-grade').addEventListener('change', syncGradeFields);
-    $('cls-division').addEventListener('input', syncGradeFields);
+    $('cls-name').addEventListener('input', syncGradeFields);
     $('cls-room').addEventListener('input', syncGradeFields);
     form.querySelectorAll('input[name="subj"]').forEach((el) => el.addEventListener('change', syncGradeFields));
     syncGradeFields();
@@ -980,9 +972,7 @@
         const gradeRaw = String(fd.get('grade') || '').trim();
         const grade = gradeRaw ? parseInt(gradeRaw, 10) : null;
         const room = grade ? (String(fd.get('room') || '').trim() || null) : null;
-        // 분반 기호는 선택과목(2·3학년)에만 있다. 1학년이나 미지정으로 되돌리면 지운다.
-        const division = (grade === 2 || grade === 3) ? (String(fd.get('division') || '').trim() || null) : null;
-        const meta = { ...term, grade, room, division };
+        const meta = { ...term, grade, room };
         let classId = cls?.id;
         if (editing) {
           const { error } = await supabase.from('classes').update({ name, ...meta }).eq('id', classId);
