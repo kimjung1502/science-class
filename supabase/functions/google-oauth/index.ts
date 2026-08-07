@@ -33,7 +33,21 @@ Deno.serve(async (req) => {
     const op = u.searchParams.get('op') || 'status'
 
     if (op === 'status') {
-      return json({ ok: true, connected: !!(cfg && cfg.refresh_token), email: cfg?.email || '', hasClient: !!(cfg && cfg.client_id), pickerReady: !!(cfg && cfg.picker_api_key), school: cfg?.school_name || '', year: cfg?.acad_year || '', semester: cfg?.semester || '', curriculum: cfg?.curriculum || '' })
+      return json({ ok: true, connected: !!(cfg && cfg.refresh_token), email: cfg?.email || '', hasClient: !!(cfg && cfg.client_id), hasSecret: !!(cfg && cfg.client_secret), clientId: cfg?.client_id || '', pickerReady: !!(cfg && cfg.picker_api_key), school: cfg?.school_name || '', year: cfg?.acad_year || '', semester: cfg?.semester || '', curriculum: cfg?.curriculum || '' })
+    }
+
+    // OAuth 클라이언트 자격증명 저장. client_secret 은 절대 되돌려 주지 않고(status 는 존재
+    // 여부만 알려 준다), 빈 문자열로 오면 기존 값을 유지한다 — 다시 입력하지 않아도 되게.
+    if (op === 'saveclient') {
+      const b = await req.json().catch(() => ({}))
+      const patch: Record<string, string | null> = {}
+      if (typeof b.client_id === 'string') patch.client_id = b.client_id.trim() || null
+      if (typeof b.picker_api_key === 'string') patch.picker_api_key = b.picker_api_key.trim() || null
+      if (typeof b.client_secret === 'string' && b.client_secret.trim() !== '') patch.client_secret = b.client_secret.trim()
+      if (!Object.keys(patch).length) return json({ error: '저장할 값이 없습니다.' }, 400)
+      const { error } = await admin.from('google_drive_credentials').update(patch).eq('id', 1)
+      if (error) return json({ error: error.message }, 400)
+      return json({ ok: true })
     }
 
     if (op === 'savesettings') {

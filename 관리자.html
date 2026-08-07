@@ -717,7 +717,7 @@
     for (const c of classes) {
       const subjIds = links.filter((l) => l.class_id === c.id).map((l) => l.subject_id);
       if (!subjIds.length) {
-        rows.push(`<div class="text-caption text-on-surface-variant py-1">${esc(c.name)} — 배정된 과목이 없습니다. 분반 관리에서 과목을 먼저 배정하세요.</div>`);
+        rows.push(`<div class="text-caption text-on-surface-variant py-1">${esc(classLabel(c, []))} — 배정된 과목이 없습니다. 분반 관리에서 과목을 먼저 배정하세요.</div>`);
         continue;
       }
       for (const sid of subjIds) {
@@ -803,10 +803,26 @@
   // ---------------- 분반 관리 ----------------
   let classesCache = [];
   const activeClasses = () => classesCache.filter((c) => !c.hidden_at); // 숨긴 분반은 새 배정 대상에서 제외
+  // 표시 이름("1-9"·"물질F")을 만들려면 과목 약어가 필요해서 함께 캐시한다.
+  let subjectsCache = [], classSubjectsCache = [];
   async function refreshClassesCache() {
-    const { data } = await supabase.from('classes').select('*').order('name');
-    classesCache = data || [];
+    const [cRes, sRes, lRes] = await Promise.all([
+      supabase.from('classes').select('*').order('name'),
+      supabase.from('subjects').select('id, name, short_name').order('sort_order'),
+      supabase.from('class_subjects').select('*'),
+    ]);
+    classesCache = cRes.data || [];
+    subjectsCache = sRes.data || [];
+    classSubjectsCache = lRes.data || [];
     return classesCache;
+  }
+  // 화면에 보이는 분반 이름. 명부 파일의 분반 열도 이 이름으로 적을 수 있게 매칭에 쓴다.
+  function classDisplay(c) {
+    const subs = classSubjectsCache
+      .filter((l) => l.class_id === c.id)
+      .map((l) => subjectsCache.find((s) => s.id === l.subject_id))
+      .filter(Boolean);
+    return classLabel(c, subs);
   }
 
   async function loadClasses() {
@@ -880,7 +896,7 @@
           ? `<button data-cact="show" data-id="${c.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="다시 보이기"><span class="material-symbols-outlined text-[20px]">visibility</span></button>`
           : `<button data-cact="edit" data-id="${c.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="과목 배정·이름 수정"><span class="material-symbols-outlined text-[20px]">edit</span></button>
         <button data-cact="hide" data-id="${c.id}" class="p-2 text-on-surface-variant hover:text-primary rounded-lg" title="숨기기 — 6개월 뒤 자동 삭제"><span class="material-symbols-outlined text-[20px]">visibility_off</span></button>`}
-        <button data-cact="del" data-id="${c.id}" data-name="${esc(c.name)}" class="p-2 text-on-surface-variant hover:text-error rounded-lg" title="삭제"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+        <button data-cact="del" data-id="${c.id}" data-name="${esc(label)}" class="p-2 text-on-surface-variant hover:text-error rounded-lg" title="삭제"><span class="material-symbols-outlined text-[20px]">delete</span></button>
       </div>`;
     };
     const visible = classes.filter((c) => !c.hidden_at), hidden = classes.filter((c) => c.hidden_at);
@@ -1059,11 +1075,11 @@
     const ids = (s.student_classes || []).map((x) => x.class_id);
     const chips = ids.map((cid) => {
       const c = classesCache.find((cc) => cc.id === cid);
-      return c ? `<span class="inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container text-caption px-2 py-0.5 rounded-full">${esc(c.name)}<button data-rm-sid="${s.id}" data-rm-cid="${cid}" class="rm-class leading-none hover:text-error font-bold" title="이 분반에서 빼기">×</button></span>` : '';
+      return c ? `<span class="inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container text-caption px-2 py-0.5 rounded-full">${esc(classDisplay(c))}<button data-rm-sid="${s.id}" data-rm-cid="${cid}" class="rm-class leading-none hover:text-error font-bold" title="이 분반에서 빼기">×</button></span>` : '';
     }).join('');
     const remaining = activeClasses().filter((c) => !ids.includes(c.id));
     const addSel = remaining.length
-      ? `<select data-add-sid="${s.id}" class="add-class text-caption border border-outline-variant rounded-lg px-1.5 py-1 bg-surface-container-lowest"><option value="">+ 분반 추가</option>${remaining.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>`
+      ? `<select data-add-sid="${s.id}" class="add-class text-caption border border-outline-variant rounded-lg px-1.5 py-1 bg-surface-container-lowest"><option value="">+ 분반 추가</option>${remaining.map((c) => `<option value="${c.id}">${esc(classDisplay(c))}</option>`).join('')}</select>`
       : '';
     const off = s.is_active === false;
     return `<div class="border border-outline-variant rounded-xl p-3 ${off ? 'bg-surface-container/40 opacity-70' : 'bg-surface-container-lowest'}">
@@ -1145,7 +1161,7 @@
     $('student-toolbar').classList.remove('hidden');
     $('student-toolbar').classList.add('flex');
     $('stu-select-all').checked = false;
-    $('stu-select-class').innerHTML = '<option value="">분반으로 선택…</option>' + activeClasses().map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    $('stu-select-class').innerHTML = '<option value="">분반으로 선택…</option>' + activeClasses().map((c) => `<option value="${c.id}">${esc(classDisplay(c))}</option>`).join('');
     updateSelCount();
   }
 
@@ -1237,7 +1253,7 @@
   $('add-student-btn').addEventListener('click', async () => {
     await refreshClassesCache();
     const classChecks = activeClasses().length
-      ? activeClasses().map((c) => `<label class="inline-flex items-center gap-1.5 text-label-md bg-surface-container px-2 py-1 rounded-lg cursor-pointer"><input type="checkbox" name="class_ids" value="${c.id}" class="rounded border-outline-variant text-primary focus:ring-primary">${esc(c.name)}</label>`).join('')
+      ? activeClasses().map((c) => `<label class="inline-flex items-center gap-1.5 text-label-md bg-surface-container px-2 py-1 rounded-lg cursor-pointer"><input type="checkbox" name="class_ids" value="${c.id}" class="rounded border-outline-variant text-primary focus:ring-primary">${esc(classDisplay(c))}</label>`).join('')
       : '<p class="text-caption text-on-surface-variant">먼저 "분반 관리"에서 분반을 만들면 여기서 선택할 수 있습니다.</p>';
     $('modal-title').textContent = '학생 추가';
     $('modal-form').innerHTML = `
@@ -1307,7 +1323,7 @@
 
   const dig = (v) => String(v == null ? '' : v).replace(/[^0-9]/g, '');
   const cellAt = (row, c) => (c >= 0 && row && row[c] != null) ? String(row[c]).trim() : '';
-  const classNameById = (id) => { const c = classesCache.find((cc) => cc.id === id); return c ? c.name : ''; };
+  const classNameById = (id) => { const c = classesCache.find((cc) => cc.id === id); return c ? classDisplay(c) : ''; };
 
   // XLSX 없이도 되는 간단 CSV 파서 → 2차원 배열
   function parseCsv(text) {
@@ -1342,7 +1358,10 @@
     bulkRows.forEach((r) => {
       let class_id = defaultClassId || null;
       if (r.fileCls) {
-        const c = activeClasses().find((cc) => cc.name.trim().toLowerCase() === r.fileCls.toLowerCase());
+        // 파일에는 저장된 이름("F")으로도, 화면에 보이는 이름("물질F")으로도 적을 수 있다.
+        const key = String(r.fileCls).trim().toLowerCase();
+        const c = activeClasses().find((cc) =>
+          String(cc.name).trim().toLowerCase() === key || classDisplay(cc).trim().toLowerCase() === key);
         class_id = c ? c.id : (defaultClassId || null);
       }
       r.class_id = class_id;
@@ -1411,7 +1430,7 @@
     $('bulk-parse-msg').textContent = '';
     $('bulk-import').disabled = true; $('bulk-import').textContent = '등록';
     await refreshClassesCache();
-    $('bulk-class').innerHTML = '<option value="">(분반 미지정)</option>' + activeClasses().map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    $('bulk-class').innerHTML = '<option value="">(분반 미지정)</option>' + activeClasses().map((c) => `<option value="${c.id}">${esc(classDisplay(c))}</option>`).join('');
     $('bulk-modal').classList.remove('hidden');
   }
   function closeBulk() { $('bulk-modal').classList.add('hidden'); }
