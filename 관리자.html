@@ -186,10 +186,16 @@
       <h2 class="text-title-lg text-on-surface">API 키</h2>
       <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-md text-caption text-on-surface-variant space-y-1">
         <p><b class="text-on-surface">지금은 이 키를 쓰는 기능이 없습니다.</b> 나중에 붙일 때를 위해 보관만 합니다.</p>
-        <p>저장한 키는 화면으로 다시 내려보내지 않습니다(등록 여부와 끝 4자리만 표시). 학생·비로그인은 테이블도 함수도 열 수 없습니다.</p>
+        <p>키는 <b class="text-on-surface">암호화 저장소(Vault)</b>에 들어갑니다. DB에 원문이 없어서 백업 파일을 통째로 가져가도 값은 나오지 않습니다.</p>
+        <p><b class="text-on-surface">이 화면에서도 키를 다시 볼 수 없습니다</b> — 등록 여부와 끝 4자리만 표시됩니다. 값을 꺼낼 수 있는 건 서버(Edge Function)뿐이고, 관리자 계정으로도 못 꺼냅니다. 잊었으면 새 키를 발급해 덮어쓰세요.</p>
         <p class="text-error"><b>학생에게 여는 기능에는 그대로 쓸 수 없습니다.</b> 세 곳 모두 약관상 미성년자 대상 서비스 이용을 제한합니다. 교사가 직접 쓰는 도구로만 사용하세요.</p>
       </div>
       <div id="apikeys-list" class="space-y-2"></div>
+      <div class="rounded-xl border border-outline-variant p-md">
+        <p class="text-label-md font-bold text-on-surface">최근 변경 내역</p>
+        <p class="text-caption text-on-surface-variant">요금이 이상하면 여기서 내가 바꾼 게 맞는지 확인하세요.</p>
+        <div id="apikeys-log" class="mt-2 text-caption text-on-surface-variant"></div>
+      </div>
     </div>
 
     <!-- 관리자 관리 (소유자 전용) -->
@@ -298,11 +304,11 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260807h"></script>
+<script src="js/db.js?v=20260807i"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, driveShareAnyone, wireFileDrop,
-          driveStatus, driveAuthUrl, driveDisconnect, driveSaveSettings, driveSaveClient, saveApiKey, apiKeyStatus, fmtDateTime } = window.DB;
+          driveStatus, driveAuthUrl, driveDisconnect, driveSaveSettings, driveSaveClient, saveApiKey, apiKeyStatus, apiKeyLog, fmtDateTime } = window.DB;
 
   const $ = (id) => document.getElementById(id);
   const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2200); };
@@ -817,6 +823,13 @@
       try { await saveApiKey(id, ''); toast('삭제했습니다.'); await loadApiKeys(); }
       catch (e) { alert('삭제 실패: ' + e.message); btn.disabled = false; }
     }));
+
+    try {
+      const log = await apiKeyLog();
+      $('apikeys-log').innerHTML = log.length
+        ? `<ul class="space-y-1">${log.map((e) => `<li>${fmtDateTime(e.at)} · <b class="text-on-surface">${esc(e.provider)}</b> ${e.action === 'set' ? '저장/교체' : '삭제'} · ${esc(e.actor_email || '알 수 없음')}</li>`).join('')}</ul>`
+        : '<p>아직 없습니다.</p>';
+    } catch (e) { $('apikeys-log').innerHTML = `<p class="text-error">${esc(e.message)}</p>`; }
   }
 
   // ---------------- 구글 드라이브 ----------------

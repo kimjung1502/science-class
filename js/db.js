@@ -624,7 +624,9 @@
   }
 
   // ---------- 외부 AI API 키 ----------
-  // 키 값은 어떤 경로로도 돌려받지 않는다. 상태는 등록 여부·꼬리 4자·저장 시각만 준다.
+  // 키 값은 어떤 경로로도 돌려받지 않는다 — 브라우저는 물론 교사 계정으로도 못 꺼낸다.
+  // 실제 값은 Vault(암호화)에 있고 get_api_key() 는 service_role(Edge Function) 전용이다.
+  // 여기서 받는 건 등록 여부·꼬리 4자·저장 시각뿐.
   async function saveApiKey(provider, key) {
     const { error } = await supabase.rpc('save_api_key', { p_provider: provider, p_key: key });
     if (error) throw new Error(error.message);
@@ -633,6 +635,12 @@
     const { data, error } = await supabase.rpc('api_key_status');
     if (error) throw new Error(error.message);
     return data || {};
+  }
+  // 키를 누가 언제 바꿨는지(최근 20건). 요금이 이상할 때 볼 곳.
+  async function apiKeyLog() {
+    const { data, error } = await supabase.rpc('api_key_log');
+    if (error) throw new Error(error.message);
+    return data || [];
   }
   // Picker용: 연결된 refresh_token으로 액세스 토큰 발급(+API키/appId 동봉). 관리자 전용.
   async function driveAccessToken() { return callGoogleOAuth('op=accesstoken'); }
@@ -862,7 +870,7 @@
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
-    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, wireFileDrop, driveShareAnyone,
+    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop, driveShareAnyone,
     uploadMaterialToDrive, removeMaterialFile, driveProxyUrl, materialDriveName,
   };
 })();
