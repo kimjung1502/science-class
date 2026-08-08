@@ -335,7 +335,7 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808e"></script>
+<script src="js/db.js?v=20260808f"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, wireFileDrop,
@@ -977,9 +977,11 @@
       const r = await driveRefile(mode);
       if (mode === 'dedupe') {
         const d = r.deduped || [];
+        // 겹치는 게 없다고 나오면 무엇을 보고 그렇게 판단했는지도 같이 보여 준다.
+        const seen = (r.seen || []).map((s) => `${esc(s.name)}${s.count > 1 ? ` <b class="text-error">×${s.count}</b>` : ''}`).join(' · ');
         out.innerHTML = d.length
           ? d.map((x) => `✔ <b class="text-on-surface">${esc(x.name)}</b> — 중복 ${x.merged}개 합침 · 폴더 ${x.folders}개, 파일 ${x.files}개 이동`).join('<br>')
-          : '✔ 이름이 겹치는 폴더가 없습니다.';
+          : `✔ 이름이 겹치는 폴더가 없습니다.<br><span class="text-on-surface-variant">본 폴더: ${seen || '(없음)'}</span>`;
       } else {
         const rows = r.moved || [];
         out.innerHTML = !rows.length ? '✔ 정리할 폴더가 없습니다 — 이미 제자리입니다.'

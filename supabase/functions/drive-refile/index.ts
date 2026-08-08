@@ -197,7 +197,14 @@ Deno.serve(async (req) => {
 
     const p = new URL(req.url).searchParams
     if (p.get('probe') === '1')  return json({ ok: true, probe: await probe(admin, token, base) })
-    if (p.get('dedupe') === '1') return json({ ok: true, deduped: await dedupe(token, base) })
+    if (p.get('dedupe') === '1') {
+      // 무엇을 보고 판단했는지 항상 같이 돌려준다. "없다"는 답이 나왔을 때
+      // 진짜 없는 건지 엉뚱한 폴더를 본 건지 응답만으로 가릴 수 있어야 한다.
+      const kids = (await children(token, base)).filter((c) => c.mimeType === FOLDER_MIME)
+      const names = kids.map((c) => c.name)
+      const seen = [...new Set(names)].map((n) => ({ name: n, count: names.filter((x) => x === n).length }))
+      return json({ ok: true, base, seen, deduped: await dedupe(token, base) })
+    }
 
     const dryRun = p.get('dry') === '1'
     return json({ ok: true, dry: dryRun, moved: await refileStrays(admin, token, base, dryRun) })
