@@ -23,10 +23,10 @@ Deno.serve(async (req) => {
     const { data: { user } } = await caller.auth.getUser()
     if (!user) return json({ error: '로그인이 필요합니다.' }, 401)
     const admin = createClient(url, service)
-    const { data: byEmail } = await admin.from('admins').select('email').eq('email', user.email).maybeSingle()
-    let isAdmin = !!byEmail
-    if (!isAdmin) { const { data: byUid } = await admin.from('admins').select('email').eq('auth_user_id', user.id).maybeSingle(); isAdmin = !!byUid }
-    if (!isAdmin) return json({ error: '관리자만 가능합니다.' }, 403)
+    // 관리자 판정은 auth_user_id 로만 한다 — DB 의 is_admin() 과 같은 기준.
+    // 이 함수는 op=accesstoken 으로 선생님 드라이브 전체 액세스 토큰을 내주므로 특히 중요하다.
+    const { data: adminRow } = await admin.from('admins').select('id').eq('auth_user_id', user.id).maybeSingle()
+    if (!adminRow) return json({ error: '관리자만 가능합니다.' }, 403)
 
     const { data: cfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()
     const u = new URL(req.url)

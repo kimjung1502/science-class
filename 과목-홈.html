@@ -231,15 +231,16 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808b"></script>
+<script src="js/db.js?v=20260808c"></script>
 <script>
 (function () {
   const {
-    supabase, requireLogin, signOut, esc,
+    supabase, requireLogin, signOut, esc, safeUrl,
     fmtDate, fmtDateTime, toLocalInput, nl2br, safeStorageName, wireSidebar, renderUnitNav,
     fetchSubjectTree, fetchAnnouncements, saveAnnouncement, deleteAnnouncement, fetchSubjectClasses,
     fetchAssessments, fetchSubmissionAssignments,
     uploadToBucket, uploadMaterialToDrive, materialDriveName, removeMaterialFile,
+    announcementFileUrl, openInNewTab,
   } = window.DB;
 
   const $ = (id) => document.getElementById(id);
@@ -330,8 +331,8 @@
       ? `<p class="font-mono text-[11px] text-ink3 mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">groups</span>대상 ${esc(tNames.join(' · ') || a.target_class_ids.length + '개 분반')}</p>` : '';
     const body = (a.body || '').trim();
     const atts = Array.isArray(a.attachments) ? a.attachments : [];
-    const attHtml = atts.length ? `<div class="flex flex-wrap gap-2 mt-2.5">${atts.map((f) =>
-      `<a href="${esc(f.url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-lg border border-faint bg-paper/60 px-2.5 py-1.5 text-[12px] font-bold text-ink2 hover:border-ink hover:text-ink transition max-w-full">
+    const attHtml = atts.length ? `<div class="flex flex-wrap gap-2 mt-2.5">${atts.map((f, fi) =>
+      `<a href="#" data-ann-file="${esc(a.id)}" data-ann-i="${fi}" class="inline-flex items-center gap-1.5 rounded-lg border border-faint bg-paper/60 px-2.5 py-1.5 text-[12px] font-bold text-ink2 hover:border-ink hover:text-ink transition max-w-full">
         <span class="material-symbols-outlined text-[15px] text-signal shrink-0">attach_file</span>
         <span class="truncate">${esc(f.name)}</span>
         ${f.size ? `<span class="font-mono text-[10px] font-normal text-ink3 shrink-0">${fmtSize(f.size)}</span>` : ''}
@@ -371,6 +372,11 @@
       }
       state.annList = list;
       box.innerHTML = list.map(announceRow).join('');
+      // 첨부는 누르는 순간 서명 링크를 받는다. 공지 열람 권한(대상 분반·공개기간)을 서버 RLS 가 다시 본다.
+      box.querySelectorAll('a[data-ann-file]').forEach((a) => a.addEventListener('click', (e) => {
+        e.preventDefault();
+        openInNewTab(() => announcementFileUrl(a.dataset.annFile, Number(a.dataset.annI)));
+      }));
       box.querySelectorAll('.an-edit').forEach((b) => b.addEventListener('click', () => openAnnounce(list.find((x) => x.id === b.dataset.edit))));
       box.querySelectorAll('.an-del').forEach((b) => b.addEventListener('click', () => removeAnnounce(b.dataset.del)));
       state.counts.announce = list.length; renderHeroChips();

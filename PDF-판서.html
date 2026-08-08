@@ -13,7 +13,7 @@
 <!-- PDF 렌더링(PDF.js) · 수업자료 불러오기(Supabase) -->
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808b"></script>
+<script src="js/db.js?v=20260808c"></script>
 <style>
   html, body { height: 100%; }
   /* 판서 무대: 자체 스크롤. 배경은 종이빛(모눈 없이 차분하게) */
@@ -879,20 +879,19 @@
         (m.subunits || []).forEach(function (su) {
           (su.materials || []).forEach(function (mat) {
             var url = mat.url || '';
-            // 드라이브에 저장된 자료('gdrive:')는 프록시 주소로 바꿔서 fetch 가능하게.
-            // Picker로 링크만 등록한 드라이브 자료는 원본을 못 받아 목록에서 제외.
-            if (mat.storage_path && mat.storage_path.indexOf('gdrive:') === 0) {
-              url = window.DB.driveProxyUrl(mat.storage_path.slice(7));
-            } else if (/drive\.google\.com/i.test(url)) {
-              return;
-            }
+            // 저장소(버킷·드라이브)에 실제 파일이 있는 자료는 주소를 미리 만들지 않는다.
+            // 자료 id 만 들고 있다가 고른 순간 서명 링크를 받는다(5분짜리라 미리 받아 두면 만료된다).
+            var matId = mat.storage_path ? mat.id : '';
+            // 링크만 등록한 외부 드라이브 자료는 원본 바이트를 못 받아 목록에서 제외.
+            if (!matId && /drive\.google\.com/i.test(url)) return;
             var isPdf = (mat.type === 'print') ||
               /\.pdf(\?|$)/i.test(url) ||
               /\.pdf$/i.test(mat.original_filename || '');
-            if (isPdf && url) {
+            if (isPdf && (matId || url)) {
               out.push({
                 name: mat.name || mat.original_filename || 'PDF',
                 url: url,
+                matId: matId,
                 path: [u.name, m.name, su.name].filter(Boolean).join(' › ')
               });
             }
@@ -925,7 +924,9 @@
           (p.path ? '<span class="block text-[12px] text-ink3 truncate">' + DB.esc(p.path) + '</span>' : '') + '</span>';
         btn.addEventListener('click', function () {
           closeMaterialModal();
-          loadPdf(p.url, p.name);
+          if (p.matId) window.DB.materialUrl(p.matId).then(function (u2) { loadPdf(u2, p.name); },
+            function (e2) { alert(e2.message || '자료를 열지 못했습니다.'); });
+          else loadPdf(p.url, p.name);
         });
         listEl.appendChild(btn);
       });
@@ -942,8 +943,14 @@
   // (다른 페이지에서 "이 자료 판서로 열기" 링크로 연결할 때 사용)
   try {
     var qp = new URLSearchParams(location.search);
+    // ?mat=<자료 id> — 서명 링크를 여기서 직접 받는다(주소에 링크를 실어 나르지 않는다)
+    var mat = qp.get('mat');
+    if (mat) {
+      window.DB.materialUrl(mat).then(function (u2) { loadPdf(u2, qp.get('title') || 'PDF'); },
+        function (e2) { alert(e2.message || '자료를 열지 못했습니다.'); });
+    }
     var src = qp.get('src');
-    if (src) loadPdf(src, qp.get('title') || decodeURIComponent(src.split('/').pop() || '').replace(/\.pdf$/i, ''));
+    if (!mat && src) loadPdf(src, qp.get('title') || decodeURIComponent(src.split('/').pop() || '').replace(/\.pdf$/i, ''));
   } catch (_e) {}
 })();
 </script>

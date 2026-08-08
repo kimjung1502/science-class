@@ -148,6 +148,14 @@
   };
 
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // href 로 들어가는 값은 esc() 만으로 부족하다 — 따옴표를 안 깨도 javascript:/data: 스킴이면
+  // 클릭 한 번에 스크립트가 돈다. 스킴 판정은 직접 정규식을 짜지 말고 URL 파서에 맡긴다.
+  const safeUrl = (u) => {
+    try {
+      const p = new URL(String(u ?? ''), location.href).protocol;   // 상대 경로는 현재 스킴으로 풀린다
+      return (p === 'http:' || p === 'https:' || p === location.protocol) ? String(u) : '#';
+    } catch (_e) { return '#'; }
+  };
 
   // ---------- 공용 포맷 헬퍼 (페이지마다 중복 정의하던 것) ----------
   const _p2 = (n) => String(n).padStart(2, '0');
@@ -766,8 +774,33 @@
     if (storagePath.indexOf('gdrive:') === 0) return driveTrashFile(storagePath.slice(7));
     return removeFromBucket('materials', [storagePath]);
   }
-  // 드라이브 자료를 여는 유일한 주소. 교사전용·공개기간 검사가 여기서 걸린다.
-  function driveProxyUrl(fileId) { return `${FUNCTIONS_URL}/drive-file?id=${encodeURIComponent(fileId)}`; }
+  // 수업자료·공지 첨부를 여는 유일한 통로. 서버가 RLS(materials_read / announcements_read)로
+  // 교사전용·공개기간·수강 과목을 판정한 뒤 5분짜리 링크를 준다.
+  // 발급된 링크에는 로그인 토큰이 실리지 않으므로 <a href>·<iframe src> 에 그대로 쓸 수 있다.
+  // (예전 driveProxyUrl 은 파일 id 만 붙인 주소여서 로그인 없이도 열렸고 수강 검사도 없었다.)
+  async function fileLink(qs) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${FUNCTIONS_URL}/drive-file?op=link&${qs}`, {
+      headers: { 'Authorization': `Bearer ${(session && session.access_token) || ''}`, 'apikey': SUPABASE_KEY },
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || !out.url) throw new Error(out.error || `자료를 열지 못했습니다 (${res.status})`);
+    return out.url;
+  }
+  function materialUrl(materialId) { return fileLink(`material=${encodeURIComponent(materialId)}`); }
+  function announcementFileUrl(annId, index) { return fileLink(`announcement=${encodeURIComponent(annId)}&i=${index | 0}`); }
+
+  // 링크를 받아오는 사이 팝업 차단에 걸리지 않게 빈 탭을 먼저 열고 주소를 나중에 넣는다.
+  async function openInNewTab(getUrl) {
+    const w = window.open('', '_blank');
+    try {
+      const href = await getUrl();
+      if (w) { w.opener = null; w.location = href; } else { window.location.href = href; }
+    } catch (e) {
+      if (w) w.close();
+      alert(e.message || '자료를 열지 못했습니다.');
+    }
+  }
   // 예전에 자료에 걸어 둔 '링크가 있는 모든 사용자' 공유를 되돌린다(관리자 전용, 1회성).
   async function driveUnshareAll() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -875,7 +908,7 @@
     supabase,
     studentSignIn, currentStudent, requireLogin, signOut, callManageStudents,
     uploadToBucket, removeFromBucket,
-    MATERIAL_TYPES, ACCENTS, esc, fetchSubjects, fetchSubjectTree,
+    MATERIAL_TYPES, ACCENTS, esc, safeUrl, fetchSubjects, fetchSubjectTree,
     fmtDate, fmtDateTime, toLocalInput, nl2br, safeStorageName, fillSelect,
     wireSidebar, renderUnitNav, wireFilterChips, topicIndex, pickDriveFile,
     fetchSubjectMeta, fetchQuestions, fetchQuestion, fetchAnswers,
@@ -888,6 +921,7 @@
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
     driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop,
-    uploadMaterialToDrive, removeMaterialFile, driveProxyUrl, driveIdOf, driveUnshareAll, materialDriveName,
+    uploadMaterialToDrive, removeMaterialFile, driveIdOf, driveUnshareAll, materialDriveName,
+    materialUrl, announcementFileUrl, openInNewTab,
   };
 })();

@@ -116,11 +116,12 @@ async function resolveClass(admin: any, studentId: string, subjectId: string): P
   return { classId, className: cls?.name || '미분류' }
 }
 
+// 관리자 판정은 auth_user_id 로만 한다 — DB 의 is_admin() 과 같은 기준.
+// JWT 의 email 은 사용자가 updateUser 로 바꾸려 시도할 수 있는 값이라 인증 근거로 쓰지 않는다.
+// (예전에는 email 을 먼저 봤다. auth.users 의 email unique 제약이 우연히 막아 주고 있었을 뿐이다.)
 async function checkAdmin(admin: any, user: any): Promise<boolean> {
-  const { data: byEmail } = await admin.from('admins').select('email').eq('email', user.email).maybeSingle()
-  if (byEmail) return true
-  const { data: byUid } = await admin.from('admins').select('email').eq('auth_user_id', user.id).maybeSingle()
-  return !!byUid
+  const { data } = await admin.from('admins').select('id').eq('auth_user_id', user.id).maybeSingle()
+  return !!data
 }
 
 function collectPaths(answers: any): string[] {
@@ -272,12 +273,18 @@ Deno.serve(async (req) => {
       if (student.is_active === false) return json({ error: '비활성(자퇴) 계정입니다.' }, 403)
       const body = await req.json().catch(() => ({}))
       const subjectId = String(body.subject_id || '')
+      // subject_id 를 비워 보내면 experiment_windows 조회가 uuid 오류로 null 이 되고,
+      // classId 도 null 이라 submitGate 가 무조건 open 을 내줬다 — 마감·수업시간 검사가 통째로
+      // 사라져 선생님 드라이브에 임의 이름 폴더를 무한히 만들 수 있었다. op=submit·upload-file
+      // 과 같게 과목·수강을 먼저 확정한다.
+      if (!subjectId) return json({ error: 'subject_id가 필요합니다.' }, 400)
       const title = sanitizeName(body.title || '실험')
       const bytes = new TextEncoder().encode(JSON.stringify(body.payload ?? null, null, 2))
       if (bytes.length < 3) return json({ error: '보낼 내용이 없습니다.' }, 400)
       if (bytes.length > 10 * 1024 * 1024) return json({ error: '결과가 너무 큽니다(최대 10MB).' }, 400)
-      const cls = subjectId ? await resolveClass(admin, student.id, subjectId) : null
-      const gate = await submitGate(admin, subjectId, title, cls?.classId || null)
+      const cls = await resolveClass(admin, student.id, subjectId)
+      if (!cls) return json({ error: '이 과목을 수강하지 않아 제출할 수 없습니다.' }, 403)
+      const gate = await submitGate(admin, subjectId, title, cls.classId)
       if (!gate.open) return json({ error: gate.why, close_at: gate.close_at }, 403)
       const { data: gcfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()
       if (!(gcfg?.refresh_token && gcfg?.client_id && gcfg?.client_secret)) return json({ error: '선생님 드라이브가 연결되어 있지 않습니다.' }, 503)

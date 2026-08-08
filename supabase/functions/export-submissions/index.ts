@@ -299,11 +299,10 @@ async function exportExperiment(admin: any, opts: any): Promise<{ ok: boolean; r
   return { ok: true, results }
 }
 
+// 관리자 판정은 auth_user_id 로만 한다 — DB 의 is_admin() 과 같은 기준(submit-work 와 동일).
 async function checkAdmin(admin: any, user: any): Promise<boolean> {
-  const { data: byEmail } = await admin.from('admins').select('email').eq('email', user.email).maybeSingle()
-  if (byEmail) return true
-  const { data: byUid } = await admin.from('admins').select('email').eq('auth_user_id', user.id).maybeSingle()
-  return !!byUid
+  const { data } = await admin.from('admins').select('id').eq('auth_user_id', user.id).maybeSingle()
+  return !!data
 }
 
 Deno.serve(async (req) => {

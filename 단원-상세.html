@@ -119,11 +119,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808b"></script>
+<script src="js/db.js?v=20260808c"></script>
 <script>
   // ⚠️ 이 인라인 스크립트는 IIFE로 안 감싸진 최상위 스코프라, supabase-js UMD가 만든 전역 `supabase`와
   //    충돌하지 않도록 여기서 `supabase`를 구조분해하지 않는다(대신 아래에서 window.DB.supabase 사용).
-  const { fetchSubjectTree, MATERIAL_TYPES, esc, requireLogin, signOut, uploadToBucket, removeMaterialFile, uploadMaterialToDrive, driveProxyUrl, driveIdOf, pdfPageCount, splitPdfFile, safeStorageName, toLocalInput, wireSidebar, pickDriveFile } = window.DB;
+  const { fetchSubjectTree, MATERIAL_TYPES, esc, safeUrl, requireLogin, signOut, uploadToBucket, removeMaterialFile, uploadMaterialToDrive, materialUrl, openInNewTab, driveIdOf, pdfPageCount, splitPdfFile, safeStorageName, toLocalInput, wireSidebar, pickDriveFile } = window.DB;
 
   const params = new URLSearchParams(location.search);
   const subjectId = params.get('subject');
@@ -176,30 +176,31 @@
     if (!t) return '';
     const name = m.name || t.label;
     const bundledUrl = bundledHtmlUrl(m);
-    // 드라이브 자료는 드라이브 링크가 아니라 프록시로 연다. 드라이브 직링크는 교사전용·공개기간·
-    // 로그인 검사를 전부 우회하고, 한 번 새면 회수도 안 된다. 프록시만이 그 규칙을 건다.
-    const driveId = !bundledUrl ? driveIdOf(m.storage_path) : '';
+    // 저장소(드라이브·버킷)에 있는 자료는 주소를 미리 박지 않는다. 카드에는 자료 id 만 심고,
+    // 누르는 순간 materialUrl() 로 5분짜리 서명 링크를 받는다 — 권한 판정은 서버 RLS 가 한다.
+    // 예전에는 프록시 주소를 그대로 박아 둬서, 그 주소가 새면 로그인 없이 열렸다.
+    const stored = !bundledUrl && !!m.storage_path;
     // 파일형인데 storage_path가 아예 없으면 진짜 외부 링크다 → 새 탭, ?download 미부여
-    const isExternal = !bundledUrl && t.file && !driveId && !m.storage_path && m.url && m.url !== '#';
-    let href = bundledUrl || (driveId ? driveProxyUrl(driveId) : (m.url || '#'));
+    const isExternal = !bundledUrl && t.file && !stored && m.url && m.url !== '#';
+    let href = bundledUrl || (stored ? '#' : (m.url || '#'));
 
     // html 자료(실험 페이지 등): 링크로 열지 않고 카드 아래에 아코디언으로 펼쳐서 바로 보여준다.
-    // (Supabase 공개 오브젝트가 XSS 방지로 text/html을 text/plain으로 내려서 그냥 링크로 열면 소스가 보임
+    // (Supabase 오브젝트가 XSS 방지로 text/html을 text/plain으로 내려서 그냥 링크로 열면 소스가 보임
     //  → 아코디언을 펼 때 fetch로 원문을 받아 iframe에 srcdoc으로 주입해 렌더링)
-    if (m.type === 'html' && !isExternal && href !== '#') {
-      return materialHtmlCard(m, t, name, href);
+    if (m.type === 'html' && !isExternal && (stored || href !== '#')) {
+      return materialHtmlCard(m, t, name, stored ? '' : href, stored);
     }
 
-    const newTab = t.newTab || isExternal || !!driveId;
+    const newTab = t.newTab || isExternal || stored;
     const tabAttr = newTab ? ' target="_blank" rel="noopener"' : '';
     const meta = m.meta || (newTab ? '새 탭에서 열기' : '');
-    // 업로드 파일(Supabase): 다운로드 시 원본(한글) 파일명으로 받게 ?download 부여 (영상·외부링크 제외)
-    // 드라이브 자료는 프록시가 Content-Disposition 으로 원본 이름을 이미 붙여 준다 → 제외
-    if (t.file && !isExternal && !driveId && m.original_filename && m.type !== 'video' && href !== '#') {
+    // 저장소 자료의 원본 파일명은 서명 링크(드라이브 프록시·Storage 서명 URL)가 붙여 준다 → 여기선 제외
+    if (t.file && !isExternal && !stored && m.original_filename && m.type !== 'video' && href !== '#') {
       href += (href.indexOf('?') >= 0 ? '&' : '?') + 'download=' + encodeURIComponent(m.original_filename);
     }
+    const openAttr = stored ? ` data-mat="${esc(m.id)}"` : '';
     const teacherBadge = (m.teacher_only ? '<span class="font-mono text-[10px] font-bold text-signal bg-signal-soft px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '') + visibilityBadge(m);
-    return `<a href="${esc(href)}"${tabAttr} class="group card lift-hover p-4 rounded-lg shadow-note hover:shadow-lift hover:border-ink/30 transition-all duration-200 flex items-center gap-3 min-h-[56px]">
+    return `<a href="${esc(safeUrl(href))}"${tabAttr}${openAttr} class="group card lift-hover p-4 rounded-lg shadow-note hover:shadow-lift hover:border-ink/30 transition-all duration-200 flex items-center gap-3 min-h-[56px]">
       <div class="p-2 ${t.box} rounded-lg shrink-0"><span class="material-symbols-outlined lab-ic">${t.icon}</span></div>
       <div class="flex-1 overflow-hidden"><p class="text-[14px] font-bold text-ink truncate">${esc(name)}</p><p class="font-mono text-[11px] text-ink3 truncate">${esc(meta)}</p></div>
       ${teacherBadge}
@@ -207,12 +208,14 @@
     </a>`;
   }
 
-  function materialHtmlCard(m, t, name, href) {
+  // stored=true 면 href 대신 자료 id 를 심고, 펼칠 때 서명 링크를 받아 온다.
+  function materialHtmlCard(m, t, name, href, stored) {
+    const srcAttr = stored ? ` data-html-mat="${esc(m.id)}"` : ` data-html-src="${esc(href)}"`;
     const teacherBadge = (m.teacher_only ? '<span class="font-mono text-[10px] font-bold text-signal bg-signal-soft px-1.5 py-0.5 rounded shrink-0">교사만</span>' : '') + visibilityBadge(m);
     const meta = m.meta || '눌러서 펼치기';
     const panelId = 'mat-html-panel-' + m.id;
     return `<div class="col-span-full card rounded-lg overflow-hidden shadow-note">
-      <button type="button" class="mat-html-toggle w-full group p-4 flex items-center gap-3 min-h-[56px] text-left hover:bg-paper2/60 transition-colors" data-html-src="${esc(href)}" data-panel="${panelId}" aria-expanded="false">
+      <button type="button" class="mat-html-toggle w-full group p-4 flex items-center gap-3 min-h-[56px] text-left hover:bg-paper2/60 transition-colors"${srcAttr} data-panel="${panelId}" aria-expanded="false">
         <div class="p-2 ${t.box} rounded-lg shrink-0"><span class="material-symbols-outlined lab-ic">${t.icon}</span></div>
         <div class="flex-1 overflow-hidden"><p class="text-[14px] font-bold text-ink truncate">${esc(name)}</p><p class="font-mono text-[11px] text-ink3 truncate">${esc(meta)}</p></div>
         ${teacherBadge}
@@ -221,7 +224,7 @@
       <div class="acc-panel" id="${panelId}" style="height:0">
         <div class="dashed bg-paper/40">
           <div class="flex items-center justify-end p-2">
-            <button type="button" class="mat-html-newtab inline-flex items-center gap-1 font-mono text-[11px] text-ink3 hover:text-signal px-2 py-1 rounded" data-html-src="${esc(href)}">
+            <button type="button" class="mat-html-newtab inline-flex items-center gap-1 font-mono text-[11px] text-ink3 hover:text-signal px-2 py-1 rounded"${srcAttr}>
               <span class="material-symbols-outlined lab-ic text-[16px]">open_in_new</span>새 탭에서 크게 보기
             </button>
           </div>
@@ -240,9 +243,16 @@
     const tag = '<scr' + 'ipt>window.__SITE_STUDENT__=' + JSON.stringify(info).replace(/</g, '\\u003c') + ';</scr' + 'ipt>';
     return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + tag) : tag + html;
   }
-  async function loadHtmlIntoIframe(iframe, url) {
+  // 번들 자료(data-html-src)는 상대 경로 그대로, 저장소 자료(data-html-mat)는 서명 링크를 받아 온다.
+  // 둘 다 Promise<string> 을 돌려주므로 아래 두 함수는 구분할 필요가 없다.
+  function htmlSrcOf(btn) {
+    const mat = btn.dataset.htmlMat;
+    return mat ? materialUrl(mat) : Promise.resolve(btn.dataset.htmlSrc);
+  }
+  async function loadHtmlIntoIframe(iframe, urlOrPromise) {
     iframe.srcdoc = '<p style="font:14px system-ui;padding:16px;color:#666">불러오는 중…</p>';
     try {
+      const url = await urlOrPromise;
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error('불러오기 실패 (' + res.status + ')');
       iframe.srcdoc = injectStudentInfo(await res.text());
@@ -251,9 +261,10 @@
     }
   }
   // 새 탭에서 크게 보기: 팝업 차단 회피를 위해 먼저 빈 탭을 열고, fetch한 원문을 text/html Blob으로 교체
-  async function openHtmlMaterial(url) {
+  async function openHtmlMaterial(urlOrPromise) {
     const w = window.open('', '_blank');
     try {
+      const url = await urlOrPromise;
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error('불러오기 실패 (' + res.status + ')');
       const text = injectStudentInfo(await res.text());
@@ -264,20 +275,20 @@
     }
   }
 
-  // 판서로 열 수 있는 PDF인지: 우리 스토리지(공개 URL) 또는 드라이브 파일(→ drive-file 프록시로 fetch 가능).
-  // Picker 로 고른 파일도 이제 storage_path('gdriveref:')를 갖고 프록시로 읽히므로 함께 열린다.
+  // 판서로 열 수 있는 PDF인지: 저장소(버킷·드라이브)에 실제 파일이 있는 자료만.
+  // m.url 은 업로드 당시 주소라 이제 열람에 쓰지 않는다 — storage_path 유무로만 판정한다.
   function isPdfMaterial(m) {
     if (!m) return false;
-    const direct = m.storage_path && m.url && m.url !== '#';
+    const direct = !!m.storage_path;
     const pdfish = m.type === 'print' || /\.pdf(\?|$)/i.test(m.url || '') || /\.pdf$/i.test(m.original_filename || '');
     return !!(direct && pdfish);
   }
+  // 서명 링크는 5분이면 만료되고 주소창·방문기록에 남는 것도 달갑지 않다.
+  // 자료 id 만 넘기고 판서 페이지가 열 때 직접 발급받게 한다.
   function drawHref(m) {
     const t = MATERIAL_TYPES[m.type];
     const name = m.name || (t && t.label) || 'PDF';
-    const id = driveIdOf(m.storage_path);
-    const src = id ? driveProxyUrl(id) : m.url;
-    return `PDF-판서.html?src=${encodeURIComponent(src)}&title=${encodeURIComponent(name)}`;
+    return `PDF-판서.html?mat=${encodeURIComponent(m.id)}&title=${encodeURIComponent(name)}`;
   }
 
   function matCardWrap(m) {
@@ -467,13 +478,18 @@
       btn.setAttribute('aria-expanded', opening);
       if (opening) {
         const iframe = panel.querySelector('iframe');
-        if (!iframe.dataset.loaded) { iframe.dataset.loaded = '1'; loadHtmlIntoIframe(iframe, btn.dataset.htmlSrc); }
+        if (!iframe.dataset.loaded) { iframe.dataset.loaded = '1'; loadHtmlIntoIframe(iframe, htmlSrcOf(btn)); }
       }
       setOpen(panel, opening);
     }));
     document.querySelectorAll('#subunit-list .mat-html-newtab').forEach((btn) => btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      openHtmlMaterial(btn.dataset.htmlSrc);
+      openHtmlMaterial(htmlSrcOf(btn));
+    }));
+    // 저장소 자료 카드: 누르는 순간 서명 링크를 받아 새 탭으로 연다(주소를 미리 박아 두지 않는다).
+    document.querySelectorAll('#subunit-list a[data-mat]').forEach((a) => a.addEventListener('click', (e) => {
+      e.preventDefault();
+      openInNewTab(() => materialUrl(a.dataset.mat));
     }));
     if (state.isAdmin) {
       document.querySelectorAll('#subunit-list .add-material').forEach((btn) => btn.addEventListener('click', (e) => { e.stopPropagation(); openMatModal(btn.dataset.addSub); }));

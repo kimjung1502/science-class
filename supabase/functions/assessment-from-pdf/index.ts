@@ -23,10 +23,9 @@ async function isAdminReq(req: Request, admin: any): Promise<boolean> {
   const caller = createClient(url, anon, { global: { headers: { Authorization: req.headers.get('Authorization') || '' } } })
   const { data: { user } } = await caller.auth.getUser()
   if (!user) return false
-  const { data: byEmail } = await admin.from('admins').select('email').eq('email', user.email).maybeSingle()
-  if (byEmail) return true
-  const { data: byUid } = await admin.from('admins').select('email').eq('auth_user_id', user.id).maybeSingle()
-  return !!byUid
+  // 관리자 판정은 auth_user_id 로만 한다 — DB 의 is_admin() 과 같은 기준.
+  const { data } = await admin.from('admins').select('id').eq('auth_user_id', user.id).maybeSingle()
+  return !!data
 }
 
 // 폼이 그대로 받아 쓰는 모양. 값을 못 찾으면 빈 문자열/빈 배열 — 지어내지 말라고 프롬프트에 박아 둔다.
