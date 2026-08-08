@@ -530,16 +530,6 @@
   </form>
 </dialog>
 
-<dialog id="teacherDlg">
-  <form id="teacherForm">
-    <p><b>교사 확인</b><br>교사 비밀번호를 입력하세요.</p>
-    <input type="password" id="teacherPw" placeholder="비밀번호" autocomplete="off">
-    <div class="lockmsg" id="teacherPwMsg" style="margin-top:8px"></div>
-    <div class="actions">
-      <button type="button" class="btn ghost" id="teacherCancel">취소</button>
-      <button type="submit" class="btn lime">확인</button>
-    </div>
-  </form>
 </dialog>
 
 <script>
@@ -833,19 +823,14 @@ var E = IdealGasEngine, C = E.C;
 
 /* ===================== §4 교사 설정 ===================== */
 var CONFIG = {
-  HINT_PW: "1234",          // 힌트 잠금 비밀번호 (스펙트럼과 동일)
-  TEACHER_NAME: "김정환쌤",    // 이름 칸에 이걸 넣고 저장 → 비밀번호 확인 후 교사 미리보기
-  TEACHER_PW: "Coco1515!",     // 교사 미리보기 비밀번호 (?teacher= URL도 공용)
+  HINT_PW: "1234",          // 힌트 잠금 비밀번호 (스펙트럼과 동일) — 정답 보호용, 인증 아님
   MIN_POINTS: 4,            // 각 탐구 데이터 점 최소 개수 — '서로 다른' 점만 카운트(§6)
-  AI_CHECK: true,           // 서술형 Gemini 1차 검수 사용 여부 (대상 키 10개는 §8.4)
-  REQUIRE_AI_PASS: false,   // true여도 '정상 응답의 ok=false'만 차단. 통신 실패는 항상 통과
   GOAL: "실린더 속 기체 입자의 운동을 관찰해 압력·부피·온도가 서로 어떤 관계인지 스스로 찾아낸다.",
   SUPABASE_URL: "https://dnyocyknmcmxglgkjdfx.supabase.co",
   SUPABASE_ANON: "sb_publishable_W8MIkrTVrQAskWLrpZaPNw_f6eRhWj1",
   SUBJECT_ID: "5d7b2bab-66b3-4cde-8290-ab7f4adb7d9b",   // 물질과 에너지 — 저장 폴더의 과목·분반 판정용
   EXPERIMENT_TITLE: "이상기체 상태 방정식 실험"            // 드라이브에 만들어질 폴더 이름
 };
-var AI_URL = CONFIG.SUPABASE_URL + "/functions/v1/check-experiment-response";
 var SUBMIT_URL = CONFIG.SUPABASE_URL + "/functions/v1/submit-work?op=experiment";
 var WINDOW_URL = CONFIG.SUPABASE_URL + "/functions/v1/submit-work?op=experiment-window";
 var EXPORT_URL = CONFIG.SUPABASE_URL + "/functions/v1/export-submissions";
@@ -869,22 +854,13 @@ var EXPORT_COLUMNS = [
   { path: 'assess.a1', label: '평가1 주사기' },
   { path: 'assess.a3', label: '평가2 빈도·세기' }
 ];
-var AI_TIMEOUT = 8000, AI_TOTAL_CAP = 16000;   // §8.4 8 s × 재시도 포함 2회 = 총 16 s
-
 /* ===================== §3.2 학생 정보 자동 주입 ===================== */
 var S = window.__SITE_STUDENT__ || null;
+/* 교사 판정은 사이트 로그인(S.isAdmin) 하나뿐이다.
+   페이지 상수에 교사 비밀번호를 박아 두던 ?teacher= 프리패스는 제거했다 —
+   클라이언트에 있는 비밀번호는 소스 보기 한 번이면 끝나고, git 히스토리에도 남는다.
+   사이트 밖에서 미리 보려면 교사 계정으로 로그인한 채 사이트에서 열 것. */
 var IS_ADMIN = !!(S && S.isAdmin === true);
-/* 단독 배포(사이트 밖·로그인 주입 없음)용 교사 미리보기 —
-   ?teacher=<힌트 비밀번호> 로 열면 켜지고 같은 탭에서 유지된다(sessionStorage).
-   끄려면 ?teacher=off 또는 탭 닫기. 게이트·AI 검수 우회, 전송 없음(기존 IS_ADMIN 동작 그대로). */
-if (!S) {
-  try {
-    var _tq = new URLSearchParams(location.search).get('teacher');
-    if (_tq === 'off') sessionStorage.removeItem('idealgas_teacher');
-    else if (_tq === CONFIG.TEACHER_PW) sessionStorage.setItem('idealgas_teacher', '1');
-    if (sessionStorage.getItem('idealgas_teacher') === '1') IS_ADMIN = true;
-  } catch (e) { /* sessionStorage 접근 불가 → 학생 모드 유지 */ }
-}
 var $ = function (s, r) { return (r || document).querySelector(s); };
 var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1080,88 +1056,12 @@ function paintAi(key) {
     box.className = 'aimsg show ok'; box.textContent = '✔ 확인됨';
   }
 }
-function fetchWithTimeout(body, ms) {
-  var ctrl = new AbortController();
-  var to = setTimeout(function () { ctrl.abort(); }, ms);
-  var p = fetch(AI_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'apikey': CONFIG.SUPABASE_ANON },
-    body: JSON.stringify(body),
-    signal: ctrl.signal
-  }).then(function (r) { clearTimeout(to); if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
-    .catch(function (e) { clearTimeout(to); throw e; });
-  return { ctrl: ctrl, promise: p };
-}
-/* keys 를 한 번에 검수. 이미 종결·진행 중인 키는 건너뜀. 항상 resolve(fail-open). */
-function runAiCheck(keys, force) {
-  if (!CONFIG.AI_CHECK || IS_ADMIN) return Promise.resolve();
-  var todo = keys.filter(function (k) {
-    if (aiInflight[k]) return false;
-    if (!aiText(k)) return false;
-    return force ? true : !aiSettled(k);
-  });
-  if (!todo.length) return Promise.resolve();
-  var sent = {}, items = todo.map(function (k) {
-    var t = aiText(k); sent[k] = hash32(t);
-    return { key: k, kind: 'text', text: t };
-  });
-  var body = { contextId: 'ideal_gas', items: items };
-  var attempt = 0, holder = {};
-  function apply(status, byKey) {
-    todo.forEach(function (k) {
-      if (hash32(aiText(k)) !== sent[k]) return;   // 입력이 바뀌었으면 반영하지 않음(§8.4)
-      var r = byKey && byKey[k];
-      state.aiCheck[k] = r
-        ? { status: r.ok ? 'ok' : 'fail', reason: r.ok ? '' : String(r.reason || '').slice(0, 60), textHash: sent[k] }
-        : { status: status, reason: '', textHash: sent[k] };
-    });
-    todo.forEach(function (k) { delete aiInflight[k]; paintAi(k); });
-    save();
-  }
-  function go() {
-    attempt++;
-    var h = fetchWithTimeout(body, AI_TIMEOUT);
-    holder.ctrl = h.ctrl;
-    todo.forEach(function (k) { aiInflight[k] = holder; paintAi(k); });
-    return h.promise.then(function (out) {
-      var byKey = null;
-      if (out && Array.isArray(out.results)) {
-        byKey = {};
-        out.results.forEach(function (r) {
-          if (r && typeof r.key === 'string' && typeof r.ok === 'boolean' && todo.indexOf(r.key) >= 0) byKey[r.key] = r;
-        });
-        // §8.4 응답 검증: 요청 items 와 key·개수가 안 맞으면 그 항목은 unavailable
-        if (Object.keys(byKey).length !== todo.length) {
-          todo.forEach(function (k) { if (!byKey[k]) byKey[k] = null; });
-        }
-      }
-      apply('unavailable', byKey);
-    }).catch(function () {
-      if (attempt < 2) return go();          // 재시도 1회 → 총 대기 상한 16 s
-      apply('unavailable', null);
-    });
-  }
-  holder.promise = go();
-  return holder.promise;
-}
-/* 종결까지 대기(총 상한 AI_TOTAL_CAP). 상한을 넘으면 unavailable 로 종결하고 진행. */
-function waitAi(keys) {
-  if (!CONFIG.AI_CHECK || IS_ADMIN) return Promise.resolve();
-  var p = runAiCheck(keys);
-  return Promise.race([
-    p,
-    new Promise(function (res) {
-      setTimeout(function () {
-        keys.forEach(function (k) {
-          if (aiInflight[k]) { try { aiInflight[k].ctrl.abort(); } catch (e) { } delete aiInflight[k]; }
-          if (!aiSettled(k) && aiText(k)) state.aiCheck[k] = { status: 'unavailable', reason: '', textHash: hash32(aiText(k)) };
-          paintAi(k);
-        });
-        save(); res();
-      }, AI_TOTAL_CAP);
-    })
-  ]);
-}
+/* AI 검수 제거. 학생 서술을 외부(Google Gemini)로 보내던 경로였다.
+   해당 API 약관이 18세 미만 대상 서비스 사용을 금지하므로 되살리지 말 것.
+   아래 두 함수는 호출부를 그대로 두기 위한 no-op 이다. state.aiCheck 가 항상 비어 있어
+   paintAi 는 아무것도 그리지 않고 aiGateOk 는 항상 통과한다. */
+function runAiCheck() { return Promise.resolve(); }
+function waitAi() { return Promise.resolve(); }
 
 /* ===================== §6 게이트 ===================== */
 function distinctVals(pts, field) {
@@ -2483,13 +2383,6 @@ function doPrint() {
 function applyManual() {
   var name = tx($('#mName').value), sid = tx($('#mSid').value);
   var klass = $('#mKlass') ? tx($('#mKlass').value) : '';
-  // 교사 프리패스: 이름 칸에 교사 이름을 넣고 저장 → 비밀번호 창 → 교사 미리보기로 재시작
-  if (name === CONFIG.TEACHER_NAME) {
-    $('#teacherPw').value = '';
-    var m2 = $('#teacherPwMsg'); m2.className = 'lockmsg'; m2.textContent = '';
-    $('#teacherDlg').showModal();
-    return;
-  }
   var msg = $('#manualMsg');
   var show = function (t, ok) { msg.className = 'lockmsg show' + (ok ? ' ok' : ''); msg.textContent = t; };
   if (!sid) {
@@ -2671,18 +2564,6 @@ function bindAll() {
     $('#resetDlg').showModal();
   });
   $('#resetCancel').addEventListener('click', function () { $('#resetDlg').close(); });
-  $('#teacherCancel').addEventListener('click', function () { $('#teacherDlg').close(); });
-  $('#teacherForm').addEventListener('submit', function (e) {
-    e.preventDefault();
-    if ($('#teacherPw').value.trim() !== CONFIG.TEACHER_PW) {
-      var m = $('#teacherPwMsg'); m.className = 'lockmsg show'; m.textContent = '비밀번호가 맞지 않아요.';
-      return;
-    }
-    $('#teacherDlg').close();
-    try { sessionStorage.setItem('idealgas_teacher', '1'); } catch (e2) { }
-    // ?teacher=off 쿼리가 남아 있으면 재시작 때 플래그가 지워지므로 쿼리를 떼고 연다
-    location.replace(location.pathname);
-  });
   $('#resetForm').addEventListener('submit', function (e) {
     e.preventDefault();
     if ($('#resetPw').value.trim() !== CONFIG.HINT_PW) {

@@ -314,7 +314,7 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808b"></script>
+<script src="js/db.js?v=20260808c"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, wireFileDrop,
@@ -762,8 +762,8 @@
 
   // ---------------- API 키 ----------------
   // 키는 저장만 하고 절대 되읽지 않는다. 상태는 등록 여부·끝 4자리·저장 시각뿐이다.
+  // Gemini 는 약관상 18세 미만 대상 서비스에 쓸 수 없어 제거했다. 다시 넣지 말 것.
   const AI_PROVIDERS = [
-    { id: 'gemini', label: 'Google Gemini', hint: 'AIza…' },
     { id: 'claude', label: 'Anthropic Claude', hint: 'sk-ant-…' },
     { id: 'openai', label: 'OpenAI (ChatGPT)', hint: 'sk-…' },
   ];
