@@ -922,6 +922,8 @@
       $('drive-picker-now').innerHTML = s.pickerReady
         ? '<span class="text-emerald-700 font-bold">✔ 등록됨</span>'
         : '<span class="text-error font-bold">없음</span>';
+      // 등록된 키는 칸을 잠가 둔다 — AI 키 탭과 같은 방식(실수로 덮어쓰는 걸 막는다).
+      setPickerKeyLocked(!!s.pickerReady);
     } catch (e) {
       $('drive-status').innerHTML = `<p class="text-error">상태를 불러오지 못했습니다: ${esc(e.message)}</p>`;
     }
@@ -1030,14 +1032,29 @@
     }
     btn.disabled = false; btn.textContent = old;
   }
+  // 잠금/열기 전환. 잠긴 동안 버튼은 "수정"이고, 누르면 빈 칸으로 열리며 "키 저장"이 된다.
+  function setPickerKeyLocked(locked) {
+    const base = 'flex-1 min-w-[220px] rounded-lg border-outline-variant text-label-md';
+    const input = $('drive-picker-key'), btn = $('drive-save-picker-key');
+    input.disabled = locked;
+    input.value = locked ? '••••••••••••' : '';
+    input.placeholder = locked ? '' : 'AIza…';
+    input.className = locked
+      ? `${base} bg-surface-container text-on-surface-variant cursor-not-allowed`
+      : `${base} focus:border-primary focus:ring-primary`;
+    btn.textContent = locked ? '수정' : '키 저장';
+    btn.dataset.mode = locked ? 'edit' : 'save';
+  }
+
   $('drive-save-picker-key').addEventListener('click', async (e) => {
     const btn = e.currentTarget, input = $('drive-picker-key');
+    if (btn.dataset.mode === 'edit') { setPickerKeyLocked(false); input.focus(); return; }
     const key = input.value.trim();
     if (!key) { alert('API 키를 넣어 주세요.'); return; }
     btn.disabled = true; btn.textContent = '저장 중…';
-    try { await driveSavePickerKey(key); input.value = ''; toast('키를 저장했습니다.'); await loadDrive(); }
-    catch (err) { alert('저장 실패: ' + err.message); }
-    btn.disabled = false; btn.textContent = '키 저장';
+    try { await driveSavePickerKey(key); toast('키를 저장했습니다.'); await loadDrive(); }
+    catch (err) { alert('저장 실패: ' + err.message); btn.textContent = '키 저장'; }
+    btn.disabled = false;
   });
 
   $('drive-pick-root').addEventListener('click', async (e) => {

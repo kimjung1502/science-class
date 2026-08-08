@@ -181,7 +181,17 @@ async function probe(admin: any, token: string, base: string) {
     const hits = folderNamed(kids, first)
     rows.push({ subject: s.name, target, firstSegment: first, found: hits.length, ids: hits.map((h) => h.id) })
   }
-  return { baseChildren: kids.length, duplicateNames: dups, rows }
+  // 앱이 실제로 본 폴더 이름을 그대로 돌려준다.
+  // 화면에는 "01. 통합과학 (1)" 처럼 보이는데 duplicateNames 가 비는 경우가 있다. 원인이
+  // 세 가지라 눈으로 봐야 갈린다 — ① 이름이 진짜로 " (1)" 까지 포함한다(드라이브가 붙인 것),
+  // ② drive.file 범위라 선생님이 손으로 만든 폴더가 앱에 안 보인다(그럼 목록이 화면보다 짧다),
+  // ③ 이름은 같은데 다른 곳에 있다. 목록을 보면 셋 중 무엇인지 바로 안다.
+  return {
+    baseChildren: kids.length,
+    folderNames: kids.filter((c) => c.mimeType === FOLDER_MIME).map((c) => c.name).sort(),
+    duplicateNames: dups,
+    rows,
+  }
 }
 
 Deno.serve(async (req) => {
