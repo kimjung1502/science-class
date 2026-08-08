@@ -831,9 +831,11 @@
   }
   // 과목명 그대로 생긴 폴더를 매핑된 자리로 합친다(관리자 전용).
   // dry=true 면 무엇을 옮길지만 알려 주고 드라이브는 건드리지 않는다.
-  async function driveRefile(dry) {
+  // mode: 'dry' 미리보기 · 'dedupe' 이름 겹치는 폴더 합치기 · 'probe' 진단 · 그 외 실행
+  async function driveRefile(mode) {
+    const qs = mode === 'dry' ? '?dry=1' : mode === 'dedupe' ? '?dedupe=1' : mode === 'probe' ? '?probe=1' : '';
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${FUNCTIONS_URL}/drive-refile${dry ? '?dry=1' : ''}`, {
+    const res = await fetch(`${FUNCTIONS_URL}/drive-refile${qs}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${session?.access_token || ''}`, 'apikey': SUPABASE_KEY },
     });

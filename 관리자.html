@@ -192,6 +192,7 @@
           <button id="drive-save-folders" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">폴더 이름 저장</button>
           <button id="drive-refile-dry" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">정리할 것 확인</button>
           <button id="drive-refile" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">폴더 정리 실행</button>
+          <button id="drive-dedupe" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">중복 폴더 합치기</button>
         </div>
         <p class="text-caption text-on-surface-variant mt-1">
           매핑을 채우기 전에 올린 자료는 과목명 폴더에 남아 있습니다. <b>정리</b>는 그 폴더를 매핑된 자리로 합칩니다 —
@@ -334,7 +335,7 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808d"></script>
+<script src="js/db.js?v=20260808e"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, wireFileDrop,
@@ -962,28 +963,40 @@
     catch (e) { alert('해제 실패: ' + e.message); }
   });
 
-  async function runRefile(btn, dry) {
+  const CONFIRM_REFILE = '과목명으로 생긴 폴더를 매핑된 자리로 합칩니다.\n파일 주소는 그대로라 학생 링크는 안 깨지고, 비워진 폴더만 휴지통으로 갑니다.\n진행할까요?';
+  const CONFIRM_DEDUPE = '이름이 같은 폴더가 여러 개면 가장 먼저 만들어진 것으로 합칩니다.\n비워진 쪽만 휴지통으로 갑니다.\n진행할까요?';
+
+  async function runRefile(btn, mode) {
     const out = $('drive-refile-out'), old = btn.textContent;
-    if (!dry && !confirm('과목명으로 생긴 폴더를 매핑된 자리로 합칩니다.\n파일 주소는 그대로라 학생 링크는 안 깨지고, 비워진 폴더만 휴지통으로 갑니다.\n진행할까요?')) return;
-    btn.disabled = true; btn.textContent = dry ? '확인 중…' : '정리 중…';
+    if (mode === 'run' && !confirm(CONFIRM_REFILE)) return;
+    if (mode === 'dedupe' && !confirm(CONFIRM_DEDUPE)) return;
+    btn.disabled = true; btn.textContent = mode === 'dry' ? '확인 중…' : '정리 중…';
     out.className = 'text-caption text-on-surface-variant mt-1';
     out.textContent = '드라이브를 살펴보는 중…';
     try {
-      const r = await driveRefile(dry);
-      const rows = r.moved || [];
-      if (!rows.length) out.textContent = '✔ 정리할 폴더가 없습니다 — 이미 제자리입니다.';
-      else out.innerHTML = rows.map((m) => dry
-        ? `· <b class="text-on-surface">${esc(m.subject)}</b> → ${esc(m.into)} (안에 ${m.children}개)`
-        : `✔ <b class="text-on-surface">${esc(m.subject)}</b> → ${esc(m.into)} · 폴더 ${m.folders}개, 파일 ${m.files}개 이동`
-      ).join('<br>') + (dry ? '<br><span class="text-on-surface-variant">아직 옮기지 않았습니다. 실행하려면 “폴더 정리 실행”.</span>' : '');
+      const r = await driveRefile(mode);
+      if (mode === 'dedupe') {
+        const d = r.deduped || [];
+        out.innerHTML = d.length
+          ? d.map((x) => `✔ <b class="text-on-surface">${esc(x.name)}</b> — 중복 ${x.merged}개 합침 · 폴더 ${x.folders}개, 파일 ${x.files}개 이동`).join('<br>')
+          : '✔ 이름이 겹치는 폴더가 없습니다.';
+      } else {
+        const rows = r.moved || [];
+        out.innerHTML = !rows.length ? '✔ 정리할 폴더가 없습니다 — 이미 제자리입니다.'
+          : rows.map((m) => mode === 'dry'
+              ? `· <b class="text-on-surface">${esc(m.subject)}</b> → ${esc(m.into)} (안에 ${m.children}개)`
+              : `✔ <b class="text-on-surface">${esc(m.subject)}</b> → ${esc(m.into)} · 폴더 ${m.folders}개, 파일 ${m.files}개 이동`
+            ).join('<br>') + (mode === 'dry' ? '<br><span class="text-on-surface-variant">아직 옮기지 않았습니다. 실행하려면 “폴더 정리 실행”.</span>' : '');
+      }
     } catch (err) {
       out.className = 'text-caption text-error mt-1';
-      out.textContent = (dry ? '확인 실패: ' : '정리 실패: ') + err.message;
+      out.textContent = '실패: ' + err.message;
     }
     btn.disabled = false; btn.textContent = old;
   }
-  $('drive-refile-dry').addEventListener('click', (e) => runRefile(e.currentTarget, true));
-  $('drive-refile').addEventListener('click', (e) => runRefile(e.currentTarget, false));
+  $('drive-refile-dry').addEventListener('click', (e) => runRefile(e.currentTarget, 'dry'));
+  $('drive-refile').addEventListener('click', (e) => runRefile(e.currentTarget, 'run'));
+  $('drive-dedupe').addEventListener('click', (e) => runRefile(e.currentTarget, 'dedupe'));
 
   $('drive-unshare').addEventListener('click', async (e) => {
     const btn = e.currentTarget, out = $('drive-unshare-out');
