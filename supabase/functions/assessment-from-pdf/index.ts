@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-opus-5',
+        model: 'claude-sonnet-5',
         max_tokens: 16000,
         output_config: { format: { type: 'json_schema', schema: SCHEMA } },
         messages: [{
