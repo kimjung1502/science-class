@@ -212,12 +212,12 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808b"></script>
+<script src="js/db.js?v=20260808c"></script>
 <script src="js/mindmap.js?v=20260724a"></script>
 <script>
 (function () {
   const {
-    supabase, requireLogin, signOut, esc, fetchSubjectTree,
+    supabase, requireLogin, signOut, esc, safeUrl, fetchSubjectTree,
     fmtDate, fmtDateTime, toLocalInput, nl2br, wireSidebar, renderUnitNav,
     fetchSubmissionAssignments, saveSubmissionAssignment, deleteSubmissionAssignment,
     fetchSubmissionsByAssignments, fetchSubmissionsForAssignment,
@@ -804,7 +804,7 @@
       const results = out.results || [];
       box.innerHTML = `<div class="rounded-lg border border-faint bg-paper2/40 p-2.5 space-y-1">
         <p class="font-mono text-[11px] font-bold text-ink flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-lime bg-ink rounded p-0.5">check</span>드라이브에 저장 완료</p>
-        ${results.map((r) => `<div class="flex items-center gap-2 text-[13px]"><span class="material-symbols-outlined text-[16px] text-ink3">table_view</span><span class="text-ink truncate">${esc(r.filename)}</span><span class="font-mono text-[11px] text-ink3">${r.submitted}/${r.total}</span>${r.drive_link ? `<a href="${esc(r.drive_link)}" target="_blank" class="ml-auto text-[12px] font-bold text-ink hover:text-signal flex items-center gap-0.5">열기<span class="material-symbols-outlined text-[14px]">open_in_new</span></a>` : ''}</div>`).join('')}
+        ${results.map((r) => `<div class="flex items-center gap-2 text-[13px]"><span class="material-symbols-outlined text-[16px] text-ink3">table_view</span><span class="text-ink truncate">${esc(r.filename)}</span><span class="font-mono text-[11px] text-ink3">${r.submitted}/${r.total}</span>${r.drive_link ? `<a href="${esc(safeUrl(r.drive_link))}" target="_blank" class="ml-auto text-[12px] font-bold text-ink hover:text-signal flex items-center gap-0.5">열기<span class="material-symbols-outlined text-[14px]">open_in_new</span></a>` : ''}</div>`).join('')}
       </div>`;
       const a = state.assignments.find((x) => x.id === aid); if (a) { a.export_status = 'done'; a.exported_at = new Date().toISOString(); }
     } catch (e) {
