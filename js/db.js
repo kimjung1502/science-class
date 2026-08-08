@@ -829,6 +829,18 @@
     }
     _folderMap = null;
   }
+  // 과목명 그대로 생긴 폴더를 매핑된 자리로 합친다(관리자 전용).
+  // dry=true 면 무엇을 옮길지만 알려 주고 드라이브는 건드리지 않는다.
+  async function driveRefile(dry) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${FUNCTIONS_URL}/drive-refile${dry ? '?dry=1' : ''}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}`, 'apikey': SUPABASE_KEY },
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || out.error) throw new Error(out.error || `요청 실패 (${res.status})`);
+    return out;
+  }
   // 예전에 자료에 걸어 둔 '링크가 있는 모든 사용자' 공유를 되돌린다(관리자 전용, 1회성).
   async function driveUnshareAll() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -950,7 +962,7 @@
     pdfPageCount, splitPdfFile,
     driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop,
     uploadMaterialToDrive, removeMaterialFile, driveIdOf, driveUnshareAll, materialDriveName,
-    subjectFolders, saveSubjectFolders,
+    subjectFolders, saveSubjectFolders, driveRefile,
     materialUrl, announcementFileUrl, openInNewTab,
   };
 })();
