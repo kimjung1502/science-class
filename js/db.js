@@ -707,16 +707,27 @@
   // subPath: 개정 아래로 이어질 폴더 이름 배열(예: [과목, 대단원, 중단원]) — 빈 값은 건너뜀.
   // 반환: { url, storage_path: 'gdrive:<id>', original_filename }
   // 드라이브 미연결이면 driveAccessToken()에서 throw → 호출부가 버킷 업로드로 폴백한다.
-  // 드라이브에 이미 "03. 물질과에너지" 처럼 번호가 붙은 과목 폴더가 있다. 과목명을 그대로
-  // 쓰면 그 옆에 새 폴더가 생기므로, subjects.drive_folder 가 있으면 그 이름으로 바꿔 준다.
-  let _driveFolderMap = null;
-  async function subjectDriveFolder(name) {
-    if (!name) return name;
-    if (!_driveFolderMap) {
-      const { data } = await supabase.from('subjects').select('name, drive_folder');
-      _driveFolderMap = new Map((data || []).map((s) => [s.name, s.drive_folder]));
+  // 드라이브에는 "01. 통합과학/통합과학2" 처럼 번호가 붙고 하위로 갈라진 과목 폴더가 이미 있다.
+  // 과목명을 그대로 쓰면 그 옆에 번호 없는 새 폴더가 생기므로(실제로 '통합과학 1', '화학' 이
+  // 그렇게 생겼다) 매핑을 보고 바꿔 준다.
+  //
+  // 트리가 둘이고 같은 과목의 폴더 이름이 서로 다르다:
+  //   material_folder → 수업자료(개정 기준). '/' 로 하위 폴더를 나타낸다.
+  //   drive_folder    → 제출물(학년도›학기 기준). 학기마다 번호가 새로 붙는다.
+  let _folderMap = null;
+  async function subjectFolderMap() {
+    if (!_folderMap) {
+      const { data } = await supabase.from('subjects').select('name, drive_folder, material_folder');
+      _folderMap = new Map((data || []).map((s) => [s.name, s]));
     }
-    return _driveFolderMap.get(name) || name;
+    return _folderMap;
+  }
+  // 과목명 → 수업자료 폴더 경로 조각들. 매핑이 없으면 과목명 하나짜리.
+  async function materialFolderPath(name) {
+    if (!name) return [];
+    const row = (await subjectFolderMap()).get(name);
+    const raw = (row && row.material_folder) || name;
+    return String(raw).split('/').map((x) => x.trim()).filter(Boolean);
   }
 
   async function uploadMaterialToDrive(file, subPath, driveName) {
@@ -725,8 +736,9 @@
     const names = [s.school || '학교', '수업자료'];
     if (s.curriculum) names.push(s.curriculum);
     // subPath 의 첫 항목은 과목 이름이다(호출부가 그렇게 넘긴다).
+    // 과목 하나가 폴더 여러 겹으로 펼쳐질 수 있어 splice 로 갈아 끼운다.
     const parts = (Array.isArray(subPath) ? subPath : [subPath]).filter(Boolean).map(String);
-    if (parts.length) parts[0] = await subjectDriveFolder(parts[0]);
+    if (parts.length) parts.splice(0, 1, ...(await materialFolderPath(parts[0])));
     parts.forEach((n) => { if (n) names.push(n); });
     let parent = 'root';
     for (const n of names) parent = await driveEnsureFolder(access_token, n, parent);
@@ -800,6 +812,22 @@
       if (w) w.close();
       alert(e.message || '자료를 열지 못했습니다.');
     }
+  }
+  // 과목 ↔ 드라이브 폴더 매핑 (관리자 화면에서 편집). 저장 후에는 캐시를 버린다.
+  async function subjectFolders() {
+    const { data, error } = await supabase.from('subjects')
+      .select('id, name, drive_folder, material_folder').order('sort_order');
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+  async function saveSubjectFolders(rows) {
+    for (const r of rows) {
+      const { error } = await supabase.from('subjects')
+        .update({ drive_folder: r.drive_folder || null, material_folder: r.material_folder || null })
+        .eq('id', r.id);
+      if (error) throw new Error(error.message);
+    }
+    _folderMap = null;
   }
   // 예전에 자료에 걸어 둔 '링크가 있는 모든 사용자' 공유를 되돌린다(관리자 전용, 1회성).
   async function driveUnshareAll() {
@@ -922,6 +950,7 @@
     pdfPageCount, splitPdfFile,
     driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop,
     uploadMaterialToDrive, removeMaterialFile, driveIdOf, driveUnshareAll, materialDriveName,
+    subjectFolders, saveSubjectFolders,
     materialUrl, announcementFileUrl, openInNewTab,
   };
 })();
