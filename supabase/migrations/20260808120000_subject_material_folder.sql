@@ -15,7 +15,9 @@ comment on column public.subjects.material_folder is '수업자료 트리(개정
 
 update public.subjects set material_folder = '01. 통합과학/통합과학1' where name = '통합과학 1';
 update public.subjects set material_folder = '01. 통합과학/통합과학2' where name = '통합과학 2';
-update public.subjects set material_folder = '02. 과학탐구실험'       where name in ('과학탐구실험 1', '과학탐구실험 2');
+-- 과탐실 하위 폴더는 아직 드라이브에 없다 — 첫 자료를 올릴 때 ensureFolder 가 만든다.
+update public.subjects set material_folder = '02. 과학탐구실험/과학탐구실험1' where name = '과학탐구실험 1';
+update public.subjects set material_folder = '02. 과학탐구실험/과학탐구실험2' where name = '과학탐구실험 2';
 update public.subjects set material_folder = '03. 화학'               where name = '화학';
 update public.subjects set material_folder = '04. 물질과에너지'       where name = '물질과 에너지';
 update public.subjects set material_folder = '05. 화학반응의세계'     where name = '화학반응의 세계';
