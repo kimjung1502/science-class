@@ -220,6 +220,7 @@
           <button id="drive-refile-dry" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">정리할 것 확인</button>
           <button id="drive-refile" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">폴더 정리 실행</button>
           <button id="drive-dedupe" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">중복 폴더 합치기</button>
+          <button id="drive-ensure" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container">매핑 폴더 미리 만들기</button>
         </div>
         <p class="text-caption text-on-surface-variant mt-1">
           매핑을 채우기 전에 올린 자료는 과목명 폴더에 남아 있습니다. <b>정리</b>는 그 폴더를 매핑된 자리로 합칩니다 —
@@ -1011,7 +1012,14 @@
     out.textContent = '드라이브를 살펴보는 중…';
     try {
       const r = await driveRefile(mode);
-      if (mode === 'dedupe') {
+      if (mode === 'ensure') {
+        const e2 = r.ensured || [];
+        const made = e2.filter((x) => x.id);
+        out.innerHTML = made.length
+          ? made.map((x) => `✔ <b class="text-on-surface">${esc(x.subject)}</b> → ${esc(x.path)}`).join('<br>')
+            + '<br><span class="text-on-surface-variant">이제 드라이브에서 원본 폴더의 자료를 이 폴더들로 옮기고, 빈 원본을 지우면 됩니다.</span>'
+          : '매핑이 채워진 과목이 없습니다. 위 표를 먼저 저장하세요.';
+      } else if (mode === 'dedupe') {
         const d = r.deduped || [];
         // 겹치는 게 없다고 나오면 무엇을 보고 그렇게 판단했는지도 같이 보여 준다.
         const seen = (r.seen || []).map((s) => `${esc(s.name)}${s.count > 1 ? ` <b class="text-error">×${s.count}</b>` : ''}`).join(' · ');
@@ -1070,6 +1078,7 @@
   $('drive-refile-dry').addEventListener('click', (e) => runRefile(e.currentTarget, 'dry'));
   $('drive-refile').addEventListener('click', (e) => runRefile(e.currentTarget, 'run'));
   $('drive-dedupe').addEventListener('click', (e) => runRefile(e.currentTarget, 'dedupe'));
+  $('drive-ensure').addEventListener('click', (e) => runRefile(e.currentTarget, 'ensure'));
 
   $('drive-unshare').addEventListener('click', async (e) => {
     const btn = e.currentTarget, out = $('drive-unshare-out');

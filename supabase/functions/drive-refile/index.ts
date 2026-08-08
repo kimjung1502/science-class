@@ -167,6 +167,29 @@ async function refileStrays(admin: any, token: string, base: string, dryRun: boo
   return plan
 }
 
+// 매핑에 적힌 폴더를 미리 다 만들어 둔다.
+//
+// 왜 필요한가: drive.file 범위라 앱은 자기가 만든 폴더만 본다. 선생님이 손수 만든 폴더는
+// 안 보이므로 첫 업로드 때 ensureFolder 가 "없다"고 판단해 같은 이름으로 또 만든다.
+// 그래서 자료를 옮겨 두어도 업로드 한 번에 다시 갈라진다 — 정리를 두 번 하게 된다.
+//
+// 먼저 앱 소유 폴더를 다 만들어 두면, 자료를 한 번만 옮기고 원본을 지우면 끝난다.
+// 이미 앱이 아는 폴더가 있으면 ensureFolder 가 그대로 재사용한다(중복으로 더 만들지 않는다).
+async function ensureMapped(admin: any, token: string, base: string) {
+  const { data: subs } = await admin.from('subjects').select('name, material_folder').order('sort_order')
+  const out: any[] = []
+  for (const s of (subs || [])) {
+    const target = String(s.material_folder || '').trim()
+    if (!target) { out.push({ subject: s.name, skipped: '매핑 없음' }); continue }
+    let parent = base
+    for (const seg of target.split('/').map((x: string) => x.trim()).filter(Boolean)) {
+      parent = await ensureFolder(token, seg, parent)
+    }
+    out.push({ subject: s.name, path: target, id: parent })
+  }
+  return out
+}
+
 // 진단: 매핑에 적힌 폴더가 실제로 찾아지는지, 이름이 겹치는 게 있는지 그대로 보여 준다.
 async function probe(admin: any, token: string, base: string) {
   const { data: subs } = await admin.from('subjects').select('name, material_folder').order('sort_order')
@@ -208,6 +231,7 @@ Deno.serve(async (req) => {
 
     const p = new URL(req.url).searchParams
     if (p.get('probe') === '1')  return json({ ok: true, probe: await probe(admin, token, base) })
+    if (p.get('ensure') === '1') return json({ ok: true, ensured: await ensureMapped(admin, token, base) })
     if (p.get('dedupe') === '1') {
       // 무엇을 보고 판단했는지 항상 같이 돌려준다. "없다"는 답이 나왔을 때
       // 진짜 없는 건지 엉뚱한 폴더를 본 건지 응답만으로 가릴 수 있어야 한다.
