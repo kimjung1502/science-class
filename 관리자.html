@@ -152,8 +152,7 @@
           <div><label class="text-label-md text-on-surface-variant">클라이언트 보안 비밀</label>
             <input id="drive-client-secret" type="password" autocomplete="new-password" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="GOCSPX-…">
             <p class="text-caption text-on-surface-variant mt-1">저장 후에는 다시 보여 주지 않습니다. 비워 두면 기존 값을 그대로 둡니다.</p></div>
-          <div><label class="text-label-md text-on-surface-variant">Picker API 키 <span class="text-on-surface-variant">(선택 — 드라이브에서 파일 고르기)</span></label>
-            <input id="drive-picker-key" type="text" autocomplete="off" class="w-full mt-1 rounded-lg border-outline-variant focus:border-primary focus:ring-primary" placeholder="AIza…"></div>
+          <p class="text-caption text-on-surface-variant">드라이브 API 키는 아래 <b>4번</b>에서 따로 넣습니다.</p>
           <button id="drive-save-client" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">클라이언트 저장</button>
         </div>
       </details>
@@ -187,6 +186,21 @@
           그래서 선생님이 드라이브에서 손수 만든 폴더는 보이지 않아 <b class="text-error">같은 이름의 폴더가 또 만들어집니다.</b>
           수업자료가 들어갈 폴더(예: <span class="font-mono">2022개정</span>)를 한 번 지정해 주세요 — 그 아래는 전부 보입니다.
         </p>
+        <div class="mt-3 rounded-lg bg-surface-container p-md">
+          <label class="text-label-md font-bold text-on-surface">드라이브 API 키 <span class="font-normal text-on-surface-variant">(폴더 고르기에 필요)</span></label>
+          <div class="mt-1 flex items-center gap-2 flex-wrap">
+            <input id="drive-picker-key" type="text" autocomplete="off" placeholder="AIza…"
+                   class="flex-1 min-w-[220px] rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-label-md">
+            <button id="drive-save-picker-key" class="border border-outline-variant px-md py-2 rounded-lg text-label-md font-bold hover:bg-surface-container-lowest">키 저장</button>
+            <span id="drive-picker-now" class="text-caption text-on-surface-variant"></span>
+          </div>
+          <p class="text-caption text-on-surface-variant mt-2">
+            Google Cloud 콘솔 → <b>API 및 서비스 › 사용자 인증 정보 › API 키</b>에서 만듭니다. 그리고 <b class="text-on-surface">두 가지를 꼭 확인</b>하세요 —
+            <b>라이브러리</b>에서 <b class="text-on-surface">Google Picker API</b>를 <b>사용 설정</b>했는지,
+            키의 <b>API 제한</b>에 <b class="text-on-surface">Google Picker API·Google Drive API</b>가 들어 있는지.
+            <span class="text-error">둘 중 하나라도 빠지면 “The API developer key is invalid” 가 뜹니다.</span>
+          </p>
+        </div>
         <div class="mt-2 flex items-center gap-2 flex-wrap">
           <button id="drive-pick-root" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">폴더 지정</button>
           <span id="drive-root-now" class="text-caption text-on-surface-variant"></span>
@@ -348,11 +362,11 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808g"></script>
+<script src="js/db.js?v=20260808h"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, wireFileDrop,
-          driveStatus, driveAuthUrl, driveDisconnect, driveUnshareAll, driveSaveSettings, driveSaveClient, driveSaveRoot, pickDriveFolder,
+          driveStatus, driveAuthUrl, driveDisconnect, driveUnshareAll, driveSaveSettings, driveSaveClient, driveSavePickerKey, driveSaveRoot, pickDriveFolder,
           subjectFolders, saveSubjectFolders, driveRefile, saveApiKey, apiKeyStatus, apiKeyLog, fmtDateTime } = window.DB;
 
   const $ = (id) => document.getElementById(id);
@@ -798,7 +812,9 @@
   // ---------------- API 키 ----------------
   // 키는 저장만 하고 절대 되읽지 않는다. 상태는 등록 여부·끝 4자리·저장 시각뿐이다.
   // Gemini 는 약관상 18세 미만 대상 서비스에 쓸 수 없어 제거했다. 다시 넣지 말 것.
+  // id 는 save_api_key 의 허용 목록(gemini/claude/openai)과 같아야 한다.
   const AI_PROVIDERS = [
+    { id: 'gemini', label: 'Google Gemini', hint: 'AIza…' },
     { id: 'claude', label: 'Anthropic Claude', hint: 'sk-ant-…' },
     { id: 'openai', label: 'OpenAI (ChatGPT)', hint: 'sk-…' },
   ];
@@ -903,6 +919,9 @@
       $('drive-root-now').innerHTML = s.rootId
         ? `현재: <b class="text-on-surface">${esc(s.rootName || s.rootId)}</b>`
         : '<b class="text-error">아직 지정 안 됨 — 지정 전에는 폴더가 중복 생성됩니다.</b>';
+      $('drive-picker-now').innerHTML = s.pickerReady
+        ? '<span class="text-emerald-700 font-bold">✔ 등록됨</span>'
+        : '<span class="text-error font-bold">없음</span>';
     } catch (e) {
       $('drive-status').innerHTML = `<p class="text-error">상태를 불러오지 못했습니다: ${esc(e.message)}</p>`;
     }
@@ -952,9 +971,8 @@
     if (!id) { alert('클라이언트 ID를 넣어 주세요.'); return; }
     btn.disabled = true; btn.textContent = '저장 중…';
     try {
-      await driveSaveClient(id, $('drive-client-secret').value, $('drive-picker-key').value.trim());
+      await driveSaveClient(id, $('drive-client-secret').value, undefined);
       $('drive-client-secret').value = '';   // 화면에 남기지 않는다
-      $('drive-picker-key').value = '';
       toast('클라이언트를 저장했습니다.');
       await loadDrive();
     } catch (err) { alert('저장 실패: ' + err.message); }
@@ -1012,6 +1030,16 @@
     }
     btn.disabled = false; btn.textContent = old;
   }
+  $('drive-save-picker-key').addEventListener('click', async (e) => {
+    const btn = e.currentTarget, input = $('drive-picker-key');
+    const key = input.value.trim();
+    if (!key) { alert('API 키를 넣어 주세요.'); return; }
+    btn.disabled = true; btn.textContent = '저장 중…';
+    try { await driveSavePickerKey(key); input.value = ''; toast('키를 저장했습니다.'); await loadDrive(); }
+    catch (err) { alert('저장 실패: ' + err.message); }
+    btn.disabled = false; btn.textContent = '키 저장';
+  });
+
   $('drive-pick-root').addEventListener('click', async (e) => {
     const btn = e.currentTarget, old = btn.textContent;
     btn.disabled = true; btn.textContent = '여는 중…';

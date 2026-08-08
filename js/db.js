@@ -60,6 +60,15 @@
     if (!email) throw new Error('존재하지 않는 아이디입니다.');
     const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
     if (signErr) throw new Error('비밀번호가 올바르지 않습니다.');
+    // 비밀번호가 맞아도 학기 밖이면 서버가 학생으로 인정하지 않는다(current_student_id() = null).
+    // 빈 화면으로 들여보내지 말고 여기서 이유를 알려 주고 세션을 정리한다.
+    const { data: st } = await supabase.rpc('my_login_state');
+    if (st && !st.is_admin && !st.student_id && !st.must_change_password) {
+      await supabase.auth.signOut();
+      throw new Error(st.opens_at
+        ? `아직 이용 기간이 아닙니다. ${fmtDate(st.opens_at)}부터 열려요.`
+        : '지금은 이용 기간이 아닙니다. 선생님께 문의하세요.');
+    }
   }
 
   async function currentStudent() {
@@ -88,6 +97,11 @@
     if (st && st.must_change_password && !isAdmin) {
       if (!allowPasswordChangePage) { location.replace('비밀번호-변경.html'); return null; }
       return { user, student: null, isAdmin: false, mustChangePassword: true };
+    }
+    // 학기가 끝났거나(수업 기간 밖) 분반이 없으면 서버가 학생으로 인정하지 않는다.
+    // 세션만 살아 있고 아무것도 못 보는 상태로 두지 않는다.
+    if (!isAdmin && !(st && st.student_id)) {
+      await supabase.auth.signOut(); location.replace('학생-로그인.html'); return null;
     }
     const student = (st && st.student_id) ? await currentStudent() : null;
     // 자퇴/비활성 처리된 학생은 로그인 유지 불가 (로그인 자체는 RPC에서 이미 차단됨)
@@ -617,6 +631,11 @@
   async function driveSaveClient(clientId, clientSecret, pickerApiKey) {
     return callGoogleOAuth('op=saveclient', { client_id: clientId, client_secret: clientSecret, picker_api_key: pickerApiKey });
   }
+  // Picker(드라이브 파일·폴더 고르기) 전용 API 키만 따로 저장.
+  // saveclient 는 넘어온 항목만 갱신하므로 클라이언트 ID·비밀은 건드리지 않는다.
+  async function driveSavePickerKey(key) {
+    return callGoogleOAuth('op=saveclient', { picker_api_key: key });
+  }
 
   // ---------- 파일 입력에 드래그앤드롭 붙이기 ----------
   // 기존 <input type="file"> 은 그대로 두고 바로 아래에 드롭 영역을 만든다.
@@ -987,7 +1006,7 @@
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
-    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveSaveRoot, pickDriveFolder, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop,
+    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveSavePickerKey, driveSaveRoot, pickDriveFolder, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop,
     uploadMaterialToDrive, removeMaterialFile, driveIdOf, driveUnshareAll, materialDriveName,
     subjectFolders, saveSubjectFolders, driveRefile,
     materialUrl, announcementFileUrl, openInNewTab,
