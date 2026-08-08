@@ -81,13 +81,18 @@
     // 세션이 실제로 유효한지 서버 검증 (만료/무효면 정리 후 로그인)
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) { await supabase.auth.signOut(); location.replace('학생-로그인.html'); return null; }
-    const student = await currentStudent();
+    // 비밀번호 미변경 학생은 서버가 current_student_id() 를 막으므로 student 가 null 이다.
+    // "학생이 아니면 교사"로 판정하면 그 학생에게 교사 화면이 뜬다 — is_admin 을 따로 받는다.
+    const { data: st } = await supabase.rpc('my_login_state');
+    const isAdmin = !!(st && st.is_admin);
+    if (st && st.must_change_password && !isAdmin) {
+      if (!allowPasswordChangePage) { location.replace('비밀번호-변경.html'); return null; }
+      return { user, student: null, isAdmin: false, mustChangePassword: true };
+    }
+    const student = (st && st.student_id) ? await currentStudent() : null;
     // 자퇴/비활성 처리된 학생은 로그인 유지 불가 (로그인 자체는 RPC에서 이미 차단됨)
     if (student && student.is_active === false) { await supabase.auth.signOut(); location.replace('학생-로그인.html'); return null; }
-    if (student && student.must_change_password && !allowPasswordChangePage) {
-      location.replace('비밀번호-변경.html'); return null;
-    }
-    return { user, student };
+    return { user, student, isAdmin, mustChangePassword: false };
   }
 
   async function signOut() {
@@ -273,12 +278,25 @@
   }
   // Picker를 열어 파일 1개 선택 → { id, name, url, token } (취소 시 null)
   async function pickDriveFile() {
+    return pickFromDrive({ folders: false, title: '수업 자료로 넣을 파일 선택' });
+  }
+  // 폴더 1개 선택. 이걸 쓰는 이유가 중요하다:
+  // 우리 OAuth 범위는 drive.file — 앱이 만들었거나 Picker 로 고른 것만 보인다.
+  // 선생님이 드라이브에서 손으로 만든 폴더는 앱 눈에 안 보여서, 같은 이름으로 새 폴더를
+  // 만들어 버린다(2026-08-08 '01. 통합과학' 중복 사고). 폴더를 한 번 골라 주면
+  // 그 아래 전체가 보이므로 이후로는 기존 폴더를 그대로 재사용한다.
+  async function pickDriveFolder() {
+    return pickFromDrive({ folders: true, title: '수업자료를 넣을 폴더 선택 (예: 2022개정)' });
+  }
+  async function pickFromDrive({ folders, title }) {
     const { access_token, api_key, app_id } = await driveAccessToken();
     await loadPickerApi();
     return new Promise((resolve) => {
-      const view = new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(false).setSelectFolderEnabled(false).setMode(google.picker.DocsViewMode.LIST);
+      const view = new google.picker.DocsView(folders ? google.picker.ViewId.FOLDERS : google.picker.ViewId.DOCS)
+        .setIncludeFolders(folders).setSelectFolderEnabled(folders).setMode(google.picker.DocsViewMode.LIST);
+      if (folders) view.setMimeTypes('application/vnd.google-apps.folder');
       new google.picker.PickerBuilder().setAppId(app_id).setOAuthToken(access_token).setDeveloperKey(api_key)
-        .setTitle('수업 자료로 넣을 파일 선택').addView(view)
+        .setTitle(title).addView(view)
         .setCallback((data) => {
           if (data.action === google.picker.Action.CANCEL) return resolve(null);
           if (data.action !== google.picker.Action.PICKED) return;
@@ -733,14 +751,16 @@
   async function uploadMaterialToDrive(file, subPath, driveName) {
     const { access_token } = await driveAccessToken();
     const s = await driveStatus().catch(() => ({}));
-    const names = [s.school || '학교', '수업자료'];
-    if (s.curriculum) names.push(s.curriculum);
+    // 뿌리 폴더를 Picker 로 지정했으면 거기서 시작한다. 지정 안 했으면 예전처럼
+    // 학교›수업자료›개정 을 만들어 쓰는데, 그 경우 선생님이 손으로 만든 폴더는
+    // drive.file 범위 밖이라 안 보여서 같은 이름으로 새 폴더가 생긴다.
+    let parent = s.rootId || 'root';
+    const names = s.rootId ? [] : [s.school || '학교', '수업자료', ...(s.curriculum ? [s.curriculum] : [])];
     // subPath 의 첫 항목은 과목 이름이다(호출부가 그렇게 넘긴다).
     // 과목 하나가 폴더 여러 겹으로 펼쳐질 수 있어 splice 로 갈아 끼운다.
     const parts = (Array.isArray(subPath) ? subPath : [subPath]).filter(Boolean).map(String);
     if (parts.length) parts.splice(0, 1, ...(await materialFolderPath(parts[0])));
     parts.forEach((n) => { if (n) names.push(n); });
-    let parent = 'root';
     for (const n of names) parent = await driveEnsureFolder(access_token, n, parent);
     const up = await driveUploadBytes(access_token, parent, driveName || file.name, file);
     return { url: up.url, storage_path: 'gdrive:' + up.id, original_filename: file.name };
@@ -828,6 +848,11 @@
       if (error) throw new Error(error.message);
     }
     _folderMap = null;
+  }
+  // 수업자료 뿌리 폴더 지정 — Picker 로 고른 폴더를 저장한다.
+  // 이걸 해야 선생님이 손으로 만든 폴더가 앱 눈에 보인다(drive.file 범위 때문).
+  async function driveSaveRoot(id, name) {
+    return callGoogleOAuth('op=saveroot', { id, name });
   }
   // 과목명 그대로 생긴 폴더를 매핑된 자리로 합친다(관리자 전용).
   // dry=true 면 무엇을 옮길지만 알려 주고 드라이브는 건드리지 않는다.
@@ -962,7 +987,7 @@
     submitForm, uploadSubmissionFile, signSubmissionFile, fetchSubmissionRoster, exportSubmissions,
     extractAssessmentFromPdf,
     pdfPageCount, splitPdfFile,
-    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop,
+    driveStatus, driveAuthUrl, driveExchange, driveDisconnect, driveSaveSettings, driveSaveClient, driveSaveRoot, pickDriveFolder, driveAccessToken, saveApiKey, apiKeyStatus, apiKeyLog, wireFileDrop,
     uploadMaterialToDrive, removeMaterialFile, driveIdOf, driveUnshareAll, materialDriveName,
     subjectFolders, saveSubjectFolders, driveRefile,
     materialUrl, announcementFileUrl, openInNewTab,

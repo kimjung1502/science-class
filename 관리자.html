@@ -181,7 +181,20 @@
       </div>
 
       <div class="rounded-xl border border-outline-variant p-md">
-        <p class="text-label-md font-bold text-on-surface">4. 과목별 폴더 이름</p>
+        <p class="text-label-md font-bold text-on-surface">4. 수업자료 폴더 지정 <span class="text-error">(먼저 해야 함)</span></p>
+        <p class="text-caption text-on-surface-variant mt-1">
+          이 사이트는 드라이브 <b>전체</b>를 볼 수 없습니다. 보안을 위해 <b>자기가 만든 파일과, 여기서 직접 고른 폴더</b>만 봅니다.
+          그래서 선생님이 드라이브에서 손수 만든 폴더는 보이지 않아 <b class="text-error">같은 이름의 폴더가 또 만들어집니다.</b>
+          수업자료가 들어갈 폴더(예: <span class="font-mono">2022개정</span>)를 한 번 지정해 주세요 — 그 아래는 전부 보입니다.
+        </p>
+        <div class="mt-2 flex items-center gap-2 flex-wrap">
+          <button id="drive-pick-root" class="bg-primary text-white px-md py-2 rounded-lg text-label-md font-bold">폴더 지정</button>
+          <span id="drive-root-now" class="text-caption text-on-surface-variant"></span>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-outline-variant p-md">
+        <p class="text-label-md font-bold text-on-surface">5. 과목별 폴더 이름</p>
         <p class="text-caption text-on-surface-variant mt-1">
           드라이브에 이미 있는 폴더 이름을 적어 두세요. 비워 두면 <b>과목명 그대로 새 폴더가 생깁니다</b>
           (번호 없는 폴더가 따로 만들어지는 원인). 하위 폴더는 <span class="font-mono">/</span> 로 구분합니다 —
@@ -202,7 +215,7 @@
       </div>
 
       <div class="rounded-xl border border-outline-variant p-md">
-        <p class="text-label-md font-bold text-on-surface">5. 공유 링크 회수</p>
+        <p class="text-label-md font-bold text-on-surface">6. 공유 링크 회수</p>
         <p class="text-caption text-on-surface-variant mt-1">
           자료 파일은 이제 <b class="text-on-surface">비공개</b>로 두고 이 사이트를 거쳐서만 엽니다(교사 전용·공개 기간이 그때 적용됩니다).
           예전에 올린 자료에는 “링크가 있는 모든 사용자 보기”가 걸려 있어 드라이브 주소만 알면 누구나 열립니다 — 아래 버튼으로 되돌리세요.
@@ -335,11 +348,11 @@
 <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-md py-2 rounded-lg text-label-md shadow-lg"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808f"></script>
+<script src="js/db.js?v=20260808g"></script>
 <script>
 (function () {
   const { supabase, MATERIAL_TYPES, esc, callManageStudents, uploadToBucket, uploadMaterialToDrive, removeMaterialFile, safeStorageName, toLocalInput, pickDriveFile, wireFileDrop,
-          driveStatus, driveAuthUrl, driveDisconnect, driveUnshareAll, driveSaveSettings, driveSaveClient,
+          driveStatus, driveAuthUrl, driveDisconnect, driveUnshareAll, driveSaveSettings, driveSaveClient, driveSaveRoot, pickDriveFolder,
           subjectFolders, saveSubjectFolders, driveRefile, saveApiKey, apiKeyStatus, apiKeyLog, fmtDateTime } = window.DB;
 
   const $ = (id) => document.getElementById(id);
@@ -887,6 +900,9 @@
         : `<p class="text-label-md font-bold text-on-surface">아직 연결되지 않았습니다.</p><p class="text-caption mt-1">${flags}</p>`
           + '<p class="text-caption text-on-surface-variant mt-1">수업자료 업로드와 엑셀 내보내기는 연결한 뒤에 동작합니다.</p>';
       if (!s.hasClient || !s.hasSecret) $('drive-client-box').open = true;
+      $('drive-root-now').innerHTML = s.rootId
+        ? `현재: <b class="text-on-surface">${esc(s.rootName || s.rootId)}</b>`
+        : '<b class="text-error">아직 지정 안 됨 — 지정 전에는 폴더가 중복 생성됩니다.</b>';
     } catch (e) {
       $('drive-status').innerHTML = `<p class="text-error">상태를 불러오지 못했습니다: ${esc(e.message)}</p>`;
     }
@@ -996,6 +1012,16 @@
     }
     btn.disabled = false; btn.textContent = old;
   }
+  $('drive-pick-root').addEventListener('click', async (e) => {
+    const btn = e.currentTarget, old = btn.textContent;
+    btn.disabled = true; btn.textContent = '여는 중…';
+    try {
+      const doc = await pickDriveFolder();
+      if (doc) { await driveSaveRoot(doc.id, doc.name); toast(`"${doc.name}" 폴더로 지정했습니다.`); await loadDrive(); }
+    } catch (err) { alert('폴더 지정 실패: ' + err.message); }
+    btn.disabled = false; btn.textContent = old;
+  });
+
   $('drive-refile-dry').addEventListener('click', (e) => runRefile(e.currentTarget, 'dry'));
   $('drive-refile').addEventListener('click', (e) => runRefile(e.currentTarget, 'run'));
   $('drive-dedupe').addEventListener('click', (e) => runRefile(e.currentTarget, 'dedupe'));

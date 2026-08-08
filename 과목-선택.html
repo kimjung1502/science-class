@@ -68,7 +68,7 @@
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808f"></script>
+<script src="js/db.js?v=20260808g"></script>
 <script>
 (async () => {
   const { fetchSubjects, ACCENTS, esc, requireLogin, signOut, supabase } = window.DB;
@@ -80,7 +80,7 @@
   if (!auth) return;
 
   // 사용자 표시 + 로그아웃
-  const isAdminViewer = !auth.student; // 학생이 아니면 관리자(교사)
+  const isAdminViewer = auth.isAdmin;   // 비번 미변경 학생은 student 가 null 이라 !student 로는 교사로 잡힌다
   document.getElementById('who').textContent = auth.student ? auth.student.name : '관리자';
   if (isAdminViewer) {
     document.getElementById('teacher-badge').classList.remove('hidden');

@@ -3,6 +3,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const url = Deno.env.get('SUPABASE_URL')!
 const anon = Deno.env.get('SUPABASE_ANON_KEY')!
 const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// drive.file 은 "앱이 만들었거나 Picker 로 고른 것"만 보이는 최소 권한 범위다.
+// 선생님 드라이브 전체를 보지 않는다 — 그래서 수업자료 뿌리 폴더를
+// op=saveroot 로 한 번 지정해 그 아래만 열어 준다(범위를 넓히지 않기 위한 선택).
 const SCOPE = 'openid email https://www.googleapis.com/auth/drive.file'
 
 const cors = {
@@ -33,7 +36,7 @@ Deno.serve(async (req) => {
     const op = u.searchParams.get('op') || 'status'
 
     if (op === 'status') {
-      return json({ ok: true, connected: !!(cfg && cfg.refresh_token), email: cfg?.email || '', hasClient: !!(cfg && cfg.client_id), hasSecret: !!(cfg && cfg.client_secret), clientId: cfg?.client_id || '', pickerReady: !!(cfg && cfg.picker_api_key), school: cfg?.school_name || '', year: cfg?.acad_year || '', semester: cfg?.semester || '', curriculum: cfg?.curriculum || '' })
+      return json({ ok: true, connected: !!(cfg && cfg.refresh_token), email: cfg?.email || '', hasClient: !!(cfg && cfg.client_id), hasSecret: !!(cfg && cfg.client_secret), clientId: cfg?.client_id || '', pickerReady: !!(cfg && cfg.picker_api_key), school: cfg?.school_name || '', year: cfg?.acad_year || '', semester: cfg?.semester || '', curriculum: cfg?.curriculum || '', rootId: cfg?.root_folder_id || '', rootName: cfg?.root_folder_name || '' })
     }
 
     // OAuth 클라이언트 자격증명 저장. client_secret 은 절대 되돌려 주지 않고(status 는 존재
@@ -47,6 +50,18 @@ Deno.serve(async (req) => {
       if (!Object.keys(patch).length) return json({ error: '저장할 값이 없습니다.' }, 400)
       const { error } = await admin.from('google_drive_credentials').update(patch).eq('id', 1)
       if (error) return json({ error: error.message }, 400)
+      return json({ ok: true })
+    }
+
+    // 수업자료 뿌리 폴더 지정(Picker 로 고른 것). 이걸 지정해야 선생님이 손으로 만든
+    // 폴더도 앱 눈에 보이고, 같은 이름으로 새 폴더를 또 만들지 않는다.
+    if (op === 'saveroot') {
+      const b = await req.json().catch(() => ({}))
+      const id = (b.id || '').toString().trim()
+      await admin.from('google_drive_credentials').update({
+        root_folder_id: id || null,
+        root_folder_name: id ? ((b.name || '').toString().trim() || null) : null,
+      }).eq('id', 1)
       return json({ ok: true })
     }
 
@@ -95,7 +110,7 @@ Deno.serve(async (req) => {
     }
 
     if (op === 'disconnect') {
-      await admin.from('google_drive_credentials').update({ refresh_token: null, access_token: null, token_expiry: null, email: null, root_folder_id: null }).eq('id', 1)
+      await admin.from('google_drive_credentials').update({ refresh_token: null, access_token: null, token_expiry: null, email: null, root_folder_id: null, root_folder_name: null }).eq('id', 1)
       return json({ ok: true })
     }
 

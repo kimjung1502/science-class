@@ -113,7 +113,8 @@ async function mergeInto(token: string, srcId: string, dstId: string, moved: { f
 
 // 수업자료 뿌리: 학교 › 수업자료 › 개정 — uploadMaterialToDrive 가 쓰는 경로와 같아야 한다.
 async function findBase(admin: any, token: string) {
-  const { data: cfg } = await admin.from('google_drive_credentials').select('school_name, curriculum').eq('id', 1).maybeSingle()
+  const { data: cfg } = await admin.from('google_drive_credentials').select('school_name, curriculum, root_folder_id').eq('id', 1).maybeSingle()
+  if (cfg?.root_folder_id) return cfg.root_folder_id as string   // Picker 로 지정한 뿌리 폴더
   let base: string | null = await findFolder(token, cfg?.school_name || '학교', 'root')
   if (base) base = await findFolder(token, '수업자료', base)
   if (base && cfg?.curriculum) base = await findFolder(token, cfg.curriculum, base)

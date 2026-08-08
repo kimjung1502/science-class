@@ -212,7 +212,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js?v=20260808f"></script>
+<script src="js/db.js?v=20260808g"></script>
 <script src="js/mindmap.js?v=20260724a"></script>
 <script>
 (function () {
@@ -849,7 +849,7 @@
     const auth = await requireLogin();
     if (!auth) return;
     if (!subjectId) { location.replace('과목-선택.html'); return; }
-    state.isAdmin = !auth.student;
+    state.isAdmin = auth.isAdmin;   // 비번 미변경 학생은 student 가 null 이라 !student 로는 교사로 잡힌다
     state.viewerName = auth.student ? auth.student.name : '선생님';
     $('who').textContent = auth.student ? auth.student.name : '관리자';
     if (state.isAdmin) { $('teacher-badge').classList.remove('hidden'); $('new-btn').classList.remove('hidden'); $('new-btn').classList.add('flex'); $('drive-bar').classList.remove('hidden'); }
