@@ -222,11 +222,12 @@
     .stepper .cap{display:none}      /* 추 개수·입자 수는 계기판과 실린더 그림에 이미 있음 */
     [data-act="record"] .long{display:none}
     [data-act="record"] .short{display:inline}
-    .gauges{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:min(264px,86%);z-index:2;pointer-events:none;
+    /* 오버레이는 첫 줄(P·V·T·n)만 — 둘 다 걸면 측정 칩 줄과 겹쳐 보인다 */
+    .gauges:first-of-type{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:min(264px,86%);z-index:2;pointer-events:none;
       grid-template-columns:repeat(4,minmax(0,1fr));background:rgba(251,250,246,.88);border:1px solid var(--paper3);border-radius:10px;padding:4px}
-    .gauges .gauge{background:transparent;border-color:transparent;padding:1px 3px}
-    .gauges .gauge .v{font-size:12px}
-    .gauges .gauge .k{font-size:9.5px}
+    .gauges:first-of-type .gauge{background:transparent;border-color:transparent;padding:1px 3px}
+    .gauges:first-of-type .gauge .v{font-size:12px}
+    .gauges:first-of-type .gauge .k{font-size:9.5px}
     .gauges .gauge.wide{grid-column:auto}
   }
   /* ④ 저높이 가로(≤470px): 저높이 2열 — ②③이 만진 속성을 전부 재지정
@@ -249,11 +250,11 @@
     .simblock{--ctl-reserve:calc(100vh - var(--rail-h) - 12px)}
     .simctl{flex-direction:column;flex-wrap:nowrap;align-items:stretch;padding:0;min-height:0}
     .canvasbox{width:auto;margin:0}
-    .gauges{position:static;top:auto;left:auto;transform:none;width:auto;z-index:auto;pointer-events:auto;
+    .gauges:first-of-type{position:static;top:auto;left:auto;transform:none;width:auto;z-index:auto;pointer-events:auto;
       grid-template-columns:repeat(4,minmax(0,1fr));background:none;border:0;border-radius:0;padding:0}
-    .gauges .gauge{background:var(--paper2);border-color:var(--paper3);padding:4px 7px}
-    .gauges .gauge .v{font-size:12.5px}
-    .gauges .gauge .k{font-size:10px}
+    .gauges:first-of-type .gauge{background:var(--paper2);border-color:var(--paper3);padding:4px 7px}
+    .gauges:first-of-type .gauge .v{font-size:12.5px}
+    .gauges:first-of-type .gauge .k{font-size:10px}
     .gauges .gauge.wide{grid-column:auto}
     .simctl{position:static;padding:4px 0}
     main{padding-top:8px}
