@@ -103,6 +103,7 @@
   .aimsg.wait{background:var(--paper2);color:var(--ink3)}
   textarea.ai-bad{border-color:var(--signal)}
   .note{font-size:13px;color:#3c4457;background:var(--paper2);border-radius:10px;padding:9px 11px;margin-top:8px}
+  .note:empty{display:none}                     /* 내용이 채워지기 전엔 빈 회색 띠만 남는다 */
   .note.signal{background:var(--signal-soft);color:#8a3510}
   .note.lime{background:var(--lime-soft);color:#3f4d00}
   details.more{margin:8px 0 0;font-size:13.5px}
@@ -456,11 +457,6 @@
     </div>
 
     <div class="card">
-      <div class="q">
-        <p class="qtext">Q. 온도를 올리면 왜 부피가 커질까요? <span style="font-weight:400;color:var(--ink3)">(입자의 운동으로 설명)</span></p>
-        <textarea id="q_charles_relation" data-ai="charles.relation" placeholder="입자의 속력·충돌로 설명해 보세요."></textarea>
-        <div class="aimsg" id="ai-charles.relation"></div>
-      </div>
       <div class="note" id="cmp4"></div>
     </div>
     <button class="btn next" id="next4">다음으로 계속 ↓</button>
@@ -1015,10 +1011,9 @@ function migrate(o) {
 var AI_KEYS_BY_STEP = {
   2: ['predict.reasonPv', 'predict.reasonVt'],
   3: ['boyle.q1', 'boyle.q2'],
-  4: ['charles.relation'],
   5: ['assess.a1', 'assess.a3']
 };
-var AI_ALL = ['predict.reasonPv', 'predict.reasonVt', 'boyle.q1', 'boyle.q2', 'charles.relation', 'assess.a1', 'assess.a3'];
+var AI_ALL = ['predict.reasonPv', 'predict.reasonVt', 'boyle.q1', 'boyle.q2', 'assess.a1', 'assess.a3'];
 var aiInflight = {};      // key → {ctrl, promise}
 
 function aiText(key) { return tx(getPath(state, key)); }
@@ -1134,7 +1129,6 @@ function gate(step) {
     if (!interceptOk(s.charles.intercept)) return { ok: false, why: 'x절편(℃)을 맞혀 주세요.' };
     if (!tx(s.charles.whyKelvin) && !s.charles.whyKelvinLegacy)
       return { ok: false, why: '℃ 로 계산하면 안 되는 이유를 써 주세요.' };
-    if (!tx(s.charles.relation)) return { ok: false, why: '서술 문항을 써 주세요.' };
     if (!aiGateOk(4)) return { ok: false, why: 'AI 확인이 끝나지 않았어요.' };
     return { ok: true, why: '' };
   }
@@ -2453,7 +2447,6 @@ function hydrate() {
     '#predReasonPv': 'predict.reasonPv', '#predReasonVt': 'predict.reasonVt',
     '#q_boyle_q1': 'boyle.q1', '#q_boyle_q2': 'boyle.q2',
     '#q_charles_whyK': 'charles.whyKelvin',
-    '#q_charles_relation': 'charles.relation',
     '#q_assess_a1': 'assess.a1', '#q_assess_a3': 'assess.a3',
     '#interceptIn': 'charles.intercept', '#rAnswer': 'combine.rAnswer'
   };
@@ -2531,7 +2524,6 @@ function bindAll() {
   bindText('#introConditions', 'intro.conditions');
   bindText('#q_boyle_q1', 'boyle.q1'); bindText('#q_boyle_q2', 'boyle.q2');
   bindText('#q_charles_whyK', 'charles.whyKelvin');
-  bindText('#q_charles_relation', 'charles.relation');
   bindText('#q_assess_a1', 'assess.a1'); bindText('#q_assess_a3', 'assess.a3');
   bindText('#interceptIn', 'charles.intercept'); bindText('#rAnswer', 'combine.rAnswer');
 
