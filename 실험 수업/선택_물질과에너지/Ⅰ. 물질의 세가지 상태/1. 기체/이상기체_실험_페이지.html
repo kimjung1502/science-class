@@ -33,7 +33,7 @@
   .topmeta .step{font-family:var(--mono);font-weight:700;color:var(--ink);letter-spacing:.02em;font-variant-numeric:tabular-nums}
   .topmeta .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .chip{margin-left:auto;background:var(--paper2);border:1px solid var(--paper3);border-radius:999px;padding:2px 10px;font-size:11.5px;color:var(--ink3);white-space:nowrap}
-  .chip.tbadge{background:var(--lime-soft);border-color:#d8e88a;color:#4a5a00;font-weight:700;margin-left:6px}
+  .chip.tbadge,.chip.sync{background:var(--lime-soft);border-color:#d8e88a;color:#4a5a00;font-weight:700;margin-left:6px}
   .chip.err{background:var(--signal-soft);border-color:#f3c3ae;color:#a5310c;font-weight:700;margin-left:6px}
   .chip.ver{margin-left:6px;font-family:var(--mono)}
   button.chip.reset{margin-left:6px;font-family:inherit;cursor:pointer}
@@ -283,6 +283,7 @@
     <span class="chip ver">v1</span>
     <span class="chip tbadge" id="tbadge" hidden>교사 미리보기</span>
     <span class="chip err" id="savefail" hidden>저장 실패 — 제출로 백업</span>
+    <span class="chip sync" id="syncchip" hidden></span>
     <button class="chip reset" id="resetBtn" type="button">처음부터 다시</button>
   </div>
 </header>
@@ -926,6 +927,7 @@ function save(now) {
   } catch (e) {
     saveFailed = true; $('#savefail').hidden = false;
   }
+  queuePush();                          // §3.4 서버에도 올려 둔다(기기·브라우저를 바꿔도 이어하도록)
 }
 function isNum(x) { return typeof x === 'number' && isFinite(x); }
 function inRange(x, lo, hi) { return isNum(x) && x >= lo - 1e-6 && x <= hi + 1e-6; }
@@ -1002,6 +1004,96 @@ function migrate(o) {
     delete o.predict.reason;
   }
   return o;
+}
+
+/* ===================== §3.4 서버 이어하기 ===================== */
+/* localStorage 는 기기·브라우저마다 따로다 — 교실 태블릿에서 하다가 다음 시간에 다른 자리
+   컴퓨터(또는 크롬→사파리)에서 열면 빈 화면이 나왔다. 로그인한 학생이면 진행 상태를
+   experiment_states(본인만 읽고 쓰는 표)에 같이 올려 두고, 열 때 서버 쪽이 더 새것이면
+   그걸로 이어한다. 로그인 없이 여는 단독 페이지는 지금처럼 이 기기에만 저장된다.
+   최종 제출(선생님 드라이브의 학번_이름.json)은 그대로 — 저건 결과물, 이건 이어하기용이다. */
+var STATE_URL = CONFIG.SUPABASE_URL + '/rest/v1/experiment_states';
+var STATE_Q = 'subject_id=eq.' + CONFIG.SUBJECT_ID + '&title=eq.' + encodeURIComponent(CONFIG.EXPERIMENT_TITLE);
+var pushTimer = null, pushedHash = null, pushing = false, pullDone = false;
+/* 빈 화면은 절대 올리지 않는다 — 서버에 있는 지난 시간 기록을 지워 버리는 사고를 막는 자물쇠 */
+var EMPTY_HASH = null;
+
+function stateHeaders(tk, extra) {
+  var h = { 'apikey': CONFIG.SUPABASE_ANON, 'Authorization': 'Bearer ' + tk }, k;
+  for (k in extra) h[k] = extra[k];
+  return h;
+}
+function syncChip(msg) {
+  var c = $('#syncchip');
+  if (!c) return;
+  c.textContent = msg; c.hidden = false;
+  setTimeout(function () { c.hidden = true; }, 8000);
+}
+/* 바뀐 게 없으면 보내지 않는다 — 자동저장마다 왕복하면 한 반이 동시에 계속 두드린다 */
+function pushRemote() {
+  if (IS_ADMIN || pushing || !pullDone) return Promise.resolve();
+  var h = payloadHash(state);
+  if (h === pushedHash || h === EMPTY_HASH) return Promise.resolve();
+  pushing = true;
+  return freshSiteToken().then(function (tk) {
+    if (!tk) return null;                       // 로그인 없이 열린 페이지 — 이 기기에만 저장
+    return fetch(STATE_URL + '?on_conflict=student_id,subject_id,title', {
+      method: 'POST',
+      headers: stateHeaders(tk, { 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify({ subject_id: CONFIG.SUBJECT_ID, title: CONFIG.EXPERIMENT_TITLE, payload: state }),
+      keepalive: true
+    }).then(function (r) { if (r.ok) pushedHash = h; });
+  }).catch(function () { /* 못 올려도 이 기기 저장은 살아 있다 — 다음 변경 때 다시 시도 */ })
+    .then(function () { pushing = false; });
+}
+function queuePush() {
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(function () { pushTimer = null; pushRemote(); }, 4000);
+}
+/* 어느 쪽을 쓸지 — 규칙은 이 순수 함수 하나뿐이다(tests-idealgas/sync-merge.test.mjs 가 이 함수를 그대로 떼어 검사한다).
+   dirty: 서버 응답을 기다리는 사이 학생이 이 기기에서 뭔가 입력함 → 무조건 이 기기 것을 지킨다. */
+function shouldAdoptRemote(mineIso, theirsIso, dirty) {
+  if (dirty) return false;
+  var mine = mineIso ? Date.parse(mineIso) : 0, theirs = theirsIso ? Date.parse(theirsIso) : 0;
+  if (!isFinite(theirs) || theirs === 0) return false;
+  return !isFinite(mine) ? true : theirs > mine;
+}
+/* 열 때 한 번. 서버 쪽이 더 새것이면 갈아끼우고, 기다리는 동안 학생이 이미 뭔가 했으면 건드리지 않는다. */
+function pullRemote() {
+  if (IS_ADMIN) { pullDone = true; return Promise.resolve(); }
+  var bootHash = payloadHash(state);
+  return freshSiteToken().then(function (tk) {
+    if (!tk) return null;
+    return fetch(STATE_URL + '?select=payload&' + STATE_Q, { headers: stateHeaders(tk) })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (rows) {
+        var o = rows && rows[0] && rows[0].payload;
+        if (!o || !validState(o)) return;
+        o = migrate(o);
+        // 이 기기 것이 더 새것이면 그대로 두고 queuePush 가 올린다
+        if (!shouldAdoptRemote(state.updatedAt, o.updatedAt, payloadHash(state) !== bootHash)) return;
+        backup(activeKey, JSON.stringify(state));              // 밀려난 쪽도 _bak 로 남겨 둔다
+        state = o;
+        if (S) {
+          if (S.name) state.student.name = S.name;
+          if (S.sid) state.student.sid = S.sid;
+          state.student.fromSite = true;
+        }
+        unlocked = recomputeUnlocked();
+        hydrate(); save(true);
+        pushedHash = payloadHash(state);
+        syncChip('↩ 다른 기기에서 하던 내용을 불러왔어요');
+      });
+  }).catch(function () { }).then(function () { pullDone = true; });
+}
+/* '처음부터 다시' 는 서버 기록도 지운다 — 안 그러면 다른 기기에서 열 때 되살아난다 */
+function clearRemote() {
+  if (IS_ADMIN) return Promise.resolve();
+  pushedHash = null;
+  return freshSiteToken().then(function (tk) {
+    if (!tk) return null;
+    return fetch(STATE_URL + '?' + STATE_Q, { method: 'DELETE', headers: stateHeaders(tk) });
+  }).catch(function () { });
 }
 
 /* ===================== §8.4 AI 검수 ===================== */
@@ -2562,6 +2654,7 @@ function bindAll() {
     }
     $('#resetDlg').close();
     try { localStorage.removeItem(getActiveKeyName()); } catch (e) { }
+    clearRemote();                                       // §3.4 서버 기록도 함께 지운다
     state = defaultState();
     if (S) { state.student.name = S.name || ''; state.student.sid = S.sid || ''; state.student.fromSite = true; }
     unlocked = 1; invView = false;
@@ -2622,6 +2715,8 @@ function init() {
     $('#manualNote').innerHTML = 'ℹ️ 이름이 없어요. 이름을 입력해 주세요.';
   }
 
+  EMPTY_HASH = payloadHash(defaultState());   // §3.4 '아무것도 안 한 화면' 의 지문 — 이건 서버로 올리지 않는다
+
   // 저장 불러오기 (§3.1) — 교사 미리보기는 저장본을 읽지 않고 항상 빈 상태로 시작
   var res = IS_ADMIN ? { empty: true } : readKey(activeKey);
   if (res.broken) { backup(activeKey, res.raw); state = defaultState(); }
@@ -2651,6 +2746,11 @@ function init() {
   hydrate();
   checkLow();
   save(true);
+  pullRemote();                                         // §3.4 다른 기기에서 하던 게 더 새것이면 그걸로 이어한다
+  // 탭을 닫거나 화면을 덮을 때 마지막 변경분을 밀어 넣는다(자동 올리기는 4초 뒤라 놓칠 수 있다)
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') pushRemote();
+  });
   paintDue(); loadDue();                                // 제출 기한 — 먼저 그리고, 서버 값이 오면 다시 그린다
   if (!IS_ADMIN && state.intro.started && tx(state.intro.conditions) && !state.intro.submittedAt) {
     sendIntroCheckpoint();                               // 이전 접속에서 못 보낸 도입 응답 자동 재시도
