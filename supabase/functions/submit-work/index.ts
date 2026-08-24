@@ -72,23 +72,22 @@ async function getStudent(admin: any, user: any) {
 }
 
 // 지금 제출이 열려 있는지.
-// ① 실험 페이지에서 정한 마감 시각이 있으면 그것만 본다(보강·결석생용 임시 연장).
-// ② 없으면 분반 시간표(class_periods × school_periods)를 보고 수업 시간에만 연다.
-// ③ 시간표도 없으면 제한 없음. 종 친 뒤 GRACE_MIN 분은 정리하며 낼 수 있게 봐 준다.
+// ① 마감 시각(close_at)이 지나면 닫힌다.
+// ② 교사가 '수업 시간에만 제출하기'를 켜 둔 실험만 분반 시간표(class_periods × school_periods) 게이트를 탄다.
+//    꺼 두면(기본) 기한만 본다 — 집에서 마저 쓰게 하려면 이쪽이 맞다.
+// ③ 시간표가 없으면 제한 없음. 종 친 뒤 GRACE_MIN 분은 정리하며 낼 수 있게 봐 준다.
 const GRACE_MIN = 5
 async function submitGate(admin: any, subjectId: string, title: string, classId: string | null) {
-  const { data: win } = await admin.from('experiment_windows').select('close_at').eq('subject_id', subjectId).eq('title', title).maybeSingle()
+  const { data: win } = await admin.from('experiment_windows').select('close_at, class_time_only').eq('subject_id', subjectId).eq('title', title).maybeSingle()
   const closeAt = win?.close_at || null
-  if (closeAt) {
-    const t = new Date(closeAt).getTime()
-    return t < Date.now()
-      ? { open: false, why: '제출 기한이 지났습니다.', close_at: closeAt, until: closeAt }
-      : { open: true, close_at: closeAt, until: closeAt }
-  }
-  if (!classId) return { open: true, close_at: null }
+  const classOnly = win?.class_time_only === true
+  const base = { close_at: closeAt, class_time_only: classOnly }
+  if (closeAt && new Date(closeAt).getTime() < Date.now())
+    return { ...base, open: false, why: '제출 기한이 지났습니다.', until: closeAt }
+  if (!classOnly || !classId) return { ...base, open: true, until: closeAt }
   // 시간표는 (분반 × 과목) 단위다. 과목을 안 걸면 다른 과목 시간에도 제출이 열린다.
   const { data: slots } = await admin.from('class_periods').select('weekday, period').eq('class_id', classId).eq('subject_id', subjectId)
-  if (!slots || !slots.length) return { open: true, close_at: null }
+  if (!slots || !slots.length) return { ...base, open: true, until: closeAt }
   const { data: periods } = await admin.from('school_periods').select('period, start_time, end_time')
   const pmap = new Map((periods || []).map((p: any) => [p.period, p]))
   const toMin = (t: string) => { const a = String(t).split(':'); return (+a[0]) * 60 + (+a[1]) }
@@ -99,21 +98,43 @@ async function submitGate(admin: any, subjectId: string, title: string, classId:
   for (const p of today) {
     if (mins >= toMin(p.start_time) && mins <= toMin(p.end_time) + GRACE_MIN) {
       const end = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 0, toMin(p.end_time)) - 9 * 3600 * 1000)
-      return { open: true, close_at: null, until: end.toISOString() }
+      // 기한이 수업 끝보다 이르면 그쪽이 진짜 마감이다
+      const until = closeAt && new Date(closeAt).getTime() < end.getTime() ? closeAt : end.toISOString()
+      return { ...base, open: true, until }
     }
   }
-  return { open: false, why: '수업 시간에만 제출할 수 있습니다.', close_at: null }
+  return { ...base, open: false, why: '수업 시간에만 제출할 수 있습니다.' }
 }
 
 // 학생이 이 과목에서 수강하는 분반 판정 (class_subjects ∩ student_classes)
-async function resolveClass(admin: any, studentId: string, subjectId: string): Promise<{ classId: string; className: string } | null> {
+async function resolveClass(admin: any, studentId: string, subjectId: string): Promise<{ classId: string; className: string; folder: string } | null> {
   const { data: scs } = await admin.from('class_subjects').select('class_id').eq('subject_id', subjectId)
   const subjClassIds = new Set((scs || []).map((x: any) => x.class_id))
   const { data: mycs } = await admin.from('student_classes').select('class_id').eq('student_id', studentId)
   const classId = (mycs || []).map((x: any) => x.class_id).find((id: string) => subjClassIds.has(id))
   if (!classId) return null
-  const { data: cls } = await admin.from('classes').select('name').eq('id', classId).maybeSingle()
-  return { classId, className: cls?.name || '미분류' }
+  // 폴더 이름은 classes.drive_folder 가 있으면 그것(예: '01. 물질F(204)'), 없으면 name.
+  // 손으로 폴더를 바꿔 놓고 코드가 name 으로 찾으면 다음 제출이 'F' 를 새로 만든다.
+  const { data: cls } = await admin.from('classes').select('name, drive_folder').eq('id', classId).maybeSingle()
+  return { classId, className: cls?.name || '미분류', folder: cls?.drive_folder || cls?.name || '미분류' }
+}
+
+// 실험 하나 = 활동(submission_assignments) 하나. 학생이 처음 제출할 때 만들어진다.
+// 열 정의(fields)는 교사가 '구글 시트로 모으기' 를 누를 때 실험 페이지가 보내 채운다.
+// is_active=false 라 학생의 산출물-제출 목록에는 안 뜬다 — 거긴 폼 과제만 있어야 한다.
+async function ensureExperimentActivity(admin: any, subjectId: string, title: string): Promise<string> {
+  const { data: found } = await admin.from('submission_assignments')
+    .select('id').eq('subject_id', subjectId).eq('title', title).eq('kind', 'experiment').maybeSingle()
+  if (found) return found.id
+  const { data: ins, error } = await admin.from('submission_assignments')
+    .insert({ subject_id: subjectId, title, kind: 'experiment', fields: [], is_active: false, description: '실험 페이지가 만든 활동' })
+    .select('id').single()
+  if (!error && ins) return ins.id
+  // 같은 순간에 다른 학생이 먼저 만들었다 — unique index 가 막아 준 것이니 그것을 쓴다
+  const { data: again } = await admin.from('submission_assignments')
+    .select('id').eq('subject_id', subjectId).eq('title', title).eq('kind', 'experiment').maybeSingle()
+  if (again) return again.id
+  throw new Error('활동 생성 실패: ' + (error?.message || 'unknown'))
 }
 
 // 관리자 판정은 auth_user_id 로만 한다 — DB 의 is_admin() 과 같은 기준.
@@ -227,7 +248,7 @@ Deno.serve(async (req) => {
           const fYear = await ensureFolder(token, ys.year, fSchool)
           const fSem = await ensureFolder(token, ys.sem, fYear)
           const fSubj = await ensureFolder(token, subj?.drive_folder || subj?.name || '과목', fSem)
-          const fClass = await ensureFolder(token, cls.className || '미분류', fSubj)
+          const fClass = await ensureFolder(token, sanitizeName(cls.folder), fSubj)
           const fAsg = await ensureFolder(token, sanitizeName(asg.title || '과제'), fClass)
           const dfName = sanitizeName(`${student.student_number || sn}_${student.name || ''}_${fieldId}`) + '.' + ext
           const up = await uploadDrive(token, fAsg, dfName, bytes, contentType)
@@ -253,15 +274,16 @@ Deno.serve(async (req) => {
         if (!(await checkAdmin(admin, user))) return json({ error: '관리자만 설정할 수 있습니다.' }, 403)
         const closeAt = body.set ? new Date(body.set) : null
         if (closeAt && isNaN(closeAt.getTime())) return json({ error: '시각 형식이 올바르지 않습니다.' }, 400)
+        const classOnly = body.class_time_only === true
         const { error } = await admin.from('experiment_windows')
-          .upsert({ subject_id: subjectId, title, close_at: closeAt ? closeAt.toISOString() : null, updated_at: new Date().toISOString() })
+          .upsert({ subject_id: subjectId, title, close_at: closeAt ? closeAt.toISOString() : null, class_time_only: classOnly, updated_at: new Date().toISOString() })
         if (error) return json({ error: error.message }, 400)
-        return json({ ok: true, close_at: closeAt ? closeAt.toISOString() : null })
+        return json({ ok: true, close_at: closeAt ? closeAt.toISOString() : null, class_time_only: classOnly })
       }
       const st = await getStudent(admin, user)
       const cls = st ? await resolveClass(admin, st.id, subjectId) : null
       const g = await submitGate(admin, subjectId, title, cls?.classId || null)
-      return json({ ok: true, close_at: g.close_at, open: g.open, until: g.until || null, why: g.why || null })
+      return json({ ok: true, close_at: g.close_at, class_time_only: g.class_time_only, open: g.open, until: g.until || null, why: g.why || null })
     }
 
     // ---------- 학생: 실험 페이지 결과(JSON) 제출 ----------
@@ -286,20 +308,40 @@ Deno.serve(async (req) => {
       if (!cls) return json({ error: '이 과목을 수강하지 않아 제출할 수 없습니다.' }, 403)
       const gate = await submitGate(admin, subjectId, title, cls.classId)
       if (!gate.open) return json({ error: gate.why, close_at: gate.close_at }, 403)
-      const { data: gcfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()
-      if (!(gcfg?.refresh_token && gcfg?.client_id && gcfg?.client_secret)) return json({ error: '선생님 드라이브가 연결되어 있지 않습니다.' }, 503)
-      const { data: subj } = subjectId ? await admin.from('subjects').select('name, drive_folder').eq('id', subjectId).maybeSingle() : { data: null }
-      const token = await getDriveToken(admin, gcfg)
-      const ys = acadYearSem()
-      let f = await ensureFolder(token, gcfg.school_name || '학교', 'root')
-      f = await ensureFolder(token, ys.year, f)
-      f = await ensureFolder(token, ys.sem, f)
-      f = await ensureFolder(token, sanitizeName(subj?.drive_folder || subj?.name || '과목'), f)
-      f = await ensureFolder(token, sanitizeName(cls?.className || '미분류'), f)
-      f = await ensureFolder(token, title, f)
-      const fname = sanitizeName(`${student.student_number || ''}_${student.name || ''}`) + '.json'
-      const up = await uploadDrive(token, f, fname, bytes, 'application/json')
-      return json({ ok: true, file_name: fname, drive_id: up.id })
+      // ── ① DB 가 원본이다. 여기서 실패하면 제출이 안 된 것으로 본다.
+      // 예전에는 드라이브에만 썼다. 그래서 8/2 처럼 백엔드를 다시 세워도 응답이 DB 에 없었고,
+      // 교사 화면은 submissions 를 보는데 실험만 딴 데 쌓여 '제출 0건' 으로 보였다.
+      const assignmentId = await ensureExperimentActivity(admin, subjectId, title)
+      const nowIso = new Date().toISOString()
+      const { error: subErr } = await admin.from('submissions').upsert({
+        assignment_id: assignmentId, student_id: student.id, student_name: student.name,
+        class_id: cls.classId, class_name: cls.className,
+        answers: body.payload ?? {}, mode: 'experiment', submitted_at: nowIso, updated_at: nowIso,
+      }, { onConflict: 'assignment_id,student_id' })
+      if (subErr) return json({ error: '제출 저장 실패: ' + subErr.message }, 500)
+
+      // ── ② 드라이브 JSON 은 백업이다. 여기서 실패해도 제출은 이미 남았다.
+      let backup: any = { saved: false }
+      try {
+        const { data: gcfg } = await admin.from('google_drive_credentials').select('*').eq('id', 1).maybeSingle()
+        if (gcfg?.refresh_token && gcfg?.client_id && gcfg?.client_secret) {
+          const { data: subj } = await admin.from('subjects').select('name, drive_folder').eq('id', subjectId).maybeSingle()
+          const token = await getDriveToken(admin, gcfg)
+          const ys = acadYearSem()
+          let f = await ensureFolder(token, gcfg.school_name || '학교', 'root')
+          f = await ensureFolder(token, ys.year, f)
+          f = await ensureFolder(token, ys.sem, f)
+          f = await ensureFolder(token, sanitizeName(subj?.drive_folder || subj?.name || '과목'), f)
+          f = await ensureFolder(token, sanitizeName(cls?.folder || '미분류'), f)
+          f = await ensureFolder(token, title, f)
+          const fname = sanitizeName(`${student.student_number || ''}_${student.name || ''}`) + '.json'
+          const up = await uploadDrive(token, f, fname, bytes, 'application/json')
+          backup = { saved: true, file_name: fname, drive_id: up.id }
+        }
+      } catch (e) {
+        backup = { saved: false, why: String(e).slice(0, 200) }
+      }
+      return json({ ok: true, backup })
     }
 
     // ---------- 다운로드 서명 (관리자 또는 본인) ----------
