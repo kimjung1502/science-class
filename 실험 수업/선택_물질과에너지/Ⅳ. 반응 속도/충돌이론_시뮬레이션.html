@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>충돌 시뮬레이션 — A + A → 2B</title>
+<style>
+:root{
+  --paper:#FBFAF6;--paper2:#F4F2E9;--paper3:#ECE8DA;
+  --ink:#16213E;--ink2:#2C3A5E;--ink3:#5A6379;
+  --lime:#C4E000;--lime-soft:#EEF7B8;--signal:#FF5B24;--signal-soft:#FFE1D5;--violet:#7a4fc0;
+  --surface:#fff;--sans:system-ui,"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --mono:"Space Mono",Consolas,ui-monospace,monospace;--radius:16px;--shadow:0 6px 22px rgba(22,33,62,.08)
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font-family:var(--sans);background:var(--paper);line-height:1.55;
+background-image:linear-gradient(rgba(22,33,62,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(22,33,62,.035) 1px,transparent 1px);background-size:26px 26px}
+button,input{font:inherit}button{cursor:pointer}
+.wrap{width:min(1100px,calc(100% - 28px));margin:auto;padding-bottom:40px}
+.top{padding:24px 0 12px}
+.eyebrow{font:700 12px var(--mono);letter-spacing:.08em;color:var(--ink3)}
+h1{font-size:clamp(26px,4.6vw,44px);line-height:1.08;margin:8px 0 10px;letter-spacing:-.035em}
+h1 .eq{font-family:var(--mono);font-size:.6em;letter-spacing:0;background:var(--lime-soft);padding:2px 10px;border-radius:10px;vertical-align:middle}
+.lead{max-width:760px;margin:0;color:var(--ink2)}
+
+.steps{margin:14px 0 16px;background:var(--surface);border:1px solid var(--paper3);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.steprow{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--paper3)}
+.steprow button{flex:1 1 200px;border:0;border-right:1px solid var(--paper3);background:transparent;padding:11px 12px;text-align:left;color:var(--ink2);display:flex;gap:9px;align-items:center;min-width:0}
+.steprow button:last-child{border-right:0}
+.steprow button:hover{background:var(--paper2)}
+.steprow button.on{background:var(--ink);color:#fff}
+.steprow b{flex:0 0 22px;height:22px;border-radius:50%;background:var(--paper3);color:var(--ink);display:grid;place-items:center;font:800 12px var(--mono)}
+.steprow button.on b{background:var(--lime)}
+.steprow span{font-size:13.5px;font-weight:700}
+.say{padding:12px 16px;font-size:15px;font-weight:700;color:var(--ink);background:var(--lime-soft)}
+.say::before{content:"Q. ";font:800 15px var(--mono);color:var(--ink3)}
+
+.layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--paper3);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+.simcanvas{display:block;width:100%;aspect-ratio:320/420;height:auto;background:var(--paper2);border-radius:13px;border:1px solid var(--paper3)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--ink2);align-items:center}
+.dot{display:inline-block;width:13px;height:13px;border-radius:50%;vertical-align:-2px;margin-right:4px;background:var(--signal)}
+.dot.b{background:var(--violet)}
+
+.side{display:flex;flex-direction:column;gap:12px}
+.gauges{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.gauge{background:var(--paper2);border:1px solid var(--paper3);border-radius:10px;padding:6px 9px;min-width:0}
+.gauge .k{font-size:10.5px;color:var(--ink3);font-weight:700}
+.gauge .v{font:700 16px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gauge .u{font:600 10.5px var(--sans);color:var(--ink3)}
+.gauge.hi{background:var(--lime-soft);border-color:#d8e968}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{font-weight:700;border:none;border-radius:12px;padding:0 16px;min-height:42px;background:var(--ink);color:#fff}
+.btn:hover{filter:brightness(1.12)}
+.btn:disabled{background:#cbc6ba;cursor:not-allowed;filter:none}
+.btn.ghost{background:var(--paper2);color:var(--ink);border:1px solid var(--paper3)}
+.btn.lime{background:var(--lime);color:var(--ink)}
+.seg{display:inline-flex;padding:3px;background:var(--paper3);border-radius:999px}
+.seg button{border:0;padding:7px 12px;background:transparent;border-radius:999px;font-weight:750;font-size:13px;color:var(--ink)}
+.seg button.on{background:var(--ink);color:#fff}
+.rowlbl{font-size:12px;font-weight:800;color:var(--ink3)}
+.control{padding:10px 0 2px;border-top:1px solid var(--paper3);margin-top:10px}
+.sub{font-size:11.5px;color:var(--ink3)}
+.graphhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.graphhead .t{font-size:13px;font-weight:800;color:var(--ink2)}
+.graphcanvas{display:block;width:100%;height:auto;background:#fff;border:1px solid var(--paper3);border-radius:12px}
+.key{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--ink3)}
+.key i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+
+.qcard{margin-top:16px}
+.qcard h2{font-size:17px;margin:0 0 8px}
+.qcard ol{margin:0;padding-left:20px;color:var(--ink2);font-size:14px}
+.qcard ol li{margin:3px 0}
+.dtable{width:100%;border-collapse:collapse;font:13px var(--mono);font-variant-numeric:tabular-nums}
+.dtable th,.dtable td{border-bottom:1px solid var(--paper3);padding:6px 8px;text-align:right;white-space:nowrap}
+.dtable th{background:var(--paper2);color:var(--ink3);font:700 11px var(--sans);position:sticky;top:0}
+.dtable th:first-child,.dtable td:first-child{text-align:center}
+.tablescroll{overflow:auto;max-height:280px;margin-top:10px;border:1px solid var(--paper3);border-radius:10px}
+.summary{margin-top:10px;font-size:14px;background:var(--lime-soft);border-radius:10px;padding:9px 12px;display:none}
+.summary.show{display:block}
+[data-tabs]{display:none}
+body[data-tab="1"] [data-tabs*="1"],body[data-tab="2"] [data-tabs*="2"],body[data-tab="3"] [data-tabs*="3"]{display:revert}
+
+@media(max-width:860px){.layout{grid-template-columns:1fr}.simbox{max-width:360px;margin:auto}.gauges{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.wrap{width:calc(100% - 16px)}.steprow button{flex:1 1 100%;border-right:0;border-bottom:1px solid var(--paper3)}}
+</style>
+</head>
+<body data-tab="1">
+<main class="wrap">
+  <header class="top">
+    <div class="eyebrow">물질과 에너지 · Ⅳ. 반응 속도</div>
+    <h1>입자의 충돌과 반응 <span class="eq">A + A → 2B</span></h1>
+    <p class="lead">실린더 속 A 입자들이 움직입니다. 반응은 언제 일어나고, 반응하면 무엇이 바뀌며, 부피를 바꾸면 반응이 얼마나 빨라지거나 느려질까요? 세 질문을 차례로 확인해 보세요.</p>
+  </header>
+
+  <div class="steps">
+    <div class="steprow" id="steprow" role="tablist" aria-label="질문 선택">
+      <button data-go="1" class="on"><b>1</b><span>반응이 일어나려면</span></button>
+      <button data-go="2"><b>2</b><span>반응하면 무엇이 변하나</span></button>
+      <button data-go="3"><b>3</b><span>부피를 2배로 하면</span></button>
+    </div>
+    <div class="say" id="say"></div>
+  </div>
+
+  <div class="layout">
+    <div class="card simbox">
+      <canvas class="simcanvas" id="sim" role="img" aria-label="A 입자가 움직이는 실린더"></canvas>
+      <div class="legend">
+        <span><i class="dot"></i>A</span><span><i class="dot b"></i>B</span>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <div class="gauges">
+          <div class="gauge" data-tabs="1 2"><div class="k">A 입자 수</div><div class="v" id="gA">0</div></div>
+          <div class="gauge hi" data-tabs="1 2"><div class="k">B 입자 수</div><div class="v" id="gB">0</div></div>
+          <div class="gauge" data-tabs="1"><div class="k">A끼리 충돌</div><div class="v" id="gColl">0</div></div>
+          <div class="gauge" data-tabs="2"><div class="k">전체 입자 수</div><div class="v" id="gTot">0</div></div>
+          <div class="gauge" data-tabs="3"><div class="k">부피</div><div class="v" id="gV">V</div></div>
+          <div class="gauge" data-tabs="3"><div class="k">[A] (처음 V일 때 = 1)</div><div class="v" id="gConc">1</div></div>
+          <div class="gauge hi" data-tabs="3"><div class="k">생긴 B</div><div class="v" id="gMade">0</div></div>
+          <div class="gauge"><div class="k">시간</div><div class="v"><span id="gTime">0.0</span> <span class="u">s</span></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <button class="btn" id="playBtn">⏸ 멈춤</button>
+          <button class="btn ghost" id="resetBtn">↺ 처음부터</button>
+          <span class="rowlbl" style="margin-left:auto">속도</span>
+          <div class="seg" id="speedSeg"><button data-s="0.1">0.1×</button><button data-s="0.25">0.25×</button><button data-s="0.5">0.5×</button><button data-s="1">1×</button></div>
+        </div>
+        <div class="control" data-tabs="3">
+          <div class="row">
+            <span class="rowlbl">부피</span>
+            <div class="seg" id="volSeg"><button data-v="1">V</button><button data-v="2">2V</button></div>
+            <button class="btn lime" id="measBtn" style="margin-left:auto">측정</button>
+            <button class="btn ghost" id="repeatBtn">V·2V 5번씩 빠르게</button>
+            <button class="btn ghost" id="clearBtn">표 지우기</button>
+          </div>
+          <div class="sub" style="margin-top:6px">「측정」은 처음부터 다시 시작해 <b>B가 20개 생길 때까지</b> 걸린 시간을 잽니다. 한 번 잰 값은 들쭉날쭉하니 여러 번 재서 평균을 보세요.</div>
+        </div>
+      </div>
+
+      <div class="card" data-tabs="2">
+        <div class="graphhead"><span class="t">시간에 따른 입자 수</span>
+          <span class="key"><span><i style="background:var(--signal)"></i>A</span><span><i style="background:var(--violet)"></i>B</span><span><i style="background:#9a9382"></i>전체</span></span></div>
+        <canvas class="graphcanvas" id="tgraph" width="520" height="240" role="img" aria-label="시간에 따른 A, B, 전체 입자 수 그래프"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <section class="card qcard" data-tabs="1">
+    <h2>이렇게 관찰해 보세요</h2>
+    <ol>
+      <li>속도를 <b>0.1×</b>로 놓고 B가 생기는 순간(「반응!」)을 지켜봅니다.</li>
+      <li>B는 어떤 때에 생기나요? 서로 떨어져 있는 A 사이에서도 반응이 일어나나요?</li>
+      <li>「A끼리 충돌」 횟수와 「B 입자 수」를 비교해 보세요.</li>
+    </ol>
+  </section>
+
+  <section class="card qcard" data-tabs="2">
+    <h2>이렇게 관찰해 보세요</h2>
+    <ol>
+      <li>「처음부터」를 누르고 A, B 입자 수가 어떻게 바뀌는지 그래프로 봅니다.</li>
+      <li><b>전체 입자 수</b>는 반응 전과 같나요? A 두 개가 만나면 무엇이 몇 개 생기나요?</li>
+      <li>그래프의 기울기를 보세요. 처음과 나중 중 언제 B가 더 빨리 늘어나나요?</li>
+    </ol>
+  </section>
+
+  <section class="card qcard" data-tabs="3">
+    <h2>V와 2V 비교 측정</h2>
+    <div class="sub">반응 속도 = 단위 시간 동안 B의 농도 변화 = Δ[B] / Δt &nbsp;·&nbsp; 농도 [B] = B 입자 수 ÷ 부피</div>
+    <div class="tablescroll"><table class="dtable">
+      <thead><tr><th>#</th><th>부피</th><th>생긴 B</th><th>Δ[B] (개/V)</th><th>걸린 시간 Δt (s)</th><th>반응 속도 Δ[B]/Δt</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <div class="summary" id="summary"></div>
+  </section>
+</main>
+
+<script>
+/* ===================== ENGINE (DOM 없음 — Node에서 그대로 검증) ===================== */
+var Engine = (function () {
+  'use strict';
+  var W0 = 320, H0 = 420, XL = 30, XR = 290, CEIL_Y = 20, FLOOR_Y = 400, PISTON_TH = 14;
+  var H_PER_V = 170;                    // V = 1 일 때 기체 기둥 높이 (2V = 340)
+  var SIG2 = 3000;                      // ⟨vx²⟩ (단위²/s²) — σ ≈ 55 단위/s
+  var RAD = 6;                          // A, B 모두 같은 크기·질량 (type 0 = A, 1 = B)
+  var DT = 1 / 240, MAX_SUB = 24;
+
+  function mulberry32(a) {
+    a = a >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function Sim(o) {
+    o = o || {};
+    this.rnd = mulberry32(o.seed || 1);
+    this.V = o.V || 1;
+    this.H = this.Htarget = this.V * H_PER_V;
+    this.t = 0; this.collAA = 0; this.reactions = 0;
+    this.events = [];
+    this.p = [];
+    for (var i = 0; i < (o.n || 30); i++) this.add();
+  }
+  Sim.prototype.top = function () { return FLOOR_Y - this.H; };
+  Sim.prototype.gauss = function () {
+    var u = 1 - this.rnd(), v = this.rnd();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  };
+  Sim.prototype.add = function () {
+    var r = RAD, top = this.top(), x, y, ok, k, j;
+    for (k = 0; k < 300; k++) {
+      x = XL + r + this.rnd() * (XR - XL - 2 * r);
+      y = top + r + this.rnd() * (this.H - 2 * r);
+      ok = true;
+      for (j = 0; j < this.p.length; j++) {
+        var q = this.p[j], dx = q.x - x, dy = q.y - y, rr = q.r + r + 1;
+        if (dx * dx + dy * dy < rr * rr) { ok = false; break; }
+      }
+      if (ok) break;
+    }
+    var s = Math.sqrt(SIG2);
+    this.p.push({ type: 0, r: r, x: x, y: y, vx: s * this.gauss(), vy: s * this.gauss() });
+  };
+  Sim.prototype.count = function (type) {
+    var n = 0;
+    for (var i = 0; i < this.p.length; i++) if (this.p[i].type === type) n++;
+    return n;
+  };
+  Sim.prototype.setV = function (v, instant) {
+    this.V = v; this.Htarget = v * H_PER_V;
+    if (instant) this.H = this.Htarget;
+  };
+  Sim.prototype.step = function (dt) {
+    var n = Math.min(MAX_SUB, Math.ceil(dt / DT - 1e-9));
+    for (var k = 0; k < n; k++) this.sub(dt / n);
+  };
+  Sim.prototype.sub = function (h) {
+    var p = this.p, i, j, a, b;
+    var dH = this.Htarget - this.H;
+    var pistonV = Math.abs(dH) < 0.05 ? (this.H = this.Htarget, 0) : dH * Math.min(1, h * 5) / h;
+    if (pistonV) this.H += pistonV * h;
+    var top = this.top();
+    for (i = 0; i < p.length; i++) {
+      a = p[i];
+      a.x += a.vx * h; a.y += a.vy * h;
+      if (a.x < XL + a.r) { a.x = XL + a.r; a.vx = Math.abs(a.vx); }
+      if (a.x > XR - a.r) { a.x = XR - a.r; a.vx = -Math.abs(a.vx); }
+      if (a.y > FLOOR_Y - a.r) { a.y = FLOOR_Y - a.r; a.vy = -Math.abs(a.vy); }
+      if (a.y < top + a.r) { a.y = top + a.r; a.vy = Math.abs(a.vy) + Math.max(0, -pistonV); }
+    }
+    for (i = 0; i < p.length; i++) {
+      for (j = i + 1; j < p.length; j++) {
+        a = p[i]; b = p[j];
+        var dx = b.x - a.x, dy = b.y - a.y, rr = a.r + b.r, d2 = dx * dx + dy * dy;
+        if (d2 >= rr * rr || d2 === 0) continue;
+        var d = Math.sqrt(d2), nx = dx / d, ny = dy / d;
+        var vn = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;   // >0 이면 서로 다가오는 중
+        var ov = (rr - d) / 2;
+        a.x -= nx * ov; a.y -= ny * ov; b.x += nx * ov; b.y += ny * ov;
+        if (vn <= 0) continue;
+        if (a.type === 0 && b.type === 0) {                  // A끼리 충돌 → 둘 다 B
+          this.collAA++; this.reactions++;
+          this.events.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+          a.type = b.type = 1;
+        }
+        a.vx -= vn * nx; a.vy -= vn * ny;                    // 같은 질량 탄성 충돌
+        b.vx += vn * nx; b.vy += vn * ny;
+      }
+    }
+    this.t += h;
+  };
+  return { Sim: Sim, C: { W0: W0, H0: H0, XL: XL, XR: XR, CEIL_Y: CEIL_Y, FLOOR_Y: FLOOR_Y,
+           PISTON_TH: PISTON_TH, H_PER_V: H_PER_V } };
+})();
+if (typeof module !== 'undefined') module.exports = Engine;
+/* ===================== ENGINE END ===================== */
+</script>
+
+<script>
+(function () {
+  'use strict';
+  var C = Engine.C;
+  var $ = function (id) { return document.getElementById(id); };
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var QUESTIONS = {
+    1: '반응이 일어나기 위해선 입자들이 어떻게 되어야 하나요?',
+    2: '반응이 일어나면 무엇이 변하나요?',
+    3: '만약 부피를 2배로 하면 반응 속도가 어떻게 변하나요?'
+  };
+  var PRESET = { 1: { n: 30, V: 2, speed: 0.25 }, 2: { n: 60, V: 1, speed: 0.1 }, 3: { n: 60, V: 1, speed: 0.1 } };
+  var K = 10;                          // ③ 반응 K번(B 2K개)까지의 시간을 잰다 (A 60개의 1/3 — 처음 속도에 가깝게)
+
+  var st = { tab: 1, playing: true, speed: 0.25, V: 2, sim: null, labels: [], series: [], meas: false, rows: [], seed: 1 };
+
+  function newSim() {
+    st.sim = new Engine.Sim({ seed: st.seed++, n: PRESET[st.tab].n, V: st.V });
+    st.labels = []; st.series = [{ t: 0, a: PRESET[st.tab].n, b: 0 }];
+  }
+  function stopMeas() { st.meas = false; $('measBtn').disabled = $('repeatBtn').disabled = false; }
+
+  /* ---------- 탭 ---------- */
+  function setTab(n) {
+    st.tab = n;
+    document.body.dataset.tab = n;
+    document.querySelectorAll('#steprow button').forEach(function (b) { b.classList.toggle('on', +b.dataset.go === n); });
+    $('say').textContent = QUESTIONS[n];
+    st.V = PRESET[n].V; setSpeed(PRESET[n].speed); syncVol();
+    stopMeas(); newSim(); st.playing = true; syncPlay();
+  }
+  document.querySelectorAll('#steprow button').forEach(function (b) {
+    b.addEventListener('click', function () { setTab(+b.dataset.go); });
+  });
+
+  /* ---------- 컨트롤 ---------- */
+  function syncPlay() { $('playBtn').textContent = st.playing ? '⏸ 멈춤' : '▶ 재생'; }
+  $('playBtn').addEventListener('click', function () { st.playing = !st.playing; syncPlay(); });
+  $('resetBtn').addEventListener('click', function () { stopMeas(); newSim(); st.playing = true; syncPlay(); });
+  function setSpeed(s) {
+    st.speed = s;
+    document.querySelectorAll('#speedSeg button').forEach(function (b) { b.classList.toggle('on', +b.dataset.s === s); });
+  }
+  document.querySelectorAll('#speedSeg button').forEach(function (b) {
+    b.addEventListener('click', function () { setSpeed(+b.dataset.s); });
+  });
+  function syncVol() {
+    document.querySelectorAll('#volSeg button').forEach(function (b) { b.classList.toggle('on', +b.dataset.v === st.V); });
+  }
+  document.querySelectorAll('#volSeg button').forEach(function (b) {
+    b.addEventListener('click', function () { st.V = +b.dataset.v; syncVol(); stopMeas(); newSim(); st.playing = true; syncPlay(); });
+  });
+
+  /* ---------- ③ 측정 ---------- */
+  function addRow(V, t) { st.rows.push({ V: V, t: t, rate: 2 * K / V / t }); }
+  $('measBtn').addEventListener('click', function () {
+    newSim(); st.meas = true; st.playing = true; syncPlay();
+    $('measBtn').disabled = $('repeatBtn').disabled = true;
+  });
+  // 화면에 그리지 않고 같은 엔진으로 바로 돌린다 (한 번에 수 ms)
+  $('repeatBtn').addEventListener('click', function () {
+    [1, 2].forEach(function (V) {
+      for (var k = 0; k < 5; k++) {
+        var s = new Engine.Sim({ seed: st.seed++, n: PRESET[3].n, V: V });
+        while (s.reactions < K && s.t < 300) s.step(1 / 240);
+        addRow(V, s.t);
+      }
+    });
+    renderTable();
+  });
+  $('clearBtn').addEventListener('click', function () { st.rows = []; renderTable(); });
+  function fmt(x, d) { return x.toFixed(d); }
+  function renderTable() {
+    var tb = $('tbody');
+    if (!st.rows.length) {
+      tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink3);font-family:var(--sans)">아직 측정값이 없습니다.</td></tr>';
+      $('summary').classList.remove('show'); return;
+    }
+    tb.innerHTML = st.rows.map(function (r, i) {
+      return '<tr><td>' + (i + 1) + '</td><td>' + (r.V === 1 ? 'V' : '2V') + '</td><td>' + 2 * K + '</td><td>' + fmt(2 * K / r.V, 1) +
+             '</td><td>' + fmt(r.t, 3) + '</td><td>' + fmt(r.rate, 1) + '</td></tr>';
+    }).join('');
+    var mean = function (V, key) {
+      var xs = st.rows.filter(function (r) { return r.V === V; });
+      return xs.length ? { m: xs.reduce(function (s, r) { return s + r[key]; }, 0) / xs.length, n: xs.length } : null;
+    };
+    var t1 = mean(1, 't'), t2 = mean(2, 't'), r1 = mean(1, 'rate'), r2 = mean(2, 'rate');
+    if (t1 && t2) {
+      $('summary').innerHTML = '평균 (V ' + t1.n + '회, 2V ' + t2.n + '회) · 걸린 시간 2V/V = <b>' + fmt(t2.m / t1.m, 2) + '배</b>' +
+        ' · Δ[B] 2V/V = <b>0.5배</b> · 반응 속도 2V/V = <b>' + fmt(r2.m / r1.m, 2) + '배</b>';
+      $('summary').classList.add('show');
+    } else $('summary').classList.remove('show');
+  }
+  renderTable();
+
+  /* ---------- 그리기 ---------- */
+  var cv = $('sim'), x = cv.getContext('2d');
+  function fitCanvas(c, w0, h0) {
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var pw = Math.round(c.clientWidth * dpr), ph = Math.round(c.clientHeight * dpr);
+    if (!pw || !ph) return 0;
+    if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; }
+    var g = c.getContext('2d'), sc = Math.min(pw / w0, ph / h0);
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, pw, ph);
+    g.setTransform(sc, 0, 0, sc, (pw - w0 * sc) / 2, (ph - h0 * sc) / 2);
+    return sc;
+  }
+  function drawSim() {
+    if (!fitCanvas(cv, C.W0, C.H0)) return;
+    var s = st.sim, top = s.top(), W = C.XR - C.XL, i, q;
+    x.fillStyle = '#F4F2E9'; x.fillRect(C.XL, top, W, C.FLOOR_Y - top);
+    x.fillStyle = '#FBFAF6'; x.fillRect(C.XL, C.CEIL_Y, W, top - C.PISTON_TH - C.CEIL_Y);
+    x.strokeStyle = '#C9C3B2'; x.lineWidth = 1; x.fillStyle = '#5A6379'; x.font = 'bold 10px monospace'; x.textAlign = 'right';
+    [1, 2].forEach(function (v) {
+      var yy = C.FLOOR_Y - C.H_PER_V * v;
+      x.beginPath(); x.moveTo(C.XL, yy); x.lineTo(C.XL + 9, yy); x.stroke();
+      x.fillText(v === 1 ? 'V' : '2V', C.XL - 4, yy + 4);
+    });
+    x.strokeStyle = '#16213E'; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(C.XL, C.CEIL_Y); x.lineTo(C.XL, C.FLOOR_Y); x.lineTo(C.XR, C.FLOOR_Y); x.lineTo(C.XR, C.CEIL_Y); x.stroke();
+    for (i = 0; i < s.p.length; i++) {
+      q = s.p[i];
+      x.fillStyle = q.type ? '#7a4fc0' : '#FF5B24';
+      x.beginPath(); x.arc(q.x, q.y, q.r, 0, 7); x.fill();
+    }
+    x.fillStyle = '#16213E'; x.fillRect(C.XL, top - C.PISTON_TH, W, C.PISTON_TH);
+    x.fillStyle = '#C4E000'; x.fillRect(C.W0 / 2 - 16, top - C.PISTON_TH - 16, 32, 16);
+    x.textAlign = 'center';
+    for (i = 0; i < st.labels.length; i++) {
+      var L = st.labels[i], k = L.age / L.life;
+      x.globalAlpha = 1 - k;
+      if (!reduceMotion) { x.strokeStyle = '#9DB300'; x.lineWidth = 3; x.beginPath(); x.arc(L.x, L.y, 8 + 16 * k, 0, 7); x.stroke(); }
+      x.fillStyle = '#4a5a00'; x.font = 'bold 11px sans-serif'; x.fillText('반응!', L.x, L.y - 14 - 8 * k);
+    }
+    x.globalAlpha = 1;
+    if (st.meas) {
+      x.fillStyle = 'rgba(22,33,62,.9)'; x.fillRect(C.W0 / 2 - 62, C.CEIL_Y + 4, 124, 20);
+      x.fillStyle = '#fff'; x.font = 'bold 12px sans-serif';
+      x.fillText('측정 중 · B ' + 2 * s.reactions + '/' + 2 * K + '개', C.W0 / 2, C.CEIL_Y + 18);
+    }
+  }
+
+  var tc = $('tgraph'), tx = tc.getContext('2d');
+  function drawTime() {
+    if (!fitCanvas(tc, 520, 240)) return;
+    var ser = st.series.concat({ t: st.sim.t, a: st.sim.count(0), b: st.sim.count(1) }), n0 = PRESET[st.tab].n, Lx = 38, R = 510, T = 12, B = 206, i;
+    var tmax = Math.max(2, Math.ceil(ser[ser.length - 1].t)), ymax = n0;
+    var px = function (t) { return Lx + (R - Lx) * t / tmax; }, py = function (v) { return B - (B - T) * v / ymax; };
+    tx.strokeStyle = '#ECE8DA'; tx.lineWidth = 1; tx.fillStyle = '#5A6379'; tx.font = '10px monospace';
+    tx.textAlign = 'right';
+    for (i = 0; i <= 4; i++) { var v = ymax * i / 4; tx.beginPath(); tx.moveTo(Lx, py(v)); tx.lineTo(R, py(v)); tx.stroke(); tx.fillText(v, Lx - 5, py(v) + 3); }
+    tx.textAlign = 'center';
+    for (i = 0; i <= tmax; i++) tx.fillText(i, px(i), B + 14);
+    tx.fillText('시간 (s) →', (Lx + R) / 2, B + 28);
+    [['#FF5B24', function (d) { return d.a; }, false], ['#7a4fc0', function (d) { return d.b; }, false],
+     ['#9a9382', function (d) { return d.a + d.b; }, true]].forEach(function (z) {
+      tx.strokeStyle = z[0]; tx.lineWidth = 2.5; tx.setLineDash(z[2] ? [5, 4] : []);
+      tx.beginPath();
+      ser.forEach(function (d, k) { var X = px(d.t), Y = py(z[1](d)); if (k) tx.lineTo(X, Y); else tx.moveTo(X, Y); });
+      tx.stroke();
+    });
+    tx.setLineDash([]);
+  }
+
+  /* ---------- 계기판 ---------- */
+  function updateGauges() {
+    var s = st.sim, nA = s.count(0), nB = s.count(1);
+    $('gTime').textContent = s.t.toFixed(2);
+    $('gA').textContent = nA; $('gB').textContent = nB; $('gColl').textContent = s.collAA;
+    $('gTot').textContent = nA + nB;
+    $('gV').textContent = s.V === 1 ? 'V' : '2V';
+    $('gConc').textContent = (nA / PRESET[st.tab].n / s.V).toFixed(2);
+    $('gMade').textContent = 2 * s.reactions;
+  }
+
+  /* ---------- 루프 ---------- */
+  var last = 0;
+  function frame(ts) {
+    var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0;
+    last = ts;
+    var s = st.sim;
+    if (st.playing && dt) {
+      // 측정 중엔 B가 K개째 생기는 순간에 정확히 멈추도록 잘게 나눠 진행
+      if (st.meas) {
+        var end = s.t + dt * st.speed;
+        while (s.t < end - 1e-9 && s.reactions < K) s.step(Math.min(1 / 240, end - s.t));
+        if (s.reactions >= K) { addRow(s.V, s.t); renderTable(); stopMeas(); st.playing = false; syncPlay(); }
+      } else s.step(dt * st.speed);
+      var done = s.count(0) === 0;                        // A가 다 B로 바뀌면 멈춤
+      if (st.tab === 2 && (done || s.t - st.series[st.series.length - 1].t >= 0.02))
+        st.series.push({ t: s.t, a: s.count(0), b: s.count(1) });
+      if (done) { st.playing = false; syncPlay(); }
+    }
+    s.events.forEach(function (e) { st.labels.push({ x: e.x, y: e.y, age: 0, life: 0.9 }); });
+    s.events.length = 0;
+    st.labels.forEach(function (L) { L.age += dt; });
+    st.labels = st.labels.filter(function (L) { return L.age < L.life; });
+    drawSim();
+    if (st.tab === 2) drawTime();
+    updateGauges();
+    requestAnimationFrame(frame);
+  }
+  setTab(1);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
