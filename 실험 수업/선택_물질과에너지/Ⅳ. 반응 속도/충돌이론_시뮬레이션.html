@@ -41,6 +41,13 @@ h1 .eq{font-family:var(--mono);font-size:.6em;letter-spacing:0;background:var(--
 .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--ink2);align-items:center}
 .dot{display:inline-block;width:13px;height:13px;border-radius:50%;vertical-align:-2px;margin-right:4px;background:var(--signal)}
 .dot.b{background:var(--violet)}
+.tail{display:inline-block;width:18px;height:0;border-top:3px solid rgba(22,33,62,.28);vertical-align:3px;margin-right:4px;border-radius:2px}
+/* ⑤ 충돌 3가지 경우: 실린더·계기판 대신 넓은 애니메이션 한 장 */
+body.cases .simbox,body.cases #gaugeCard{display:none!important}
+body.cases .layout{grid-template-columns:1fr}
+.key i.atom{border-radius:50%}
+td.empty{text-align:center!important;color:var(--ink3);font-family:var(--sans)}
+.tblh{font-size:13.5px;margin:16px 0 0;color:var(--ink2)}
 
 .side{display:flex;flex-direction:column;gap:12px}
 .gauges{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
@@ -79,7 +86,8 @@ h1 .eq{font-family:var(--mono);font-size:.6em;letter-spacing:0;background:var(--
 .summary{margin-top:10px;font-size:14px;background:var(--lime-soft);border-radius:10px;padding:9px 12px;display:none}
 .summary.show{display:block}
 [data-tabs]{display:none}
-body[data-tab="1"] [data-tabs*="1"],body[data-tab="2"] [data-tabs*="2"],body[data-tab="3"] [data-tabs*="3"]{display:revert}
+body[data-tab="1"] [data-tabs*="1"],body[data-tab="2"] [data-tabs*="2"],body[data-tab="3"] [data-tabs*="3"],
+body[data-tab="4"] [data-tabs*="4"],body[data-tab="5"] [data-tabs*="5"]{display:revert}
 
 @media(max-width:860px){.layout{grid-template-columns:1fr}.simbox{max-width:360px;margin:auto}.gauges{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.wrap{width:calc(100% - 16px)}.steprow button{flex:1 1 100%;border-right:0;border-bottom:1px solid var(--paper3)}}
@@ -90,7 +98,7 @@ body[data-tab="1"] [data-tabs*="1"],body[data-tab="2"] [data-tabs*="2"],body[dat
   <header class="top">
     <div class="eyebrow">물질과 에너지 · Ⅳ. 반응 속도</div>
     <h1>입자의 충돌과 반응 <span class="eq">A + A → 2B</span></h1>
-    <p class="lead">실린더 속 A 입자들이 움직입니다. 반응은 언제 일어나고, 반응하면 무엇이 바뀌며, 부피를 바꾸면 반응이 얼마나 빨라지거나 느려질까요? 세 질문을 차례로 확인해 보세요.</p>
+    <p class="lead">실린더 속 A 입자들이 움직이며 부딪힙니다. 반응은 언제 일어나는지, 반응하면 무엇이 바뀌는지, 부피와 온도를 바꾸면 무엇이 달라지는지 차례로 확인해 보세요.</p>
   </header>
 
   <div class="steps">
@@ -98,6 +106,8 @@ body[data-tab="1"] [data-tabs*="1"],body[data-tab="2"] [data-tabs*="2"],body[dat
       <button data-go="1" class="on"><b>1</b><span>반응이 일어나려면</span></button>
       <button data-go="2"><b>2</b><span>반응하면 무엇이 변하나</span></button>
       <button data-go="3"><b>3</b><span>부피를 2배로 하면</span></button>
+      <button data-go="4"><b>4</b><span>온도</span></button>
+      <button data-go="5"><b>5</b><span>유효 충돌</span></button>
     </div>
     <div class="say" id="say"></div>
   </div>
@@ -107,11 +117,12 @@ body[data-tab="1"] [data-tabs*="1"],body[data-tab="2"] [data-tabs*="2"],body[dat
       <canvas class="simcanvas" id="sim" role="img" aria-label="A 입자가 움직이는 실린더"></canvas>
       <div class="legend">
         <span><i class="dot"></i>A</span><span><i class="dot b"></i>B</span>
+        <span data-tabs="4"><i class="tail"></i>꼬리 길이 = 빠르기</span>
       </div>
     </div>
 
     <div class="side">
-      <div class="card">
+      <div class="card" id="gaugeCard">
         <div class="gauges">
           <div class="gauge" data-tabs="1 2"><div class="k">A 입자 수</div><div class="v" id="gA">0</div></div>
           <div class="gauge hi" data-tabs="1 2"><div class="k">B 입자 수</div><div class="v" id="gB">0</div></div>
@@ -120,6 +131,9 @@ body[data-tab="1"] [data-tabs*="1"],body[data-tab="2"] [data-tabs*="2"],body[dat
           <div class="gauge" data-tabs="3"><div class="k">부피</div><div class="v" id="gV">V</div></div>
           <div class="gauge" data-tabs="3"><div class="k">[A] (처음 V일 때 = 1)</div><div class="v" id="gConc">1</div></div>
           <div class="gauge hi" data-tabs="3"><div class="k">생긴 B</div><div class="v" id="gMade">0</div></div>
+          <div class="gauge" data-tabs="4"><div class="k">평균 속력</div><div class="v"><span id="gSpeed">0</span> <span class="u">칸/s</span></div></div>
+          <div class="gauge" data-tabs="4"><div class="k">평균 운동 에너지</div><div class="v" id="gKE">0</div></div>
+          <div class="gauge hi" data-tabs="4"><div class="k">충돌 빈도</div><div class="v"><span id="gFreq">–</span> <span class="u">회/s</span></div></div>
           <div class="gauge"><div class="k">시간</div><div class="v"><span id="gTime">0.0</span> <span class="u">s</span></div></div>
         </div>
       </div>
@@ -141,12 +155,31 @@ body[data-tab="1"] [data-tabs*="1"],body[data-tab="2"] [data-tabs*="2"],body[dat
           </div>
           <div class="sub" style="margin-top:6px">「측정」은 처음부터 다시 시작해 <b>B가 20개 생길 때까지</b> 걸린 시간을 잽니다. 한 번 잰 값은 들쭉날쭉하니 여러 번 재서 평균을 보세요.</div>
         </div>
+        <div class="control" data-tabs="4">
+          <div class="row">
+            <span class="rowlbl">온도</span>
+            <div class="seg" id="tSeg"><button data-t="200">200 K</button><button data-t="300">300 K</button><button data-t="400">400 K</button><button data-t="500">500 K</button><button data-t="600">600 K</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" data-tabs="4">
+        <div class="graphhead"><span class="t">입자의 속력 분포</span>
+          <span class="key"><span><i style="background:#f6b49b"></i>지금 입자들 (온도를 바꾼 뒤부터 모음)</span><span><i style="background:var(--signal)"></i>지금 온도</span><span><i style="background:#c9c3b2"></i>다른 온도</span></span></div>
+        <canvas class="graphcanvas" id="dgraph" width="520" height="240" role="img" aria-label="온도별 입자 속력 분포 그래프"></canvas>
       </div>
 
       <div class="card" data-tabs="2">
         <div class="graphhead"><span class="t">시간에 따른 입자 수</span>
           <span class="key"><span><i style="background:var(--signal)"></i>A</span><span><i style="background:var(--violet)"></i>B</span><span><i style="background:#9a9382"></i>전체</span></span></div>
         <canvas class="graphcanvas" id="tgraph" width="520" height="240" role="img" aria-label="시간에 따른 A, B, 전체 입자 수 그래프"></canvas>
+      </div>
+
+      <div class="card" data-tabs="5" id="caseCard">
+        <div class="graphhead"><span class="t">NO + O₃ → NO₂ + O₂ 의 충돌 세 가지</span>
+          <span class="key"><span><i class="atom" style="background:#2f6fd0"></i>N 원자</span><span><i class="atom" style="background:#e0473a"></i>O 원자</span></span></div>
+        <canvas class="graphcanvas" id="ccanvas" width="760" height="450" role="img" aria-label="NO와 O3가 세 가지 방식으로 충돌하는 애니메이션"></canvas>
+        <div class="sub" style="margin-top:8px">실험 Ⅰ·Ⅱ·Ⅲ에서 NO가 <b>얼마나 빠르게</b>, <b>어느 원자 쪽으로</b> O₃에 부딪히는지 보세요. 「처음부터」를 누르면 다시 봅니다.</div>
       </div>
     </div>
   </div>
@@ -178,6 +211,31 @@ body[data-tab="1"] [data-tabs*="1"],body[data-tab="2"] [data-tabs*="2"],body[dat
     </table></div>
     <div class="summary" id="summary"></div>
   </section>
+
+  <section class="card qcard" data-tabs="4">
+    <h2>이렇게 관찰해 보세요</h2>
+    <ol>
+      <li>온도를 200 K → 600 K로 바꿔 가며 입자의 <b>꼬리 길이(빠르기)</b>를 봅니다. 온도가 높아질수록 입자의 운동 속도는?</li>
+      <li>온도를 바꿔 가며 「측정」하거나 「온도별로 5번씩 빠르게」를 눌러 데이터를 모읍니다. 아래 <b>온도별 정리</b> 표의 <b>평균 운동 에너지 ÷ T</b> 열을 보세요. 절대 온도는 무엇에 비례하나요?</li>
+      <li>정리 표의 <b>충돌 빈도</b> 열을 보세요. 온도가 높아질수록 충돌 빈도는?</li>
+    </ol>
+    <div class="row" style="margin-top:12px">
+      <button class="btn lime" id="meas4Btn">측정 (지금 온도, 3초)</button>
+      <button class="btn ghost" id="repeat4Btn">온도별로 5번씩 빠르게</button>
+      <button class="btn ghost" id="clear4Btn">표 지우기</button>
+    </div>
+    <h3 class="tblh">측정 기록</h3>
+    <div class="tablescroll"><table class="dtable">
+      <thead><tr><th>#</th><th>절대 온도 T (K)</th><th>평균 속력 (칸/s)</th><th>평균 운동 에너지</th><th>충돌 빈도 (회/s)</th></tr></thead>
+      <tbody id="t4body"></tbody>
+    </table></div>
+    <h3 class="tblh">온도별 정리 (평균)</h3>
+    <div class="tablescroll"><table class="dtable">
+      <thead><tr><th>절대 온도 T (K)</th><th>측정 횟수</th><th>평균 속력 (칸/s)</th><th>평균 운동 에너지</th><th>평균 운동 에너지 ÷ T</th><th>충돌 빈도 (회/s)</th></tr></thead>
+      <tbody id="t4sum"></tbody>
+    </table></div>
+  </section>
+
 </main>
 
 <script>
@@ -186,7 +244,7 @@ var Engine = (function () {
   'use strict';
   var W0 = 320, H0 = 420, XL = 30, XR = 290, CEIL_Y = 20, FLOOR_Y = 400, PISTON_TH = 14;
   var H_PER_V = 170;                    // V = 1 일 때 기체 기둥 높이 (2V = 340)
-  var SIG2 = 3000;                      // ⟨vx²⟩ (단위²/s²) — σ ≈ 55 단위/s
+  var SIG2_PER_K = 10;                  // ⟨vx²⟩ = 10·T (단위²/s²) — 300 K 에서 σ ≈ 55 단위/s
   var RAD = 6;                          // A, B 모두 같은 크기·질량 (type 0 = A, 1 = B)
   var DT = 1 / 240, MAX_SUB = 24;
 
@@ -206,11 +264,32 @@ var Engine = (function () {
     this.rnd = mulberry32(o.seed || 1);
     this.V = o.V || 1;
     this.H = this.Htarget = this.V * H_PER_V;
+    this.T = o.T || 300;
+    this.mode = o.mode || 'all';        // 'all' = A끼리 부딪히면 무조건 반응 · 'none' = 반응 없이 튕기기만
     this.t = 0; this.collAA = 0; this.reactions = 0;
     this.events = [];
     this.p = [];
-    for (var i = 0; i < (o.n || 30); i++) this.add();
+    for (var i = 0; i < (o.n == null ? 30 : o.n); i++) this.add();
+    if (this.p.length) this.setT(this.T);
   }
+  // 평균 운동 에너지를 정확히 SIG2_PER_K·T 로 맞춘다 (2D, 질량 1: 입자당 ½⟨v²⟩ = σ²)
+  Sim.prototype.setT = function (T) {
+    var ke = 0, i, p = this.p;
+    for (i = 0; i < p.length; i++) ke += 0.5 * (p[i].vx * p[i].vx + p[i].vy * p[i].vy);
+    var f = Math.sqrt(p.length * SIG2_PER_K * T / ke);
+    for (i = 0; i < p.length; i++) { p[i].vx *= f; p[i].vy *= f; }
+    this.T = T;
+  };
+  Sim.prototype.meanKE = function () {
+    var ke = 0;
+    for (var i = 0; i < this.p.length; i++) ke += 0.5 * (this.p[i].vx * this.p[i].vx + this.p[i].vy * this.p[i].vy);
+    return ke / this.p.length;
+  };
+  Sim.prototype.meanSpeed = function () {
+    var s = 0;
+    for (var i = 0; i < this.p.length; i++) s += Math.sqrt(this.p[i].vx * this.p[i].vx + this.p[i].vy * this.p[i].vy);
+    return s / this.p.length;
+  };
   Sim.prototype.top = function () { return FLOOR_Y - this.H; };
   Sim.prototype.gauss = function () {
     var u = 1 - this.rnd(), v = this.rnd();
@@ -228,7 +307,7 @@ var Engine = (function () {
       }
       if (ok) break;
     }
-    var s = Math.sqrt(SIG2);
+    var s = Math.sqrt(SIG2_PER_K * this.T);
     this.p.push({ type: 0, r: r, x: x, y: y, vx: s * this.gauss(), vy: s * this.gauss() });
   };
   Sim.prototype.count = function (type) {
@@ -269,9 +348,8 @@ var Engine = (function () {
         a.x -= nx * ov; a.y -= ny * ov; b.x += nx * ov; b.y += ny * ov;
         if (vn <= 0) continue;
         if (a.type === 0 && b.type === 0) {                  // A끼리 충돌 → 둘 다 B
-          this.collAA++; this.reactions++;
-          this.events.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-          a.type = b.type = 1;
+          this.collAA++;
+          if (this.mode === 'all') { this.reactions++; a.type = b.type = 1; this.events.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }); }
         }
         a.vx -= vn * nx; a.vy -= vn * ny;                    // 같은 질량 탄성 충돌
         b.vx += vn * nx; b.vy += vn * ny;
@@ -280,7 +358,7 @@ var Engine = (function () {
     this.t += h;
   };
   return { Sim: Sim, C: { W0: W0, H0: H0, XL: XL, XR: XR, CEIL_Y: CEIL_Y, FLOOR_Y: FLOOR_Y,
-           PISTON_TH: PISTON_TH, H_PER_V: H_PER_V } };
+           PISTON_TH: PISTON_TH, H_PER_V: H_PER_V, RAD: RAD, SIG2_PER_K: SIG2_PER_K } };
 })();
 if (typeof module !== 'undefined') module.exports = Engine;
 /* ===================== ENGINE END ===================== */
@@ -296,18 +374,37 @@ if (typeof module !== 'undefined') module.exports = Engine;
   var QUESTIONS = {
     1: '반응이 일어나기 위해선 입자들이 어떻게 되어야 하나요?',
     2: '반응이 일어나면 무엇이 변하나요?',
-    3: '만약 부피를 2배로 하면 반응 속도가 어떻게 변하나요?'
+    3: '만약 부피를 2배로 하면 반응 속도가 어떻게 변하나요?',
+    4: '온도가 높아질수록 입자의 운동 속도는 어떻게 변하나요?',
+    5: '반응물끼리 부딪치기만 하면 무조건 반응이 일어날까요?'
   };
-  var PRESET = { 1: { n: 30, V: 2, speed: 0.25 }, 2: { n: 60, V: 1, speed: 0.1 }, 3: { n: 60, V: 1, speed: 0.1 } };
+  var PRESET = {
+    1: { n: 30, V: 2, speed: 0.25, mode: 'all' }, 2: { n: 60, V: 1, speed: 0.1, mode: 'all' },
+    3: { n: 60, V: 1, speed: 0.1, mode: 'all' }, 4: { n: 30, V: 1, speed: 0.5, mode: 'none' },
+    5: { n: 0, V: 1, speed: 0.5, mode: 'none' }   // ⑤ 는 실린더 대신 애니메이션
+  };
+  var TEMPS = [200, 300, 400, 500, 600];
   var K = 10;                          // ③ 반응 K번(B 2K개)까지의 시간을 잰다 (A 60개의 1/3 — 처음 속도에 가깝게)
 
-  var st = { tab: 1, playing: true, speed: 0.25, V: 2, sim: null, labels: [], series: [], meas: false, rows: [], seed: 1 };
+  var st = { tab: 1, playing: true, speed: 0.25, V: 2, T: 300, anim: 0,
+             sim: null, labels: [], series: [], meas: false, rows: [], seed: 1, f0: { t: 0, c: 0 }, hist: null };
+  var VMAX = 250, VBIN = 10;            // ④ 속력 분포 가로축 0~250 칸/s, 막대 폭 10
+  function clearHist() { st.hist = { c: new Array(VMAX / VBIN).fill(0), n: 0 }; }
 
+  function cases() { return st.tab === 5; }
   function newSim() {
-    st.sim = new Engine.Sim({ seed: st.seed++, n: PRESET[st.tab].n, V: st.V });
-    st.labels = []; st.series = [{ t: 0, a: PRESET[st.tab].n, b: 0 }];
+    var P = PRESET[st.tab];
+    st.sim = new Engine.Sim({ seed: st.seed++, n: P.n, V: st.V, T: st.tab >= 4 ? st.T : 300, mode: P.mode });
+    st.labels = []; st.series = [{ t: 0, a: P.n, b: 0 }]; st.f0 = { t: 0, c: 0 }; clearHist();
+    st.anim = 0;
   }
-  function stopMeas() { st.meas = false; $('measBtn').disabled = $('repeatBtn').disabled = false; }
+  var MEAS_BTNS = ['measBtn', 'repeatBtn', 'meas4Btn', 'repeat4Btn'];
+  function stopMeas() { st.meas = false; MEAS_BTNS.forEach(function (id) { $(id).disabled = false; }); }
+  function startMeas() {
+    newSim(); st.meas = true; st.playing = true; syncPlay();
+    MEAS_BTNS.forEach(function (id) { $(id).disabled = true; });
+  }
+  function restart() { stopMeas(); newSim(); st.playing = true; syncPlay(); }
 
   /* ---------- 탭 ---------- */
   function setTab(n) {
@@ -315,8 +412,9 @@ if (typeof module !== 'undefined') module.exports = Engine;
     document.body.dataset.tab = n;
     document.querySelectorAll('#steprow button').forEach(function (b) { b.classList.toggle('on', +b.dataset.go === n); });
     $('say').textContent = QUESTIONS[n];
-    st.V = PRESET[n].V; setSpeed(PRESET[n].speed); syncVol();
-    stopMeas(); newSim(); st.playing = true; syncPlay();
+    st.V = PRESET[n].V; syncVol();
+    setSpeed(PRESET[n].speed);
+    sync5(); restart();
   }
   document.querySelectorAll('#steprow button').forEach(function (b) {
     b.addEventListener('click', function () { setTab(+b.dataset.go); });
@@ -325,27 +423,35 @@ if (typeof module !== 'undefined') module.exports = Engine;
   /* ---------- 컨트롤 ---------- */
   function syncPlay() { $('playBtn').textContent = st.playing ? '⏸ 멈춤' : '▶ 재생'; }
   $('playBtn').addEventListener('click', function () { st.playing = !st.playing; syncPlay(); });
-  $('resetBtn').addEventListener('click', function () { stopMeas(); newSim(); st.playing = true; syncPlay(); });
-  function setSpeed(s) {
-    st.speed = s;
-    document.querySelectorAll('#speedSeg button').forEach(function (b) { b.classList.toggle('on', +b.dataset.s === s); });
+  $('resetBtn').addEventListener('click', restart);
+  function segOn(id, attr, val) {
+    document.querySelectorAll('#' + id + ' button').forEach(function (b) { b.classList.toggle('on', b.dataset[attr] === String(val)); });
   }
+  function setSpeed(s) { st.speed = s; segOn('speedSeg', 's', s); }
   document.querySelectorAll('#speedSeg button').forEach(function (b) {
     b.addEventListener('click', function () { setSpeed(+b.dataset.s); });
   });
-  function syncVol() {
-    document.querySelectorAll('#volSeg button').forEach(function (b) { b.classList.toggle('on', +b.dataset.v === st.V); });
-  }
+  function syncVol() { segOn('volSeg', 'v', st.V); }
   document.querySelectorAll('#volSeg button').forEach(function (b) {
-    b.addEventListener('click', function () { st.V = +b.dataset.v; syncVol(); stopMeas(); newSim(); st.playing = true; syncPlay(); });
+    b.addEventListener('click', function () { st.V = +b.dataset.v; syncVol(); restart(); });
   });
+  segOn('tSeg', 't', st.T);
+  document.querySelectorAll('#tSeg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      st.T = +b.dataset.t; segOn('tSeg', 't', st.T);
+      if (st.meas) { stopMeas(); newSim(); }              // 측정 도중 온도를 바꾸면 그 측정은 버린다
+      st.sim.setT(st.T);                                  // 지금 입자들을 그대로 데우거나 식힌다
+      st.f0 = { t: st.sim.t, c: st.sim.collAA };          // 충돌 빈도는 온도를 바꾼 뒤부터 다시 센다
+      clearHist();                                        // 속력 분포도 새 온도부터 다시 모은다
+    });
+  });
+  function sync5() {
+    document.body.classList.toggle('cases', cases());
+  }
 
   /* ---------- ③ 측정 ---------- */
   function addRow(V, t) { st.rows.push({ V: V, t: t, rate: 2 * K / V / t }); }
-  $('measBtn').addEventListener('click', function () {
-    newSim(); st.meas = true; st.playing = true; syncPlay();
-    $('measBtn').disabled = $('repeatBtn').disabled = true;
-  });
+  $('measBtn').addEventListener('click', startMeas);
   // 화면에 그리지 않고 같은 엔진으로 바로 돌린다 (한 번에 수 ms)
   $('repeatBtn').addEventListener('click', function () {
     [1, 2].forEach(function (V) {
@@ -362,7 +468,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
   function renderTable() {
     var tb = $('tbody');
     if (!st.rows.length) {
-      tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink3);font-family:var(--sans)">아직 측정값이 없습니다.</td></tr>';
+      tb.innerHTML = '<tr><td colspan="6" class="empty">아직 측정값이 없습니다.</td></tr>';
       $('summary').classList.remove('show'); return;
     }
     tb.innerHTML = st.rows.map(function (r, i) {
@@ -382,6 +488,51 @@ if (typeof module !== 'undefined') module.exports = Engine;
   }
   renderTable();
 
+  /* ---------- ④ ⑤ 온도별로 재기 (화면 밖에서 같은 엔진으로) ---------- */
+  function runFor(o, sec) { var s = new Engine.Sim(o); while (s.t < sec - 1e-9) s.step(1 / 60); return s; }
+  function busy(btn, fn) {                                 // 계산 동안 버튼에 표시 (0.5초쯤 걸림)
+    var label = btn.textContent; btn.disabled = true; btn.textContent = '계산 중…';
+    setTimeout(function () { fn(); btn.disabled = false; btn.textContent = label; }, 30);
+  }
+  // 같은 온도끼리 묶어 평균 (T 빼고 모든 값)
+  function byTemp(rows) {
+    return TEMPS.map(function (T) {
+      var xs = rows.filter(function (r) { return r.T === T; });
+      if (!xs.length) return null;
+      var m = { T: T, n: xs.length };
+      Object.keys(xs[0]).forEach(function (k) {
+        if (k !== 'T') m[k] = xs.reduce(function (sum, r) { return sum + r[k]; }, 0) / xs.length;
+      });
+      return m;
+    }).filter(Boolean);
+  }
+  function cells(a) { return '<tr><td>' + a.join('</td><td>') + '</td></tr>'; }
+
+  /* ④ 온도별 운동 */
+  var MEAS4_SEC = 3;
+  st.rows4 = [];
+  function addRow4(s) { st.rows4.push({ T: s.T, sp: s.meanSpeed(), ke: s.meanKE() / 1000, freq: s.collAA / s.t }); }
+  $('meas4Btn').addEventListener('click', startMeas);
+  $('repeat4Btn').addEventListener('click', function () {
+    busy(this, function () {
+      TEMPS.forEach(function (T) {
+        for (var k = 0; k < 5; k++) addRow4(runFor({ seed: st.seed++, n: PRESET[4].n, V: 1, T: T, mode: 'none' }, MEAS4_SEC));
+      });
+      renderTable4();
+    });
+  });
+  $('clear4Btn').addEventListener('click', function () { st.rows4 = []; renderTable4(); });
+  function renderTable4() {
+    var none = '<tr><td colspan="5" class="empty">아직 측정값이 없습니다.</td></tr>';
+    $('t4body').innerHTML = st.rows4.length ? st.rows4.map(function (r, i) {
+      return cells([i + 1, r.T, fmt(r.sp, 1), fmt(r.ke, 2), fmt(r.freq, 1)]);
+    }).join('') : none;
+    $('t4sum').innerHTML = st.rows4.length ? byTemp(st.rows4).map(function (a) {
+      return cells([a.T, a.n, fmt(a.sp, 1), fmt(a.ke, 2), fmt(a.ke / a.T, 4), fmt(a.freq, 1)]);
+    }).join('') : '<tr><td colspan="6" class="empty">아직 측정값이 없습니다.</td></tr>';
+  }
+  renderTable4();
+
   /* ---------- 그리기 ---------- */
   var cv = $('sim'), x = cv.getContext('2d');
   function fitCanvas(c, w0, h0) {
@@ -397,6 +548,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
   function drawSim() {
     if (!fitCanvas(cv, C.W0, C.H0)) return;
     var s = st.sim, top = s.top(), W = C.XR - C.XL, i, q;
+    var tails = st.tab === 4;
     x.fillStyle = '#F4F2E9'; x.fillRect(C.XL, top, W, C.FLOOR_Y - top);
     x.fillStyle = '#FBFAF6'; x.fillRect(C.XL, C.CEIL_Y, W, top - C.PISTON_TH - C.CEIL_Y);
     x.strokeStyle = '#C9C3B2'; x.lineWidth = 1; x.fillStyle = '#5A6379'; x.font = 'bold 10px monospace'; x.textAlign = 'right';
@@ -407,6 +559,13 @@ if (typeof module !== 'undefined') module.exports = Engine;
     });
     x.strokeStyle = '#16213E'; x.lineWidth = 2;
     x.beginPath(); x.moveTo(C.XL, C.CEIL_Y); x.lineTo(C.XL, C.FLOOR_Y); x.lineTo(C.XR, C.FLOOR_Y); x.lineTo(C.XR, C.CEIL_Y); x.stroke();
+    if (tails) {                                          // 꼬리 = 0.25초 동안 지나온 길 (빠를수록 길다)
+      x.strokeStyle = 'rgba(22,33,62,.28)'; x.lineWidth = 3; x.lineCap = 'round';
+      for (i = 0; i < s.p.length; i++) {
+        q = s.p[i];
+        x.beginPath(); x.moveTo(q.x, q.y); x.lineTo(q.x - q.vx * 0.25, q.y - q.vy * 0.25); x.stroke();
+      }
+    }
     for (i = 0; i < s.p.length; i++) {
       q = s.p[i];
       x.fillStyle = q.type ? '#7a4fc0' : '#FF5B24';
@@ -425,8 +584,72 @@ if (typeof module !== 'undefined') module.exports = Engine;
     if (st.meas) {
       x.fillStyle = 'rgba(22,33,62,.9)'; x.fillRect(C.W0 / 2 - 62, C.CEIL_Y + 4, 124, 20);
       x.fillStyle = '#fff'; x.font = 'bold 12px sans-serif';
-      x.fillText('측정 중 · B ' + 2 * s.reactions + '/' + 2 * K + '개', C.W0 / 2, C.CEIL_Y + 18);
+      x.fillText(st.tab === 4 ? '측정 중 · ' + s.t.toFixed(1) + ' / ' + MEAS4_SEC + ' s'
+        : '측정 중 · B ' + 2 * s.reactions + '/' + 2 * K + '개', C.W0 / 2, C.CEIL_Y + 18);
     }
+  }
+
+  /* ---------- ⑤ 충돌 3가지 경우: NO + O₃ → NO₂ + O₂ (교과서 그림을 움직이게) ---------- */
+  // 물리 엔진이 아니라 정해진 장면이다. 세 줄이 동시에 재생되고, 무대 가운데(CX)에서 부딪힌다.
+  var CW = 760, LANE = 150, CX = 380, AR = 12, BOND = 21, AFTER = 1.8;
+  // Ⅰ 빠르지만 O 쪽으로 / Ⅱ N 쪽이지만 느리게 / Ⅲ N 쪽으로 빠르게 → 반응
+  var LANES = [{ front: 'O', v: 110, tc: 1.3 }, { front: 'N', v: 32, tc: 3.8 }, { front: 'N', v: 110, tc: 1.3, react: true }];
+  var ANIM_END = 3.8 + AFTER;
+  var NO_A = -0.35, O3_D1 = Math.PI + 0.35, O3_D2 = O3_D1 + 117 * Math.PI / 180;   // 분자 기울기, O₃ 결합각 117°
+  function rot(r, th) { var c = Math.cos(th), s = Math.sin(th); return { x: r.x * c - r.y * s, y: r.x * s + r.y * c }; }
+  function place(pv, rels, th) { return rels.map(function (r) { var q = rot(r, th); return { x: pv.x + q.x, y: pv.y + q.y, el: r.el }; }); }
+  function laneScene(L, y0, t) {
+    var u = { x: Math.cos(NO_A), y: Math.sin(NO_A) }, half = BOND / 2;
+    var noRel = [{ x: u.x * half, y: u.y * half, el: L.front }, { x: -u.x * half, y: -u.y * half, el: L.front === 'N' ? 'O' : 'N' }];
+    var t1 = { x: BOND * Math.cos(O3_D1), y: BOND * Math.sin(O3_D1), el: 'O' }, t2 = { x: BOND * Math.cos(O3_D2), y: BOND * Math.sin(O3_D2), el: 'O' };
+    var o3Rel = [{ x: 0, y: 0, el: 'O' }, t1, t2];
+    // 부딪히는 순간: NO 앞 원자와 O₃ 앞쪽 O 가 (CX ∓ AR, y0) 에 닿아 있다
+    var cN = { x: CX - AR - noRel[0].x, y: y0 - noRel[0].y }, c3 = { x: CX + AR - t1.x, y: y0 - t1.y };
+    var w = Math.min(t, L.tc) - L.tc, d = Math.min(Math.max(t - L.tc, 0), AFTER), back = 0.8 * L.v * d;
+    if (t <= L.tc) return { atoms: place({ x: cN.x + L.v * w, y: cN.y }, noRel, 0).concat(place({ x: c3.x - L.v * w, y: c3.y }, o3Rel, 0)),
+      labels: [{ x: cN.x + L.v * w, y: cN.y + 42, s: 'NO' }, { x: c3.x - L.v * w, y: c3.y + 42, s: 'O₃' }] };
+    if (!L.react) return { atoms: place({ x: cN.x - back, y: cN.y }, noRel, -0.8 * d).concat(place({ x: c3.x + back, y: c3.y }, o3Rel, 0.6 * d)),
+      labels: [{ x: cN.x - back, y: cN.y + 42, s: 'NO' }, { x: c3.x + back, y: c3.y + 42, s: 'O₃' }] };
+    // 반응: N 이 O₃ 의 앞쪽 O 를 가져가 NO₂, 남은 O 두 개가 O₂
+    var n = { x: CX - AR, y: y0 };
+    var no2Rel = [{ x: 0, y: 0, el: 'N' }, { x: -u.x * BOND, y: -u.y * BOND, el: 'O' }, { x: BOND, y: 0, el: 'O' }];
+    var o2Rel = [{ x: 0, y: 0, el: 'O' }, t2];
+    return { atoms: place({ x: n.x - back, y: n.y }, no2Rel, -d).concat(place({ x: c3.x + back, y: c3.y }, o2Rel, 0.8 * d)),
+      labels: [{ x: n.x - back, y: n.y + 42, s: 'NO₂' }, { x: c3.x + back, y: c3.y + 42, s: 'O₂' }] };
+  }
+  function drawAtom(g, a) {
+    var grad = g.createRadialGradient(a.x - 4, a.y - 4, 2, a.x, a.y, AR);
+    grad.addColorStop(0, a.el === 'N' ? '#9cc0f5' : '#ff9a8a'); grad.addColorStop(1, a.el === 'N' ? '#2f6fd0' : '#c8321f');
+    g.fillStyle = grad; g.beginPath(); g.arc(a.x, a.y, AR, 0, 7); g.fill();
+  }
+  function drawBurst(g, x0, y0, r, alpha) {
+    g.globalAlpha = alpha;
+    g.fillStyle = '#ffd34d'; g.beginPath();
+    for (var i = 0; i < 24; i++) { var rr = i % 2 ? r * 0.5 : r, th = i * Math.PI / 12; g.lineTo(x0 + rr * Math.cos(th), y0 + rr * Math.sin(th)); }
+    g.fill();
+    g.fillStyle = '#ff8a24'; g.beginPath(); g.arc(x0, y0, r * 0.35, 0, 7); g.fill();
+    g.globalAlpha = 1;
+  }
+  var ccv = $('ccanvas'), cx2 = ccv.getContext('2d');
+  function drawCases() {
+    if (!fitCanvas(ccv, CW, LANE * 3)) return;
+    var g = cx2, t = st.anim;
+    LANES.forEach(function (L, i) {
+      var y0 = LANE * i + LANE / 2, sc = laneScene(L, y0, t);
+      if (i) { g.strokeStyle = '#ECE8DA'; g.lineWidth = 1.5; g.setLineDash([6, 5]); g.beginPath(); g.moveTo(0, LANE * i); g.lineTo(CW, LANE * i); g.stroke(); g.setLineDash([]); }
+      g.fillStyle = '#16213E'; g.beginPath(); g.roundRect(10, y0 - 18, 76, 36, 18); g.fill();
+      g.fillStyle = '#fff'; g.font = 'bold 15px sans-serif'; g.textAlign = 'center'; g.fillText('실험 ' + ['Ⅰ', 'Ⅱ', 'Ⅲ'][i], 48, y0 + 5);
+      var k = (t - L.tc) / 0.5;                            // 부딪히는 순간 0.5초 동안 섬광 (빠를수록 크게)
+      if (k >= 0 && k < 1 && !reduceMotion) drawBurst(g, CX, y0, (L.v > 50 ? 30 : 16) + 22 * k, 1 - k);
+      sc.atoms.forEach(function (a) { drawAtom(g, a); });
+      g.fillStyle = '#2C3A5E'; g.font = 'bold 13px sans-serif';
+      sc.labels.forEach(function (l) { g.fillText(l.s, l.x, l.y); });
+      if (t > L.tc + 0.7) {                                // 결과 (원인은 쓰지 않는다 — 학생이 찾을 몫)
+        g.fillStyle = L.react ? '#EEF7B8' : '#F4F2E9'; g.beginPath(); g.roundRect(CW - 150, y0 - 20, 140, 40, 10); g.fill();
+        g.fillStyle = L.react ? '#3d6b00' : '#5A6379'; g.font = 'bold 13px sans-serif';
+        g.fillText(L.react ? '반응이 일어남' : '반응이 일어나지 않음', CW - 80, y0 + 5);
+      }
+    });
   }
 
   var tc = $('tgraph'), tx = tc.getContext('2d');
@@ -451,6 +674,40 @@ if (typeof module !== 'undefined') module.exports = Engine;
     tx.setLineDash([]);
   }
 
+  // 2차원 기체의 속력 분포(이론): f(v) = v/σ² · exp(−v²/2σ²),  σ² = SIG2_PER_K·T
+  function speedPdf(v, T) { var s2 = C.SIG2_PER_K * T; return v / s2 * Math.exp(-v * v / (2 * s2)); }
+  var dc = $('dgraph'), dx = dc.getContext('2d');
+  function drawDist() {
+    if (!fitCanvas(dc, 520, 240)) return;
+    var Lx = 26, R = 510, T = 22, B = 204, ymax = speedPdf(Math.sqrt(C.SIG2_PER_K * 200), 200) * 1.15, i, v;
+    var px = function (v) { return Lx + (R - Lx) * v / VMAX; }, py = function (f) { return B - (B - T) * f / ymax; };
+    var h = st.hist;
+    if (h.n) {                                            // 막대: 모은 속력의 비율(넓이 합 = 1)
+      dx.fillStyle = '#f6b49b';
+      for (i = 0; i < h.c.length; i++) {
+        var f = h.c[i] / (h.n * VBIN);
+        dx.fillRect(px(i * VBIN) + 1, py(f), px(VBIN) - Lx - 2, B - py(f));
+      }
+    }
+    TEMPS.forEach(function (Tk) {                         // 선: 온도별 이론 분포
+      var now = Tk === st.T;
+      dx.strokeStyle = now ? '#FF5B24' : '#c9c3b2'; dx.lineWidth = now ? 3 : 1.5;
+      dx.beginPath();
+      for (v = 0; v <= VMAX; v += 2) { if (v) dx.lineTo(px(v), py(speedPdf(v, Tk))); else dx.moveTo(px(0), py(0)); }
+      dx.stroke();
+      if (!now) return;                                   // 이름은 지금 온도만 (회색끼리 겹쳐서)
+      var vp = Math.sqrt(C.SIG2_PER_K * Tk);
+      dx.fillStyle = '#a5310c'; dx.font = 'bold 12px sans-serif'; dx.textAlign = 'center';
+      dx.fillText(Tk + ' K', px(vp), py(speedPdf(vp, Tk)) - 7);
+    });
+    dx.strokeStyle = '#16213E'; dx.lineWidth = 1.5;
+    dx.beginPath(); dx.moveTo(Lx, T - 8); dx.lineTo(Lx, B); dx.lineTo(R, B); dx.stroke();
+    dx.fillStyle = '#5A6379'; dx.font = '10px monospace'; dx.textAlign = 'center';
+    for (v = 0; v <= VMAX; v += 50) dx.fillText(v, px(v), B + 14);
+    dx.fillText('입자의 속력 (칸/s) →', (Lx + R) / 2, B + 29);
+    dx.save(); dx.translate(Lx - 4, (T + B) / 2); dx.rotate(-Math.PI / 2); dx.textAlign = 'center'; dx.fillText('입자 수 비율 →', 0, -2); dx.restore();
+  }
+
   /* ---------- 계기판 ---------- */
   function updateGauges() {
     var s = st.sim, nA = s.count(0), nB = s.count(1);
@@ -460,6 +717,12 @@ if (typeof module !== 'undefined') module.exports = Engine;
     $('gV').textContent = s.V === 1 ? 'V' : '2V';
     $('gConc').textContent = (nA / PRESET[st.tab].n / s.V).toFixed(2);
     $('gMade').textContent = 2 * s.reactions;
+    if (st.tab === 4) {
+      var el = s.t - st.f0.t;
+      $('gSpeed').textContent = s.meanSpeed().toFixed(0);
+      $('gKE').textContent = (s.meanKE() / 1000).toFixed(2);
+      $('gFreq').textContent = el > 0.5 ? ((s.collAA - st.f0.c) / el).toFixed(1) : '–';
+    }
   }
 
   /* ---------- 루프 ---------- */
@@ -468,24 +731,43 @@ if (typeof module !== 'undefined') module.exports = Engine;
     var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0;
     last = ts;
     var s = st.sim;
+    if (cases()) {                                        // ⑤ 충돌 3가지 경우는 정해진 장면만 재생
+      if (st.playing) { st.anim = Math.min(ANIM_END, st.anim + dt * st.speed * 2); if (st.anim >= ANIM_END) { st.playing = false; syncPlay(); } }
+      drawCases();
+      requestAnimationFrame(frame);
+      return;
+    }
     if (st.playing && dt) {
       // 측정 중엔 B가 K개째 생기는 순간에 정확히 멈추도록 잘게 나눠 진행
-      if (st.meas) {
+      if (st.meas && st.tab === 4) {
+        s.step(Math.max(1e-6, Math.min(dt * st.speed, MEAS4_SEC - s.t)));
+        if (s.t >= MEAS4_SEC - 1e-9) { addRow4(s); renderTable4(); stopMeas(); st.playing = false; syncPlay(); }
+      } else if (st.meas) {
         var end = s.t + dt * st.speed;
         while (s.t < end - 1e-9 && s.reactions < K) s.step(Math.min(1 / 240, end - s.t));
         if (s.reactions >= K) { addRow(s.V, s.t); renderTable(); stopMeas(); st.playing = false; syncPlay(); }
       } else s.step(dt * st.speed);
-      var done = s.count(0) === 0;                        // A가 다 B로 바뀌면 멈춤
+      var done = st.tab <= 2 && s.count(0) === 0;         // ①② A가 다 B로 바뀌면 멈춤
       if (st.tab === 2 && (done || s.t - st.series[st.series.length - 1].t >= 0.02))
         st.series.push({ t: s.t, a: s.count(0), b: s.count(1) });
       if (done) { st.playing = false; syncPlay(); }
     }
-    s.events.forEach(function (e) { st.labels.push({ x: e.x, y: e.y, age: 0, life: 0.9 }); });
+    s.events.forEach(function (e) {
+      st.labels.push({ x: e.x, y: e.y, age: 0, life: 0.9 });
+    });
     s.events.length = 0;
     st.labels.forEach(function (L) { L.age += dt; });
     st.labels = st.labels.filter(function (L) { return L.age < L.life; });
+    if (st.tab === 4 && st.playing) {
+      s.p.forEach(function (q) {
+        var b = Math.floor(Math.sqrt(q.vx * q.vx + q.vy * q.vy) / VBIN);
+        if (b < st.hist.c.length) st.hist.c[b]++;
+        st.hist.n++;
+      });
+    }
     drawSim();
     if (st.tab === 2) drawTime();
+    if (st.tab === 4) drawDist();
     updateGauges();
     requestAnimationFrame(frame);
   }
